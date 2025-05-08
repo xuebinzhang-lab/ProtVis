@@ -166,7 +166,7 @@ DEP_analysis_server <- function(id) {
 
       # 获取表达矩阵，分组信息，和比较组信息
       exp_mat <- data() %>%
-        dplyr::mutate(across(everything(), ~ ifelse(is.na(.),0,.))) %>%
+        dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.),0,.))) %>%
         tidyr::pivot_longer(!Accession,names_to = 'sample_name',values_to = 'value') %>%
         dplyr::left_join(group(), by = c("sample_name" = "Sample")) %>%
         dplyr::group_by(Accession,Group) %>%
@@ -176,7 +176,7 @@ DEP_analysis_server <- function(id) {
         ),
         judge2 = sum(judge) # 计算一下3个重复中有几个有表达量
         ) %>%
-        dplyr::mutate(value2 = case_when(
+        dplyr::mutate(value2 = dplyr::case_when(
           judge == 0 & judge2 == 2 ~ sum(value)/2, # 如果这个值是0，但是3个重复中有2个有表达量，那么就给他去平均值替换0
           judge == 0 & judge2 == 1 ~ 0, # 如果这个值是0，但是3个重复中只有1个有表达量，那么认为是噪音，仍旧给他取0
           judge == 1 & judge2 == 1 ~ 0, # 如果这个值是1（有表达量），三个重复只有一个有表达量，那么认为是噪音，把他原始的值替换成0
@@ -197,8 +197,8 @@ DEP_analysis_server <- function(id) {
         group1 <- compare_info[i, 1]
         group2 <- compare_info[i, 2]
         select_sample <- group() %>%
-          filter(Group == group1 | Group == group2) %>%
-          pull(Sample)
+          dplyr::filter(Group == group1 | Group == group2) %>%
+          dplyr::pull(Sample)
         # 选择对应的样本数据
         select_data <- exp_mat %>%
           dplyr::select(Accession,all_of(select_sample)) %>%
