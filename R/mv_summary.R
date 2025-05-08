@@ -343,7 +343,7 @@ mv_summary_server <- function(id) {
         expr <- log10(data())
         pca_data <- t(expr)
         pca <- PCAtools::pca(expr, metadata = class)
-        biplot(pca,
+        PCAtools::biplot(pca,
                x = "PC1",
                y = "PC2",
                colby = "Group",
@@ -377,7 +377,7 @@ mv_summary_server <- function(id) {
           tibble::column_to_rownames("Sample")
         expr <- log10(data())
         pca_data <- t(expr)
-        pca <- pca(expr, metadata = class)
+        pca <- PCAtools::pca(expr, metadata = class)
 
         # 保存旋转矩阵为CSV文件
         write.csv(pca[["rotated"]], file, row.names = TRUE)
