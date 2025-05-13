@@ -11,7 +11,7 @@
 veen_ui <- function(id){
   ns <- NS(id)
   nav_panel(
-    title = 'Veen',
+    title = 'Venn',
     icon = bs_icon("play-circle"),
     layout_sidebar(
       sidebar = accordion(
@@ -33,7 +33,7 @@ veen_ui <- function(id){
           navset_card_tab(
             height = 600,
             full_screen = TRUE,
-            title = "Veen plot",
+            title = "Venn plot",
             sidebar = accordion(
               open = 'closed',
               accordion_panel(
