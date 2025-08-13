@@ -378,7 +378,7 @@ overview_server <- function(id, shared_state) {
     plot_DR_results <- function(dr_data, sample_info, title_suffix) {
       df <- as.data.frame(dr_data) %>%
         dplyr::mutate(
-          SampleType = str_split(rownames(.), "_", 2, TRUE)[, 1],
+          SampleType = stringr::str_split(rownames(.), "_", 2, TRUE)[, 1],
           Type = str_remove_all(rownames(.), "^....|..$"),
           Species = case_when(
             SampleType == "B73" ~ "Zea mays ssp. mays",
