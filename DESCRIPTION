@@ -1,0 +1,33 @@
+Package: ProtVis
+Title: ProtVis Shiny App
+Version: 0.0.1
+Authors@R: 
+    person(given = "firstname",
+           family = "lastname",
+           role = c("aut", "cre"),
+           email = "your@email.com")
+Description: ProtVis is an interactive visualization tool designed for exploring, analyzing, 
+    and presenting proteomics data in an intuitive and user-friendly manner.
+License: MIT + file LICENSE
+Imports: 
+    config,
+    golem,
+    shiny,
+    bslib,
+    bsicons,
+    ggplot2,
+    tidyverse,
+    dplyr,
+    tidyr,
+    limma,
+    clusterProfiler,
+    DT,
+    fs,
+    shinyFiles,
+    stringr
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
