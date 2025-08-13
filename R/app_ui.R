@@ -117,20 +117,21 @@ app_ui <- function(request) {
       nav_menu(
         "Downstream analysis",
         icon = bs_icon("tools"),
-        overview_ui("overview"),
-        DEP_analysis_ui("DEP_analysis"),
-        DEP_visualize_ui("DEP_visualize"),
-        veen_ui("veen"),
-        protein_structure_ui("protein_structure"),
-        GO_and_KEGG_ui("GO_and_KEGG"),
-        Expression_profile_ui("Expression_profile")
+        nav_panel("Overview", overview_ui("overview")),
+
+        # DEP_analysis_ui("DEP_analysis"),
+        # DEP_visualize_ui("DEP_visualize"),
+        # veen_ui("veen"),
+        # protein_structure_ui("protein_structure"),
+        # GO_and_KEGG_ui("GO_and_KEGG"),
+        # Expression_profile_ui("Expression_profile")
       ),
 
       #### Multi-omics Data ####
       nav_menu(
         "Multi-omics data",
         icon = bs_icon("database-gear"),
-        DR_analysis_ui("DR_analysis")
+        # DR_analysis_ui("DR_analysis")
         # correlation_ui("correlation"),
         # pathway_analysis_ui("pathway_analysis")
       ),
