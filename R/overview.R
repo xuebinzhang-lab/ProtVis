@@ -174,6 +174,9 @@ overview_server <- function(id, shared_state) {
       sample_info <- rv$sample_info
       expmat_share <- rv$normalized_matrix
       # plot
+      metadata_share <- dplyr::left_join(
+        data.frame(sample_id = colnames(expmat_share)), sample_info, by = "sample_id"
+      ) %>% dplyr::mutate(tissue2 = stringr::str_split(tissue, "_", 2, TRUE)[, 1])
       left_anno = ComplexHeatmap::rowAnnotation(
         Tissue = metadata_share %>% dplyr::select(tissue2) %>% as.matrix(),
         Species = metadata_share %>% dplyr::select(species) %>% as.matrix(),
