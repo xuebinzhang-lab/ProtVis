@@ -20,33 +20,33 @@ overview_ui <- function(id) {
 
           card(
             height = "800px",
-            card_header("Original Data"),
+            card_header("Correlation"),
             card_body(
-              DT::DTOutput(ns("originalData"))
+              DT::DTOutput(ns("cor_res"))
             )
           ),
 
           card(
             height = "800px",
-            card_header("Original Data visualize"),
+            card_header("Heatmap"),
             card_body(
-              plotOutput(ns("originalPlot"))
+              plotOutput(ns("heatmapPlot"))
             )
           ),
 
           card(
             height = "800px",
-            card_header("Normalized Data"),
+            card_header("PCA before normalization"),
             card_body(
-              DT::DTOutput(ns("dataNormalization"))
+              DT::DTOutput(ns("pcaBeforeNormalization"))
             )
           ),
 
           card(
             height = "800px",
-            card_header("Normalized Data Visualization"),
+            card_header("PCA after normalization"),
             card_body(
-              plotOutput(ns("dataNormalizationPlot"))
+              plotOutput(ns("pcaAfterNormalization"))
             )
           )
         )

@@ -1,29 +1,20 @@
-# correct_values = function(raw_mat) {
-#   clean_mat<-mat_step2
-#   rep1 <- clean_mat %>% dplyr::select(ID,contains('_1')) %>% dplyr::rowwise() %>% dplyr::filter(any(c_across(!ID) != 0))
-#   rep2 <- clean_mat %>% dplyr::select(ID,contains('_2')) %>% dplyr::rowwise() %>% dplyr::filter(any(c_across(!ID) != 0))
-#   rep3 <- clean_mat %>% dplyr::select(ID,contains('_3')) %>% dplyr::rowwise() %>% dplyr::filter(any(c_across(!ID) != 0))
-#   mv_mat <- dplyr::full_join(rep1,rep2) %>% dplyr::full_join(.,rep3)
-#   final_mat <- mv_mat %>%
-#     data.table::setDT() %>%
-#     data.table::melt(id.vars = "ID", variable.name = "sample", value.name = "value") %>%
-#     .[is.na(value), value := 0] %>%
-#     .[, `:=`(sample_group = sub("..$", "", sample),
-#              tag = ifelse(value > 0, 1, 0))] %>%
-#     .[, value_fix := {
-#       tag_sum <- sum(tag)
-#       ifelse(tag_sum >= 2 & value == 0, sum(value[tag == 1])/2,
-#              ifelse(tag_sum >= 2 & value != 0, value,
-#                     ifelse(tag_sum == 3, value, 0)))
-#     }, by = .(ID, sample_group)] %>%
-#     .[, .(ID, sample, value_fix)] %>%
-#     reshape2::dcast(ID ~ sample, value.var = "value_fix") %>%
-#     as.data.frame() %>%
-#     dplyr::mutate(across(everything(), ~ifelse(. == 0,NA,.)))
-#
-#   return(final_mat)
-# }
-
+#' Correct zero values in replicate measurements
+#'
+#' This function processes a raw matrix of protein/peptide intensities and
+#' corrects zero values in replicates when at least 2 replicates have non-zero values.
+#' The correction replaces zeros with half the sum of the non-zero replicates.
+#'
+#' @param raw_mat A data frame containing protein/peptide intensities with
+#'                samples in columns and IDs in the first column. Sample names
+#'                should contain "_1", "_2", "_3" suffixes to indicate replicates.
+#'
+#' @return A data frame with corrected values where zeros have been replaced
+#'         according to the correction rules. Rows with all zeros remain unchanged.
+#'
+#' @importFrom dplyr select rowwise filter ungroup full_join mutate if_else group_by case_when across na_if
+#' @importFrom tidyr pivot_longer replace_na pivot_wider
+#' @importFrom stringr str_sub
+#' @importFrom tibble column_to_rownames
 correct_values <- function(raw_mat) {
   clean_mat <- raw_mat
 
@@ -77,7 +68,22 @@ correct_values <- function(raw_mat) {
   return(final_mat)
 }
 
-
+#' UI for Noise Correction Module
+#'
+#' Creates the user interface for the noise correction module which includes:
+#' - Data loading controls
+#' - Column renaming options
+#' - Noise correction options
+#' - Preview tabs for different processing steps
+#' - Export functionality
+#'
+#' @param id Character string module ID for namespacing
+#'
+#' @return A Shiny UI layout with sidebar controls and main display area
+#'
+#' @importFrom shiny NS actionButton uiOutput div
+#' @importFrom bslib layout_sidebar sidebar accordion accordion_panel card card_header card_body navset_tab nav_panel
+#' @importFrom shinyWidgets switchInput
 correct_noise_ui <- function(id) {
   ns <- NS(id)
 
@@ -150,6 +156,25 @@ correct_noise_ui <- function(id) {
   )
 }
 
+#' Server Logic for Noise Correction Module
+#'
+#' Handles the server-side processing for the noise correction module including:
+#' - Loading input data
+#' - Column renaming
+#' - Noise correction calculations
+#' - Data previews
+#' - Export functionality
+#'
+#' @param id Character string module ID for namespacing
+#' @param shared_state Reactive values list for sharing data between modules
+#'
+#' @return Server logic for the noise correction module
+#'
+#' @importFrom shiny moduleServer reactive reactiveValues observeEvent req showNotification
+#' @importFrom dplyr left_join pull
+#' @importFrom DT renderDataTable datatable
+#' @importFrom tibble column_to_rownames
+#'
 correct_noise_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns

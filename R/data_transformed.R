@@ -1,3 +1,21 @@
+#' UI for Data Transformation Module
+#'
+#' Creates the user interface for the data transformation module which includes:
+#' - Data loading controls
+#' - Transformation method selection
+#' - Data preview tabs
+#' - Export functionality
+#'
+#' @param id Character string module ID for namespacing
+#'
+#' @return A Shiny UI layout with sidebar controls and main display area
+#'
+#' @importFrom shiny NS tagList actionButton uiOutput div
+#' @importFrom bslib layout_sidebar sidebar accordion card card_header card_body navset_tab nav_panel
+#' @importFrom shinyjs useShinyjs
+#' @importFrom DT dataTableOutput
+#' @importFrom shiny selectInput
+#'
 data_transformed_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -37,6 +55,23 @@ data_transformed_ui <- function(id) {
   )
 }
 
+#' Server Logic for Data Transformation Module
+#'
+#' Handles the server-side processing for data transformation including:
+#' - Loading input data
+#' - Applying selected transformations (log10, log2, scaling, etc.)
+#' - Data previews
+#' - Export functionality
+#'
+#' @param id Character string module ID for namespacing
+#' @param shared_state Reactive values list for sharing data between modules
+#'
+#' @return Server logic for the data transformation module
+#'
+#' @importFrom shiny moduleServer reactive reactiveValues observeEvent req showNotification
+#' @importFrom DT renderDT datatable
+#' @importFrom tibble column_to_rownames
+#'
 data_transformed_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns

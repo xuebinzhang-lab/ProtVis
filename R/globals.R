@@ -1,13 +1,13 @@
 utils::globalVariables(
   c(
-    # MaxQuant 相关列名
+    # MaxQuant related column names
     "Only identified by site",
     "Reverse",
     "Potential contaminant",
     "Protein IDs",
     "ID",
 
-    # 数据处理相关列名
+    # Data processing related column names
     "sample_id",
     "sample_group",
     "value_fix",
@@ -16,10 +16,10 @@ utils::globalVariables(
     "maxquant_id",
     "Value",
 
-    # 特殊符号
+    # Special symbols
     ".",
 
-    # 其他可能需要声明的变量
+    # Other variables that may need to be declared
     "rowname"
   )
 )
