@@ -1,10 +1,32 @@
+#' Perform median subtraction normalization on a data matrix
+#'
+#' This function subtracts the median value (ignoring NAs) from each column of the input data matrix.
+#' It is commonly used for sample normalization in omics data analysis.
+#'
+#' @param data A numeric matrix or data frame containing the data to be normalized
+#' @return A matrix with the same dimensions as input where each column has been median-centered
+#' @examples
+#' data <- matrix(rnorm(100), ncol=5)
+#' normalized <- sample_subtract(data)
+#'
 sample_subtract <- function(data) {
   # Median subtraction (ignoring NA)
   data_median_subtracted <- apply(data, 2, function(x) x - median(x, na.rm = TRUE))
   return(data_median_subtracted)
 }
 
-
+#' UI module for data normalization
+#'
+#' Creates the user interface for the data normalization module which includes:
+#' - Data loading controls
+#' - Visualization of original and normalized data
+#' - Normalization execution button
+#'
+#' @param id The namespace identifier for the module
+#' @return A Shiny UI tagList containing the module interface
+#' @examples
+#' data_normalization_ui("norm_module")
+#'
 data_normalization_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -62,8 +84,20 @@ data_normalization_ui <- function(id) {
   )
 }
 
-
-
+#' Server module for data normalization
+#'
+#' Handles the server-side logic for data normalization including:
+#' - Loading input data
+#' - Performing median subtraction normalization
+#' - Generating visualizations
+#' - Saving results
+#'
+#' @param id The namespace identifier for the module
+#' @param shared_state A reactiveValues object containing shared state between modules
+#' @return A module server function
+#' @examples
+#' data_normalization_server("norm_module", shared_state)
+#'
 data_normalization_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
