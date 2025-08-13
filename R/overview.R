@@ -174,6 +174,19 @@ overview_server <- function(id, shared_state) {
       sample_info <- rv$sample_info
       expmat_share <- rv$normalized_matrix
       # plot
+      left_anno = ComplexHeatmap::rowAnnotation(
+        Tissue = metadata_share %>% dplyr::select(tissue2) %>% as.matrix(),
+        Species = metadata_share %>% dplyr::select(species) %>% as.matrix(),
+        col = list(
+          tissue = c("green", "brown", "tan", "darkgreen", "blue") %>%
+            stats::setNames(c("Leaf", "Pulvinus", "Root", "Stem", "Shoot.tip")),
+          species = c("orange", "lightgreen") %>%
+            stats::setNames(c("Zea mays ssp. mays", "Zea mays ssp. mexicana"))
+        ),
+        annotation_name_gp = grid::gpar(fontsize = 6),  # 注释名称字体大小
+        annotation_legend_param = list(title_gp = grid::gpar(fontsize = 6),
+                                       labels_gp = grid::gpar(fontsize = 6))  # 注释图例字体大小
+      )
       ht_expmat <- ComplexHeatmap::Heatmap(
         expmat_share[rowSums(expmat_share) > 0, ] %>% t(),  # 直接矩阵操作更高效
         use_raster = TRUE,  # 明确启用栅格化
