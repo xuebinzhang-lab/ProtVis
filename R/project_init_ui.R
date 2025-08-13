@@ -48,8 +48,8 @@ project_init_ui <- function(id) {
 
     card(
       card_header("Preview Sample Info and Expression Matrix"),
-      card_body_fill(
-        navs_tab(
+      card_body(
+        navset_tab(
           id = ns("preview_tabs"),
           nav_panel("Sample Info",
                     htmlOutput(ns("file_check_init")),

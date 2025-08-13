@@ -141,15 +141,6 @@ data_normalization_server <- function(id, shared_state) {
       }
     })
 
-    # 状态显示
-    output$load_status_panel <- renderUI({
-      if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
-      } else {
-        span("❌ Data not loaded", style = "color: red;")
-      }
-    })
-
     # 原始数据表预览
     output$originalData <- DT::renderDT({
       req(rv$expression_matrix)
