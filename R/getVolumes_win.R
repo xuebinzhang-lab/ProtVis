@@ -14,13 +14,13 @@
 getVolumes_win <- function (exclude = NULL) {
   osSystem <- Sys.info()["sysname"]
   if (osSystem == "Darwin") {
-    volumes <- dir_ls("/Volumes")
+    volumes <- fs::dir_ls("/Volumes")
     names(volumes) <- basename(volumes)
   }
   else if (osSystem == "Linux") {
     volumes <- c(Computer = "/")
-    if (isTRUE(dir_exists("/media"))) {
-      media <- dir_ls("/media")
+    if (isTRUE(fs::dir_exists("/media"))) {
+      media <- fs::dir_ls("/media")
       names(media) <- basename(media)
       volumes <- c(volumes, media)
     }

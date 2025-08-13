@@ -132,7 +132,7 @@ data_normalization_server <- function(id, shared_state) {
       expmat_before <- expression_matrix
       expmat_before.long <-
         expmat_before %>%
-        rownames_to_column("ID") %>%
+        tibble::rownames_to_column("ID") %>%
         pivot_longer(!ID,names_to = "sample_id",values_to = "intensity") %>%
         left_join(sample_info)
       ggplot(data = expmat_before.long,mapping = aes(x = sample_id,y = intensity,fill = group)) +
@@ -146,11 +146,12 @@ data_normalization_server <- function(id, shared_state) {
     # 运行归一化
     observeEvent(input$run_normalization, {
       req(rv$expression_matrix)
-
+      req(rv$sample_info)
+      sample_info <- rv$sample_info
       normalized_data <- sample_subtract(rv$expression_matrix)
       rv$normalized_matrix <- as.data.frame(normalized_data)
 
-      save(normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
+      save(sample_info,normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
       showNotification("Normalization completed", type = "message")
     })
 
@@ -170,7 +171,7 @@ data_normalization_server <- function(id, shared_state) {
       expmat_before <- normalized_matrix
       expmat_before.long <-
         expmat_before %>%
-        rownames_to_column("ID") %>%
+        tibble::rownames_to_column("ID") %>%
         pivot_longer(!ID,names_to = "sample_id",values_to = "intensity") %>%
         left_join(sample_info)
       ggplot(data = expmat_before.long,mapping = aes(x = sample_id,y = intensity,fill = group)) +

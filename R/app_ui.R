@@ -105,11 +105,11 @@ app_ui <- function(request) {
         nav_panel("Data Imputation", data_imputation_ui("data_imputation")),
         nav_panel("Data Normalization", data_normalization_ui("data_normalization")),
 
-        nav_panel("Missing Value", missing_value_ui("missing_value")),
-        nav_panel("Noise Filter", mv_noise_ui("mv_noise")),
-        nav_panel("Imputation", mv_imputation_ui("mv_imputation")),
-        nav_panel("Summary", mv_summary_ui("mv_summary")),
-        nav_panel("Dimension Reduction", Dimension_reduction_ui("Dimension_reduction"))
+        # nav_panel("Missing Value", missing_value_ui("missing_value")),
+        # nav_panel("Noise Filter", mv_noise_ui("mv_noise")),
+        # nav_panel("Imputation", mv_imputation_ui("mv_imputation")),
+        # nav_panel("Summary", mv_summary_ui("mv_summary")),
+        # nav_panel("Dimension Reduction", Dimension_reduction_ui("Dimension_reduction"))
       ),
 
 
@@ -133,7 +133,12 @@ app_ui <- function(request) {
         # correlation_ui("correlation"),
         # pathway_analysis_ui("pathway_analysis")
       ),
-
+      #### Release data ####
+      nav_panel(
+        "Release data",
+        icon = bs_icon("folder2-open"),
+        release_data_ui("release_data1")
+      ),
       #### Help ####
       nav_panel(
         "Help",

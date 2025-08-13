@@ -26,6 +26,10 @@ app_server <- function(input, output, session) {
   data_transformed_server("data_transformed", shared_state = shared_state)
   data_normalization_server("data_normalization", shared_state = shared_state)
 
+  release_data_server("release_data1", shared_state)
+
+  # -------------------------------------------------------------------------
+
   missing_value_server("missing_value", shared_state = shared_state)
   mv_noise_server("mv_noise")
   mv_imputation_server("mv_imputation")
