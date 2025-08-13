@@ -21,7 +21,15 @@ data_imputation_ui <- function(id) {
         accordion(
           accordion_panel(
             title = "Imputation Settings",
-            icon = bs_icon("tools"),
+            icon = HTML('<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+        <!-- Left square with NA -->
+        <rect x="3" y="8" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <text x="7" y="12" font-size="5" font-weight="bold" text-anchor="middle" dominant-baseline="middle">NA</text>
+
+        <!-- Right square with num -->
+        <rect x="13" y="8" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <text x="17" y="12" font-size="4" font-weight="bold" text-anchor="middle" dominant-baseline="middle">num</text>
+    </svg>'),
             selectInput(ns("choice_method"), "Method",
                         choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
                         selected = "Mean"),
