@@ -67,7 +67,7 @@ expression_pattern_icon <- HTML('<svg viewBox="0 0 16 16" width="20" height="20"
         <rect x="13" y="13" width="3" height="3" fill="#ffffff"/>
     </svg>')
 
-dimensionality_reduction_analysis_icon <- HTML('<svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+dimensionality_reduction_icon <- HTML('<svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <!-- Square outline -->
         <rect x="2" y="2" width="12" height="12" stroke="currentColor" fill="none"/>
 

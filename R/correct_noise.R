@@ -271,7 +271,10 @@ correct_noise_server <- function(id, shared_state) {
       req(rv$load_success, shared_state$workdir, shared_state$sample_info, corrected_matrix())
       save_path <- file.path(shared_state$workdir, "Step3_correct_noise.rda")
       sample_info <- shared_state$sample_info
-      correct_noise_result <- corrected_matrix()
+      correct_noise_result <- corrected_matrix() %>%
+        tibble::column_to_rownames("ID") %>%
+        {. * 10000000} %>%
+        tibble::rownames_to_column("ID")
       save(sample_info, correct_noise_result, file = save_path)
       showNotification(paste0("✅ Saved to ", save_path), type = "message")
     })
