@@ -117,6 +117,7 @@ app_ui <- function(request) {
       nav_menu(
         "Downstream analysis",
         icon = bs_icon("tools"),
+        overview_ui("overview"),
         DEP_analysis_ui("DEP_analysis"),
         DEP_visualize_ui("DEP_visualize"),
         veen_ui("veen"),

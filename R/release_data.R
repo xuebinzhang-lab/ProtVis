@@ -1,6 +1,10 @@
-library(shiny)
-library(openxlsx)
-
+#' Release Data UI Module
+#'
+#' Creates the user interface for the release data module.
+#' This module allows users to load .rda files and export their contents to xlsx or csv format.
+#'
+#' @param id The namespace identifier for the module
+#' @return A tagList containing the UI elements
 release_data_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -12,11 +16,19 @@ release_data_ui <- function(id) {
   )
 }
 
+#' Release Data Server Module
+#'
+#' Server-side logic for the release data module.
+#' Handles loading .rda files and exporting their contents to the selected format.
+#'
+#' @param id The namespace identifier for the module
+#' @param shared_state A reactive list containing shared state variables (must include 'workdir')
+#' @return None (server-side module)
 release_data_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # 显示当前工作目录
+    # Display current working directory
     output$workdir_display <- renderText({
       wd <- shared_state$workdir
       if (is.null(wd) || wd == "") {
@@ -26,7 +38,7 @@ release_data_server <- function(id, shared_state) {
       }
     })
 
-    # 读取工作目录下所有 .rda 文件
+    # Load all .rda files in the working directory
     rda_files <- eventReactive(input$load_files, {
       wd <- shared_state$workdir
       req(wd)
@@ -42,28 +54,32 @@ release_data_server <- function(id, shared_state) {
       files
     })
 
-    # 显示复选框供用户选择 .rda 文件
+    # Render UI for selecting .rda files to export
     output$rda_files_ui <- renderUI({
       files <- rda_files()
       req(files)
       checkboxGroupInput(ns("selected_rda"), "Select .rda files to export", choices = files)
     })
 
+    # Handle export button click
     observeEvent(input$export_btn, {
       wd <- shared_state$workdir
       req(wd)
       req(input$selected_rda)
       format <- input$output_format
 
+      # Process each selected .rda file
       for (rda_file in input$selected_rda) {
         rda_path <- file.path(wd, rda_file)
         env <- new.env()
         load(rda_path, envir = env)
 
+        # Create output directory named after the .rda file (without extension)
         folder_name <- tools::file_path_sans_ext(rda_file)
         out_dir <- file.path(wd, folder_name)
         if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
+        # Export each object from the .rda file
         obj_names <- ls(env)
         for (obj_name in obj_names) {
           obj <- env[[obj_name]]
@@ -73,7 +89,7 @@ release_data_server <- function(id, shared_state) {
             if (is.data.frame(obj)) {
               openxlsx::write.xlsx(obj, out_file)
             } else {
-              # 尝试转换为data.frame
+              # Try to convert to data.frame before exporting
               tryCatch({
                 df <- as.data.frame(obj)
                 openxlsx::write.xlsx(df, out_file)
@@ -98,6 +114,5 @@ release_data_server <- function(id, shared_state) {
 
       showNotification("Export completed", type = "message")
     })
-
   })
 }
