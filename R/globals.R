@@ -93,3 +93,14 @@ imputation_settings_icon <- HTML('<svg viewBox="0 0 24 24" width="24" height="24
         <rect x="13" y="8" width="8" height="8" stroke="currentColor" stroke-width="1.2" fill="none"/>
         <text x="17" y="12" font-size="4" font-weight="bold" text-anchor="middle" dominant-baseline="middle">num</text>
     </svg>')
+
+gear_icon <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+  <path d="M12 4V2M12 22v-2M20 12h2M4 12h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M17.5 6.5L19 5M5 19l1.5-1.5M17.5 17.5L19 19M5 5l1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M6.5 17.5L5 19M19 5l-1.5 1.5M6.5 6.5L5 5M19 19l-1.5-1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.5,1.5" fill="none"/>
+  <path d="M12 8L12 6M12 18l0 2M8 12H6M18 12h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+</svg>
+')

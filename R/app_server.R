@@ -28,6 +28,7 @@ app_server <- function(input, output, session) {
 
   # -------------------------------------------------------------------------
   overview_server("overview", shared_state)
+  DEP_analysis_server("DEP_analysis", shared_state = shared_state)
 
   release_data_server("release_data1", shared_state)
 
@@ -38,7 +39,6 @@ app_server <- function(input, output, session) {
   mv_imputation_server("mv_imputation")
   mv_summary_server("mv_summary")
   DEP_visualize_server("DEP_visualize")
-  DEP_analysis_server("DEP_analysis")
   veen_server("veen")
   protein_structure_server("protein_structure")
   GO_and_KEGG_server("GO_and_KEGG")

@@ -85,7 +85,7 @@ app_ui <- function(request) {
       #### Project Initialization ####
       nav_panel(
         "Project init",
-        icon = bs_icon("arrow-bar-right"),
+        icon = gear_icon,
         nav_panel("Project init", project_init_ui("project_init"))
       ),
 
@@ -118,8 +118,7 @@ app_ui <- function(request) {
         "Downstream analysis",
         icon = bs_icon("tools"),
         nav_panel("Overview", overview_ui("overview")),
-
-        # DEP_analysis_ui("DEP_analysis"),
+        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
         # DEP_visualize_ui("DEP_visualize"),
         # veen_ui("veen"),
         # protein_structure_ui("protein_structure"),
