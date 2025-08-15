@@ -1,18 +1,13 @@
-#' Protein Extract UI Module
-#'
-#' Creates the user interface for protein extraction module that allows users to
-#' upload FASTA files, input target protein IDs, and extract matching sequences.
-#'
-#' @param id The namespace identifier for the module
-#' @return A Shiny UI tagList containing all UI elements
-#' @export
+# ===============================
+# Protein Extract UI Module
+# ===============================
 protein_extract_ui <- function(id) {
   ns <- NS(id)
   tagList(
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 350,
-        # File upload section
+        # File upload
         div(style = "margin-bottom: 15px;",
             fileInput(ns("fasta_file"), "Upload FASTA File",
                       accept = c(".fa", ".fasta", ".fasta.gz"),
@@ -90,19 +85,13 @@ protein_extract_ui <- function(id) {
   )
 }
 
-#' Protein Extract Server Module
-#'
-#' Server-side logic for protein extraction module that handles FASTA file processing,
-#' protein ID matching, and result generation.
-#'
-#' @param id The namespace identifier for the module
-#' @return A reactive list containing matched sequences and summary statistics
-#' @export
+# ===============================
+# Protein Extract Server Module
+# ===============================
 protein_extract_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Reactive values storage
     rv <- reactiveValues(
       fasta_data = NULL,
       protein_ids = NULL,
@@ -110,20 +99,16 @@ protein_extract_server <- function(id) {
       unmatched_ids = NULL
     )
 
-    # Load FASTA file
+    # Load FASTA
     observeEvent(input$fasta_file, {
       req(input$fasta_file)
-
       tryCatch({
-        # Handle gzipped files
-        if (endsWith(input$fasta_file$name, ".gz")) {
-          con <- gzfile(input$fasta_file$datapath)
-          rv$fasta_data <- Biostrings::readAAStringSet(con)
-          close(con)
+        filepath <- input$fasta_file$datapath
+        if (grepl("\\.gz$", filepath)) {
+          rv$fasta_data <- Biostrings::readAAStringSet(gzfile(filepath))
         } else {
-          rv$fasta_data <- Biostrings::readAAStringSet(input$fasta_file$datapath)
+          rv$fasta_data <- Biostrings::readAAStringSet(filepath)
         }
-
         showNotification("FASTA file loaded successfully!", type = "message")
       }, error = function(e) {
         showNotification(paste("Error loading FASTA file:", e$message), type = "error")
@@ -131,7 +116,7 @@ protein_extract_server <- function(id) {
       })
     })
 
-    # Get protein IDs based on input method
+    # Get protein IDs
     observe({
       if (input$input_mode == "manual") {
         req(input$protein_ids)
@@ -155,22 +140,14 @@ protein_extract_server <- function(id) {
       }
     })
 
-    # Extract protein sequences
+    # Extract sequences
     observeEvent(input$extract, {
       req(rv$fasta_data, rv$protein_ids)
-
       tryCatch({
-        # Extract protein IDs from FASTA headers (assuming headers contain IDs)
         fasta_headers <- names(rv$fasta_data)
-
-        # Create pattern to match any of the protein IDs
         pattern <- paste0("\\b(", paste(rv$protein_ids, collapse = "|"), ")\\b")
-
-        # Find matches
         matched_idx <- stringr::str_detect(fasta_headers, pattern)
         rv$matched_seqs <- rv$fasta_data[matched_idx]
-
-        # Find unmatched IDs
         found_ids <- stringr::str_extract(fasta_headers[matched_idx], pattern)
         rv$unmatched_ids <- setdiff(rv$protein_ids, found_ids)
 
@@ -187,7 +164,7 @@ protein_extract_server <- function(id) {
       })
     })
 
-    # Display matched sequence summary
+    # Matched summary
     output$matched_summary <- renderPrint({
       req(rv$matched_seqs)
       cat("=== Matched Protein Summary ===\n")
@@ -200,29 +177,29 @@ protein_extract_server <- function(id) {
       print(head(names(rv$matched_seqs), 10))
     })
 
-    # Display sequence table
+    # Sequence table
     output$sequence_table <- DT::renderDataTable({
       req(rv$matched_seqs)
-
-      data.frame(
+      df <- data.frame(
         Protein_ID = names(rv$matched_seqs),
         Length = Biostrings::width(rv$matched_seqs),
         Sequence = as.character(rv$matched_seqs),
         stringsAsFactors = FALSE
-      ) %>%
-        DT::datatable(
-          rownames = FALSE,
-          extensions = 'Buttons',
-          options = list(
-            scrollX = TRUE,
-            pageLength = 10,
-            dom = 'Bfrtip',
-            buttons = c('copy', 'csv', 'excel')
-          )
+      )
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        extensions = 'Buttons',
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel')
         )
+      )
     })
 
-    # Display unmatched IDs
+    # Unmatched IDs
     output$unmatched_ids <- renderPrint({
       req(rv$unmatched_ids)
       cat("=== Unmatched Protein IDs ===\n")
@@ -237,37 +214,30 @@ protein_extract_server <- function(id) {
 
     # Download handler
     output$download_results <- downloadHandler(
-      filename = function() {
-        paste0("protein_extract_results_", Sys.Date(), ".zip")
-      },
+      filename = function() paste0("protein_extract_results_", Sys.Date(), ".zip"),
       content = function(file) {
         req(rv$matched_seqs)
-
-        # Create temp directory
         temp_dir <- tempdir()
         fasta_file <- file.path(temp_dir, "matched_sequences.fasta")
         summary_file <- file.path(temp_dir, "summary.txt")
         unmatched_file <- file.path(temp_dir, "unmatched_ids.txt")
 
-        # Write outputs
         Biostrings::writeXStringSet(rv$matched_seqs, fasta_file)
-        writeLines(
-          c("=== Protein Extraction Summary ===",
-            sprintf("FASTA file: %s", input$fasta_file$name),
-            sprintf("Total proteins in FASTA: %d", length(rv$fasta_data)),
-            sprintf("Target proteins queried: %d", length(rv$protein_ids)),
-            sprintf("Successfully matched: %d", length(rv$matched_seqs)),
-            sprintf("Unmatched IDs: %d", length(rv$unmatched_ids))),
-          summary_file
-        )
+        writeLines(c(
+          "=== Protein Extraction Summary ===",
+          sprintf("FASTA file: %s", input$fasta_file$name),
+          sprintf("Total proteins: %d", length(rv$fasta_data)),
+          sprintf("Queried: %d", length(rv$protein_ids)),
+          sprintf("Matched: %d", length(rv$matched_seqs)),
+          sprintf("Unmatched: %d", length(rv$unmatched_ids))
+        ), summary_file)
         writeLines(rv$unmatched_ids, unmatched_file)
 
-        # Zip files
         zip(file, files = c(fasta_file, summary_file, unmatched_file), extras = "-j")
       }
     )
 
-    # Return reactive values
+    # Return reactive
     reactive({
       list(
         matched_sequences = rv$matched_seqs,
@@ -278,5 +248,3 @@ protein_extract_server <- function(id) {
     })
   })
 }
-
-
