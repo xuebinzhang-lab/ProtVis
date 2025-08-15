@@ -1,4 +1,3 @@
-options(shiny.maxRequestSize = 500*1024^2)
 #' Protein Extract UI Module
 #'
 #' Creates the user interface for protein extraction module that allows users to

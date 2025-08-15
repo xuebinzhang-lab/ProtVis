@@ -1,3 +1,4 @@
+options(shiny.maxRequestSize = 500*1024^2)
 #' Add External Resources to the Shiny Application
 #'
 #' This internal function adds external resources such as CSS, JS,
