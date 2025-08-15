@@ -132,10 +132,11 @@ app_ui <- function(request) {
         release_data_ui("release_data1")
       ),
       #### Release data ####
-      nav_panel(
+      nav_menu(
         "Toolkits",
         icon = toolbox,
-        nav_panel("Protein Extract", protein_extract_ui("protein_extract"))
+        nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
+        nav_panel("Background make", background_make_ui("background_make"))
       ),
       #### Help ####
       nav_panel(
