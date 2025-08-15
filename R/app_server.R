@@ -1,4 +1,3 @@
-maxRequestSize 500M
 options(shiny.maxRequestSize = 500*1024^2)
 app_server <- function(input, output, session) {
   bslib::bs_themer()
