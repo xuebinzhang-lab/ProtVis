@@ -105,3 +105,29 @@ gear_icon <- HTML('
   <path d="M12 8L12 6M12 18l0 2M8 12H6M18 12h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
 </svg>
 ')
+
+extract_icon <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="12" height="16" rx="1" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M16 12H22M22 12L19 9M22 12L19 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M15 5H12V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+')
+
+toolbox <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="7" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M5 9H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M11 7V5M13 7V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M11 5H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="16" cy="8" r="0.75" fill="currentColor"/>
+</svg>
+')
+
+download_icon <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="4" width="12" height="16" rx="1" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M12 14V8M12 14L9 11M12 14L15 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M9 8H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+')

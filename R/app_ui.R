@@ -130,13 +130,18 @@ app_ui <- function(request) {
         icon = bs_icon("folder2-open"),
         release_data_ui("release_data1")
       ),
+      #### Release data ####
+      nav_panel(
+        "Toolkits",
+        icon = toolbox,
+        nav_panel("Protein Extract", protein_extract_ui("protein_extract"))
+      ),
       #### Help ####
       nav_panel(
         "Help",
         icon = bs_icon("exclamation-circle")
         # Embed markdown documents or FAQs here
       )
-
       # Footer or bottom tools not added yet; could add flexible_tools here if needed
     )
   )

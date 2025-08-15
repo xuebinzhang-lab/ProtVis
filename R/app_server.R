@@ -1,3 +1,4 @@
+options(shiny.maxRequestSize = 500*1024^2)
 app_server <- function(input, output, session) {
   bslib::bs_themer()
 
@@ -22,6 +23,8 @@ app_server <- function(input, output, session) {
 
   # ✅ 传同一个 shared_state
   MaxQuant_server("MaxQuant", shared_state = shared_state)
+  data_imputation_server("data_imputation", shared_state = shared_state)
+
   correct_noise_server("correct_noise", shared_state = shared_state)
   data_transformed_server("data_transformed", shared_state = shared_state)
   data_normalization_server("data_normalization", shared_state = shared_state)
@@ -33,17 +36,24 @@ app_server <- function(input, output, session) {
   release_data_server("release_data1", shared_state)
 
   # -------------------------------------------------------------------------
+  protein_extract_server("protein_extract")
+  # -------------------------------------------------------------------------
+
 
   missing_value_server("missing_value", shared_state = shared_state)
-  mv_noise_server("mv_noise")
-  mv_imputation_server("mv_imputation")
-  mv_summary_server("mv_summary")
-  DEP_visualize_server("DEP_visualize")
-  veen_server("veen")
-  protein_structure_server("protein_structure")
-  GO_and_KEGG_server("GO_and_KEGG")
-  DR_analysis_server("DR_analysis")
-  Expression_profile_server("Expression_profile")
 
-  data_imputation_server("data_imputation", shared_state = shared_state)
+  # -------------------------------------------------------------------------
+
+
+  # mv_noise_server("mv_noise")
+  # mv_imputation_server("mv_imputation")
+  # mv_summary_server("mv_summary")
+  # DEP_visualize_server("DEP_visualize")
+  # veen_server("veen")
+  # protein_structure_server("protein_structure")
+  # GO_and_KEGG_server("GO_and_KEGG")
+  # DR_analysis_server("DR_analysis")
+  # Expression_profile_server("Expression_profile")
+
+
 }
