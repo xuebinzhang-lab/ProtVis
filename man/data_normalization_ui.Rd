@@ -18,7 +18,3 @@ Creates the user interface for the data normalization module which includes:
 - Visualization of original and normalized data
 - Normalization execution button
 }
-\examples{
-data_normalization_ui("norm_module")
-
-}

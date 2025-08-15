@@ -21,7 +21,3 @@ Handles the server-side logic for data normalization including:
 - Generating visualizations
 - Saving results
 }
-\examples{
-data_normalization_server("norm_module", shared_state)
-
-}

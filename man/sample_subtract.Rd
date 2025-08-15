@@ -16,8 +16,3 @@ A matrix with the same dimensions as input where each column has been median-cen
 This function subtracts the median value (ignoring NAs) from each column of the input data matrix.
 It is commonly used for sample normalization in omics data analysis.
 }
-\examples{
-data <- matrix(rnorm(100), ncol=5)
-normalized <- sample_subtract(data)
-
-}

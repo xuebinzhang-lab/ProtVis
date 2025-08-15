@@ -1,3 +1,4 @@
+utils::globalVariables(c("ID", "sample_id", "value", "value_fix", "sample_group", "."))
 #' Correct zero values in replicate measurements
 #'
 #' This function processes a raw matrix of protein/peptide intensities and

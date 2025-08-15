@@ -1,3 +1,4 @@
+# globalVariables ---------------------------------------------------------
 utils::globalVariables(
   c(
     # MaxQuant related column names

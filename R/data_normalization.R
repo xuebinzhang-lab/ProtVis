@@ -5,9 +5,6 @@
 #'
 #' @param data A numeric matrix or data frame containing the data to be normalized
 #' @return A matrix with the same dimensions as input where each column has been median-centered
-#' @examples
-#' data <- matrix(rnorm(100), ncol=5)
-#' normalized <- sample_subtract(data)
 #'
 sample_subtract <- function(data) {
   # Median subtraction (ignoring NA)
@@ -24,8 +21,6 @@ sample_subtract <- function(data) {
 #'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing the module interface
-#' @examples
-#' data_normalization_ui("norm_module")
 #'
 data_normalization_ui <- function(id) {
   ns <- NS(id)
@@ -95,8 +90,7 @@ data_normalization_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactiveValues object containing shared state between modules
 #' @return A module server function
-#' @examples
-#' data_normalization_server("norm_module", shared_state)
+#' @export
 #'
 data_normalization_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {

@@ -8,9 +8,9 @@ app_server <- function(input, output, session) {
     data_source = NULL
   )
 
-  get_workdir <- function() {
-    shared_state$workdir
-  }
+  # get_workdir <- function() {
+  #   shared_state$workdir
+  # }
 
   project_init_server("project_init", shared_state = shared_state)
 

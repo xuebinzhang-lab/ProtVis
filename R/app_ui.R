@@ -39,7 +39,7 @@ app_ui <- function(request) {
 
     page_navbar(
       title = "ProtVis",
-      theme = bs_theme(bootswatch = "lumen"),  # You can switch to other themes like flatly, minty, cosmo, etc.
+      theme = bs_theme(bootswatch = "lumen"),
 
       #### Homepage ####
       nav_panel(
@@ -48,8 +48,12 @@ app_ui <- function(request) {
         div(
           style = "margin: 0 auto; width: 60%; padding-top: 30px;",
           h2("Welcome to ProtVis", align = "center"),
-          p("ProtVis is a user-friendly and modular platform designed for comprehensive proteomics data processing and visualization.", align = "center"),
-          p("It supports multiple data formats including Raw intensity, MaxQuant, Proteome Discoverer, Skyline, Mascot, and OpenMS.", align = "center"),
+          p("ProtVis is a user-friendly and modular platform designed for
+            comprehensive proteomics data processing and visualization.",
+            align = "center"),
+          p("It supports multiple data formats including Raw intensity,
+            MaxQuant, Proteome Discoverer, Skyline, Mascot, and OpenMS.",
+            align = "center"),
 
           br(),
 
@@ -103,13 +107,7 @@ app_ui <- function(request) {
         nav_panel("Correct Noise", correct_noise_ui("correct_noise")),
         nav_panel("Data Transformed", data_transformed_ui("data_transformed")),
         nav_panel("Data Imputation", data_imputation_ui("data_imputation")),
-        nav_panel("Data Normalization", data_normalization_ui("data_normalization")),
-
-        # nav_panel("Missing Value", missing_value_ui("missing_value")),
-        # nav_panel("Noise Filter", mv_noise_ui("mv_noise")),
-        # nav_panel("Imputation", mv_imputation_ui("mv_imputation")),
-        # nav_panel("Summary", mv_summary_ui("mv_summary")),
-        # nav_panel("Dimension Reduction", Dimension_reduction_ui("Dimension_reduction"))
+        nav_panel("Data Normalization", data_normalization_ui("data_normalization"))
       ),
 
 
@@ -118,21 +116,13 @@ app_ui <- function(request) {
         "Downstream analysis",
         icon = bs_icon("tools"),
         nav_panel("Overview", overview_ui("overview")),
-        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
-        # DEP_visualize_ui("DEP_visualize"),
-        # veen_ui("veen"),
-        # protein_structure_ui("protein_structure"),
-        # GO_and_KEGG_ui("GO_and_KEGG"),
-        # Expression_profile_ui("Expression_profile")
+        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis"))
       ),
 
       #### Multi-omics Data ####
       nav_menu(
         "Multi-omics data",
-        icon = bs_icon("database-gear"),
-        # DR_analysis_ui("DR_analysis")
-        # correlation_ui("correlation"),
-        # pathway_analysis_ui("pathway_analysis")
+        icon = bs_icon("database-gear")
       ),
       #### Release data ####
       nav_panel(
