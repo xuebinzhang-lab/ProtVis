@@ -121,9 +121,10 @@ app_ui <- function(request) {
       ),
 
       #### Multi-omics Data ####
-      nav_menu(
+      nav_panel(
         "Multi-omics data",
-        icon = bs_icon("database-gear")
+        icon = bs_icon("database-gear"),
+        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile"))
       ),
       #### Release data ####
       nav_panel(
@@ -138,7 +139,6 @@ app_ui <- function(request) {
         nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
         nav_panel("Background Make", background_make_ui("background_make")),
         nav_panel("Protein Links", protein_links_ui("prot_links")),
-        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile")),
         nav_panel("Venn", venn_ui("venn")),
         nav_panel("Protein Structure", protein_structure_ui("protein_structure"))
         ),

@@ -27,6 +27,7 @@ app_server <- function(input, output, session) {
 
   correct_noise_server("correct_noise", shared_state = shared_state)
   data_transformed_server("data_transformed", shared_state = shared_state)
+  missing_value_server("missing_value", shared_state = shared_state)
   data_normalization_server("data_normalization", shared_state = shared_state)
 
   # -------------------------------------------------------------------------
@@ -45,7 +46,7 @@ app_server <- function(input, output, session) {
   # -------------------------------------------------------------------------
 
 
-  missing_value_server("missing_value", shared_state = shared_state)
+
 
   # -------------------------------------------------------------------------
 
