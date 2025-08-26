@@ -1,14 +1,14 @@
-#' Veen plot UI Module
-#' @description Veen plot UI Module
-#' @param id A unique identifier for the Shiny namespace, Veen plot
-#' @title veen_ui
-#' @name veen_ui
+#' venn plot UI Module
+#' @description venn plot UI Module
+#' @param id A unique identifier for the Shiny namespace, venn plot
+#' @title venn_ui
+#' @name venn_ui
 #' @import bsicons
 #' @import shiny
 #' @import bslib
 #' @export
 #'
-veen_ui <- function(id){
+venn_ui <- function(id){
   ns <- NS(id)
   nav_panel(
     title = 'Venn',
@@ -50,7 +50,7 @@ veen_ui <- function(id){
               )
               ),
             mainPanel(
-              plotOutput(ns("veen_plot"))
+              plotOutput(ns("venn_plot"))
             )
             )
           )
@@ -61,10 +61,10 @@ veen_ui <- function(id){
 
 
 
-#' Veen plot Server Module
-#' @description Server logic for Veen plot
-#' @title veen_server
-#' @name veen_server
+#' venn plot Server Module
+#' @description Server logic for venn plot
+#' @title venn_server
+#' @name venn_server
 #' @param id Standard shiny server arguments
 #' @import shiny
 #' @import utils
@@ -72,7 +72,7 @@ veen_ui <- function(id){
 #' @export
 #'
 utils::globalVariables(c("Name", "Set"))
-veen_server <- function(id) {
+venn_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -112,7 +112,7 @@ veen_server <- function(id) {
       reactive_data$colors <- sapply(seq_along(colnames(data)), function(i) input[[paste0("color_", i)]])
 
       # Render plot based on color count
-      output$veen_plot <- renderPlot({
+      output$venn_plot <- renderPlot({
         if (length(reactive_data$colors) <= 4) {
           ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors)
         } else {
@@ -127,7 +127,7 @@ veen_server <- function(id) {
 
     # 下载PDF功能
     output$downloadPlot <- downloadHandler(
-      filename = function() paste("veen_plot", Sys.Date(), ".pdf", sep = ""),
+      filename = function() paste("venn_plot", Sys.Date(), ".pdf", sep = ""),
       content = function(file) {
         if (length(reactive_data$colors) <= 4) {
           ggplot2::ggsave(file, plot = ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors),

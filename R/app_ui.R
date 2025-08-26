@@ -137,8 +137,11 @@ app_ui <- function(request) {
         icon = toolbox,
         nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
         nav_panel("Background Make", background_make_ui("background_make")),
-        nav_panel("Protein Links", protein_links_ui("prot_links"))
-      ),
+        nav_panel("Protein Links", protein_links_ui("prot_links")),
+        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile")),
+        nav_panel("Venn", venn_ui("venn")),
+        nav_panel("Protein Structure", protein_structure_ui("protein_structure"))
+        ),
       #### Help ####
       nav_panel(
         "Help",

@@ -39,6 +39,9 @@ app_server <- function(input, output, session) {
   protein_extract_server("protein_extract")
   background_make_server("background_make")
   protein_links_server("prot_links")
+  Expression_profile_server("Expression_profile")
+  venn_server("venn")
+  protein_structure_server("protein_structure")
   # -------------------------------------------------------------------------
 
 
@@ -51,11 +54,9 @@ app_server <- function(input, output, session) {
   # mv_imputation_server("mv_imputation")
   # mv_summary_server("mv_summary")
   # DEP_visualize_server("DEP_visualize")
-  # veen_server("veen")
-  # protein_structure_server("protein_structure")
   # GO_and_KEGG_server("GO_and_KEGG")
   # DR_analysis_server("DR_analysis")
-  # Expression_profile_server("Expression_profile")
+
 
 
 }
