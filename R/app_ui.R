@@ -121,7 +121,7 @@ app_ui <- function(request) {
       ),
 
       #### Multi-omics Data ####
-      nav_panel(
+      nav_menu(
         "Multi-omics data",
         icon = bs_icon("database-gear"),
         nav_panel("Expression Profile", Expression_profile_ui("Expression_profile"))
