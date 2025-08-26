@@ -38,6 +38,7 @@ app_server <- function(input, output, session) {
   # -------------------------------------------------------------------------
   protein_extract_server("protein_extract")
   background_make_server("background_make")
+  protein_links_server("prot_links")
   # -------------------------------------------------------------------------
 
 
