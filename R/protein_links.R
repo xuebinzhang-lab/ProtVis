@@ -47,13 +47,13 @@ protein_links_server <- function(id) {
       uniprot_url    <- paste0("https://www.uniprot.org/uniprotkb/", prot)
       interpro_url   <- paste0("https://www.ebi.ac.uk/interpro/protein/UniProt/", prot)
       swissmodel_url <- paste0("https://www.swissmodel.expasy.org/repository/uniprot/", prot)
-      psipred_url    <- "http://bioinf.cs.ucl.ac.uk/psipred/"
+      # psipred_url    <- "http://bioinf.cs.ucl.ac.uk/psipred/"
 
       tagList(
         h4("Quick Links"),
         tags$a(href = uniprot_url, "UniProt", target = "_blank", class = "btn btn-primary m-1"),
         tags$a(href = interpro_url, "InterPro", target = "_blank", class = "btn btn-info m-1"),
-        tags$a(href = psipred_url, "PSIPRED", target = "_blank", class = "btn btn-success m-1"),
+        # tags$a(href = psipred_url, "PSIPRED", target = "_blank", class = "btn btn-success m-1"),
         tags$a(href = swissmodel_url, "Swiss-Model", target = "_blank", class = "btn btn-warning m-1")
       )
     })
