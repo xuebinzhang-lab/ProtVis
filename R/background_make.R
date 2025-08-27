@@ -21,6 +21,11 @@ background_make_ui <- function(id) {
             actionButton(ns("check_file"), "Check File",
                          class = "btn btn-success fw-bold mb-2"),
             div(style = "border-top: 3px solid #ff0000; margin: 10px 0;"),
+            textInput(
+              inputId = "separator",
+              label = "Separator:",
+              value = "_"
+            ),
             actionButton(ns("extract"), "Make Background",
                          class = "btn btn-light fw-bold mb-3"),
             br(style = "line-height: 100px;"),
@@ -131,6 +136,11 @@ background_make_server <- function(id) {
         df <- readxl::read_excel(infile)
       }
 
+      # 分隔符（用户输入）
+      sep <- input$separator
+      if (is.null(sep) || sep == "") sep <- "_"   # 默认 "_"
+      pattern <- paste0("^[^", sep, "]+")        # 动态正则
+
       # ---- GO Background Processing ----
       goterms <- Term(GOTERM)
       GOlist <- as.data.frame(goterms) %>%
@@ -141,13 +151,13 @@ background_make_server <- function(id) {
         dplyr::select(query, GOs) %>%
         tidyr::separate_rows(GOs, sep = ",") %>%
         dplyr::filter(GOs != "-") %>%
-        dplyr::mutate(query = str_extract(query, "^[^_]+")) %>%
+        dplyr::mutate(query = stringr::str_extract(query, pattern)) %>%  # 动态分隔符
         dplyr::rename(GENE = query, TERM = GOs) %>%
         dplyr::left_join(GOlist, by = "TERM") %>%
         dplyr::filter(NAME != "NA") %>%
-        dplyr::mutate(GENE = str_extract(GENE, "^[^\\.]+")) %>%
+        dplyr::mutate(GENE = stringr::str_extract(GENE, "^[^\\.]+")) %>%
         dplyr::distinct() %>%
-        dplyr::select(GENE, TERM, NAME)   # Fixed column order
+        dplyr::select(GENE, TERM, NAME)
 
       go_bg(go_background)
 
@@ -156,8 +166,8 @@ background_make_server <- function(id) {
         dplyr::select(query, KEGG_Pathway) %>%
         tidyr::separate_rows(KEGG_Pathway, sep = ",") %>%
         dplyr::filter(KEGG_Pathway != "-") %>%
-        dplyr::filter(str_detect(KEGG_Pathway, "map")) %>%
-        dplyr::mutate(query = str_remove(query, "\\..*")) %>%
+        dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) %>%
+        dplyr::mutate(query = stringr::str_remove(query, "\\..*")) %>%
         dplyr::distinct() %>%
         dplyr::pull() %>%
         unique()
@@ -166,17 +176,17 @@ background_make_server <- function(id) {
 
       kegg_background <- df %>%
         dplyr::select(query, KEGG_Pathway) %>%
-        dplyr::mutate(query = str_extract(query, "^[^_]+")) %>%
+        dplyr::mutate(query = stringr::str_extract(query, pattern)) %>%  # 动态分隔符
         tidyr::separate_rows(KEGG_Pathway, sep = ",") %>%
         dplyr::filter(KEGG_Pathway != "-") %>%
-        dplyr::filter(str_detect(KEGG_Pathway, "map")) %>%
+        dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) %>%
         dplyr::select(query, ko = KEGG_Pathway) %>%
         dplyr::left_join(result, by = "ko") %>%
         dplyr::filter(name != "NA") %>%
-        dplyr::mutate(query = str_extract(query, "^[^.]+")) %>%
+        dplyr::mutate(query = stringr::str_extract(query, "^[^.]+")) %>%
         dplyr::distinct() %>%
         dplyr::select(GENE = query, TERM = ko, NAME = name) %>%
-        dplyr::select(GENE, TERM, NAME)   # Fixed column order
+        dplyr::select(GENE, TERM, NAME)
 
       kegg_bg(kegg_background)
     })
