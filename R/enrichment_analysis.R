@@ -1,4 +1,17 @@
 options(shiny.maxRequestSize = 500*1024^2)
+#' Enrichment Analysis Module UI
+#'
+#' This function creates the user interface for the enrichment analysis module.
+#' It includes file uploads, parameter settings, and visualization panels for GO and KEGG enrichment analysis.
+#'
+#' @param id The namespace identifier for the module
+#' @return A Shiny UI tagList containing the enrichment analysis interface
+#'
+#' @examples
+#' enrichment_analysis_ui("enrichment")
+#'
+#' @export
+#'
 enrichment_analysis_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -270,6 +283,21 @@ enrichment_analysis_ui <- function(id) {
 
 
 # -------------------------------------------------------------------------
+
+#' Enrichment Analysis Module Server
+#'
+#' This function provides the server-side logic for the enrichment analysis module.
+#' It handles data loading, file validation, enrichment analysis execution, and result visualization.
+#'
+#' @param id The namespace identifier for the module
+#' @param shared_state A reactive values list for sharing state between modules
+#' @return A module server function that handles enrichment analysis operations
+#'
+#' @examples
+#' enrichment_analysis_server("enrichment", shared_state)
+#'
+#' @export
+#'
 
 enrichment_analysis_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
