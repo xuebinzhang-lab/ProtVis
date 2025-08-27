@@ -117,7 +117,8 @@ app_ui <- function(request) {
         "Downstream analysis",
         icon = bs_icon("tools"),
         nav_panel("Overview", overview_ui("overview")),
-        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis"))
+        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
+        nav_panel("Enrichment analysis", enrichment_analysis_ui("enrichment_analysis"))
       ),
 
       #### Multi-omics Data ####

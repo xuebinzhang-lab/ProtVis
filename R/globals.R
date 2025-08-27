@@ -27,6 +27,17 @@ utils::globalVariables(
 
 # icon --------------------------------------------------------------------
 
+enrichment_bubble_icon <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="20" height="20" rx="1" stroke="#333333" stroke-width="1.5" fill="none"/>
+  <path d="M6 10H18M6 14H18M6 18H18M10 6V18M14 6V18" stroke="#cccccc" stroke-width="0.5"/>
+  <circle cx="10" cy="10" r="2.5" fill="#666666" fill-opacity="0.3" stroke="#333333" stroke-width="1"/>
+  <circle cx="16" cy="14" r="3.5" fill="#666666" fill-opacity="0.5" stroke="#333333" stroke-width="1"/>
+  <circle cx="12" cy="16" r="2" fill="#666666" fill-opacity="0.4" stroke="#333333" stroke-width="1"/>
+  <circle cx="8" cy="14" r="1.5" fill="#666666" fill-opacity="0.2" stroke="#333333" stroke-width="1"/>
+</svg>
+')
+
 correlation_icon <- HTML('<svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <rect x="2" y="2" width="12" height="12" stroke="currentColor" fill="none"/>
         <!-- Points below the line -->

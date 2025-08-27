@@ -209,9 +209,7 @@ DEP_analysis_server <- function(id, shared_state) {
     output$dynamic_dep_tabs <- renderUI({
       req(rv$compare_data)
 
-      # Remove NA rows if any
       compare_data <- rv$compare_data[complete.cases(rv$compare_data), ]
-
       if(nrow(compare_data) == 0) {
         return(tags$p("No valid comparison groups found."))
       }
@@ -259,11 +257,7 @@ DEP_analysis_server <- function(id, shared_state) {
         )
       })
 
-      # Create the tabset
-      navset_card_tab(
-        full_screen = TRUE,
-        !!!tabs
-      )
+      navset_card_tab(full_screen = TRUE, !!!tabs)
     })
 
     # Perform DEP analysis and generate plots for each comparison
@@ -276,11 +270,10 @@ DEP_analysis_server <- function(id, shared_state) {
           group1 <- compare_data[i, "Group1"]
           group2 <- compare_data[i, "Group2"]
 
-          # Get samples for each group
+          # Get samples
           samples_group1 <- rv$sample_info %>%
             dplyr::filter(group == group1) %>%
             dplyr::pull(sample_id)
-
           samples_group2 <- rv$sample_info %>%
             dplyr::filter(group == group2) %>%
             dplyr::pull(sample_id)
@@ -290,50 +283,65 @@ DEP_analysis_server <- function(id, shared_state) {
             as.data.frame() %>%
             dplyr::select(all_of(c(samples_group1, samples_group2)))
 
-          # Perform limma analysis
-          group_list <- rep(c(group1, group2), c(length(samples_group1), length(samples_group2))) %>%
+          # limma analysis
+          group_list <- rep(c(group1, group2),
+                            c(length(samples_group1), length(samples_group2))) %>%
             factor(., levels = c(group1, group2), ordered = F)
-          group_list <- model.matrix(~factor(group_list)+0)
-          colnames(group_list) <- c(group1, group2)
+          design <- model.matrix(~factor(group_list)+0)
+          colnames(design) <- c(group1, group2)
 
-          df.fit <- limma::lmFit(exp_matrix, group_list)
-          df.matrix <- limma::makeContrasts(contrasts = paste(group1, group2, sep = " - "), levels = group_list)
-          fit <- limma::contrasts.fit(df.fit, df.matrix)
+          df.fit <- limma::lmFit(exp_matrix, design)
+          contrast <- limma::makeContrasts(contrasts = paste(group1, group2, sep = " - "),
+                                           levels = design)
+          fit <- limma::contrasts.fit(df.fit, contrast)
           fit <- limma::eBayes(fit)
           result <- limma::topTable(fit, n = Inf, adjust = "fdr")
 
-          # Add regulation status
+          # Add regulation
           new_result <- result %>%
             dplyr::mutate(
               regulation = case_when(
                 logFC > 1 & P.Value <= 0.05 ~ "Upregulated",
                 logFC < -1 & P.Value <= 0.05 ~ "Downregulated",
-                is.na(logFC) | P.Value >= 0.05 ~ "Not significant",
                 TRUE ~ "Not significant"
               )
             ) %>%
             tibble::rownames_to_column("ID") %>%
             dplyr::mutate(FC = 2^logFC)
 
-          # Store results
-          rv$dep_results[[paste0("comparison_", i)]] <- new_result
+          rv$dep_results[[paste0(group1, "_vs_", group2)]] <- new_result
+
+          # === 自动保存 ===
+          tryCatch({
+            save_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
+            compare_data2 <- rv$compare_data
+            normalized_matrix2 <- rv$normalized_matrix
+            sample_info2 <- rv$sample_info
+            dep_results2 <- rv$dep_results
+            save(
+              compare_data2,
+              normalized_matrix2,
+              sample_info2,
+              dep_results2,
+              file = save_path
+            )
+            showNotification(paste("✅ DEP results saved to", save_path), type = "message")
+          }, error = function(e) {
+            showNotification(paste("❌ Failed to save results:", e$message), type = "error")
+          })
 
           # Render DEP table
           output[[paste0("dep_table_", i)]] <- DT::renderDataTable({
             DT::datatable(
               new_result,
-              options = list(
-                scrollX = TRUE,
-                pageLength = 10,
-                dom = 'Bfrtip',
-                buttons = c('copy', 'csv', 'excel')
-              ),
+              options = list(scrollX = TRUE, pageLength = 10,
+                             dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
               extensions = 'Buttons',
               rownames = FALSE
             )
           })
 
-          # Render volcano plot
+          # Volcano plot
           output[[paste0("volcano_plot_", i)]] <- renderPlot({
             ggplot(new_result, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
               geom_point(alpha = 0.8, size = 3) +
@@ -341,69 +349,46 @@ DEP_analysis_server <- function(id, shared_state) {
                                             "Downregulated" = "blue",
                                             "Not significant" = "gray")) +
               theme_bw() +
-              labs(
-                x = "Log2 Fold Change",
-                y = "-Log10(pvalue)",
-                color = ""
-              ) +
-              theme(
-                plot.title = element_text(hjust = 0.5),
-                legend.position = "top"
-              ) +
-              geom_hline(yintercept = -log10(0.05),
-                         linetype = "dashed",
-                         color = "black", linewidth = 0.8) +
-              geom_vline(xintercept = c(-1, 1),
-                         linetype = "dashed",
-                         color = "black", linewidth = 0.8)
+              labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+              theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
+              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+              geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black")
           })
 
-          # Render heatmap (simplified example)
+          # Heatmap
           output[[paste0("heatmap_", i)]] <- renderPlot({
-            # Filter significant proteins
             sig_proteins <- new_result %>%
               filter(regulation %in% c("Upregulated", "Downregulated")) %>%
               pull(ID)
-
             if(length(sig_proteins) > 0) {
-              # Get expression data for significant proteins
               heatmap_data <- exp_matrix[rownames(exp_matrix) %in% sig_proteins, ]
-
-              # Simple heatmap
               pheatmap::pheatmap(
-                heatmap_data,
-                scale = "row",
+                heatmap_data, scale = "row",
                 clustering_distance_rows = "euclidean",
                 clustering_distance_cols = "euclidean",
                 clustering_method = "complete",
                 show_rownames = FALSE,
-                main = paste("Heatmap of significant proteins:", group1, "vs", group2)
+                main = paste("Heatmap:", group1, "vs", group2)
               )
             } else {
-              ggplot() +
-                annotate("text", x = 0.5, y = 0.5,
-                         label = "No significant proteins found",
-                         size = 8) +
+              ggplot() + annotate("text", x = 0.5, y = 0.5,
+                                  label = "No significant proteins", size = 8) +
                 theme_void()
             }
           })
 
-          # Render bar plot of DEP counts
+          # Barplot
           output[[paste0("bar_dep_", i)]] <- renderPlot({
             dep_counts <- new_result %>%
               filter(regulation != "Not significant") %>%
               count(regulation)
-
             ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
               geom_bar(stat = "identity") +
-              scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue")) +
-              labs(
-                title = paste("Number of DEPs:", group1, "vs", group2),
-                x = "Regulation",
-                y = "Count"
-              ) +
-              theme_bw() +
-              theme(legend.position = "none")
+              scale_fill_manual(values = c("Upregulated" = "red",
+                                           "Downregulated" = "blue")) +
+              labs(title = paste("Number of DEPs:", group1, "vs", group2),
+                   x = "Regulation", y = "Count") +
+              theme_bw() + theme(legend.position = "none")
           })
         })
       }
@@ -412,34 +397,22 @@ DEP_analysis_server <- function(id, shared_state) {
     # Preview sample info
     output$sample_info <- DT::renderDataTable({
       req(rv$sample_info)
-      DT::datatable(
-        rv$sample_info,
-        options = list(scrollX = TRUE, dom = 't'),
-        rownames = FALSE
-      )
+      DT::datatable(rv$sample_info, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
     # Preview normalized data
     output$normalized_data <- DT::renderDataTable({
       req(rv$normalized_matrix)
-      DT::datatable(
-        rv$normalized_matrix,
-        options = list(scrollX = TRUE, dom = 't'),
-        rownames = FALSE
-      )
+      DT::datatable(rv$normalized_matrix, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
     # Preview group comparison
     output$group_comparison <- DT::renderDataTable({
       req(rv$compare_data)
-      DT::datatable(
-        rv$compare_data,
-        options = list(scrollX = TRUE, dom = 't'),
-        rownames = FALSE
-      )
+      DT::datatable(rv$compare_data, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
-    # Return comparison data for other modules
+    # Return comparison data
     return(
       reactive({
         list(

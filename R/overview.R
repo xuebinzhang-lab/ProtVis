@@ -1,7 +1,7 @@
 overview_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    layout_sidebar(
+    bslib::layout_sidebar(
       sidebar = sidebar(
         width = 300,
         actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
