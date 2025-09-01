@@ -78,6 +78,14 @@ protein_extract_ui <- function(id) {
             )
           ),
           bslib::nav_panel(
+            "FASTA Viewer",
+            div(
+              style = "height: 500px; overflow: auto;",
+              textAreaInput(ns("fasta_viewer"), label = NULL, value = "",
+                            rows = 20, width = "100%")
+            )
+          ),
+          bslib::nav_panel(
             "Unmatched IDs",
             div(
               style = "height: 500px; overflow: auto;",
@@ -235,6 +243,16 @@ protein_extract_server <- function(id) {
       }
     })
 
+    # FASTA Viewer 输出
+    observe({
+      req(rv$matched_seqs)
+      fasta_text <- paste0(
+        paste0(">", names(rv$matched_seqs), "\n", as.character(rv$matched_seqs)),
+        collapse = "\n"
+      )
+      updateTextAreaInput(session, "fasta_viewer", value = fasta_text)
+    })
+
     # Download handler
     output$download_results <- downloadHandler(
       filename = function() {
@@ -278,5 +296,3 @@ protein_extract_server <- function(id) {
     })
   })
 }
-
-

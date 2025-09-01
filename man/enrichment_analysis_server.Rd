@@ -18,7 +18,3 @@ A module server function that handles enrichment analysis operations
 This function provides the server-side logic for the enrichment analysis module.
 It handles data loading, file validation, enrichment analysis execution, and result visualization.
 }
-\examples{
-enrichment_analysis_server("enrichment", shared_state)
-
-}
