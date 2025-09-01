@@ -14,6 +14,7 @@ run_ProtVis <- function(
   uiPattern = "/",
   ...
 ) {
+  options(shiny.maxRequestSize = 800*1024^2)
   with_golem_options(
     app = shinyApp(
       ui = app_ui,

@@ -1,4 +1,194 @@
 options(shiny.maxRequestSize = 800*1024^2)
+
+# plot_go_circos ----------------------------------------------------------
+
+# =========================
+# GO Circos Plot Function
+# =========================
+plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
+
+  # 按 pvalue 排序并筛选显著项
+  data <- go_data[order(go_data$pvalue), ]
+  datasig <- data[data$pvalue < 0.05, , drop = FALSE]
+  data <- head(datasig, top_n)
+
+  if (nrow(data) == 0) {
+    message("No significant GO terms to plot.")
+    return(NULL)
+  }
+
+  # 计算基因数
+  BgGene <- as.numeric(sapply(strsplit(data$BgRatio, "/"), `[`, 1))
+  Gene <- as.numeric(sapply(strsplit(data$GeneRatio, "/"), `[`, 1))
+
+  # 富集因子和 -log10(pvalue)
+  ratio <- Gene / BgGene
+  logpvalue <- -log10(data$pvalue)
+
+  # 颜色映射
+  logpvalue.col <- RColorBrewer::brewer.pal(n = 8, name = "Reds")
+  f <- circlize::colorRamp2(
+    breaks = c(0, 2, 4, 6, 8, 10, 15, 20),
+    colors = logpvalue.col
+  )
+  BgGene.col <- f(pmin(logpvalue, 20))
+
+  # circos 数据
+  df_circos <- data.frame(
+    GO = data$ID,
+    start = 1,
+    end = max(BgGene)
+  )
+  rownames(df_circos) <- df_circos$GO
+
+  bed2 <- data.frame(
+    GO = data$ID,
+    start = 1,
+    end = BgGene,
+    label = BgGene,
+    col = BgGene.col
+  )
+
+  bed3 <- data.frame(
+    GO = data$ID,
+    start = 1,
+    end = Gene,
+    label = Gene
+  )
+
+  bed4 <- data.frame(
+    GO = data$ID,
+    start = 1,
+    end = max(BgGene),
+    ratio = ratio / max(ratio) * 9.5,   # 标准化到 0-10
+    col = "#00AFBB"
+  )
+
+  # PDF 输出可选
+  if (!is.null(output_pdf)) {
+    grDevices::pdf(output_pdf, width = 10, height = 6)
+  }
+
+  # 清除旧 circos 图
+  circlize::circos.clear()
+  circlize::circos.genomicInitialize(df_circos, plotType = "none")
+
+  # 轨道 1: GO term 标签
+  circlize::circos.trackPlotRegion(
+    ylim = c(0, 1),
+    panel.fun = function(x, y) {
+      sector.index <- circlize::get.cell.meta.data("sector.index")
+      xlim <- circlize::get.cell.meta.data("xlim")
+      ylim <- circlize::get.cell.meta.data("ylim")
+      desc <- data[data$ID == sector.index, ]$Description
+      desc <- paste(base::strwrap(desc, width = 20), collapse = "\n")
+      circlize::circos.text(
+        mean(xlim), mean(ylim),
+        desc, cex = 0.6,
+        facing = "bending.inside", niceFacing = TRUE
+      )
+    },
+    track.height = 0.12,
+    bg.border = NA,
+    bg.col = "grey95"
+  )
+
+  # 添加轴标签
+  for (si in circlize::get.all.sector.index()) {
+    circlize::circos.axis(
+      h = "top",
+      labels.cex = 0.5,
+      sector.index = si,
+      track.index = 1,
+      major.at = seq(0, max(BgGene), by = 100),
+      labels.facing = "clockwise"
+    )
+  }
+
+  # 轨道 2: 背景基因数
+  circlize::circos.genomicTrack(
+    bed2,
+    ylim = c(0, 1),
+    track.height = 0.1,
+    bg.border = "white",
+    panel.fun = function(region, value, ...) {
+      circlize::circos.genomicRect(region, value,
+                                   ytop = 1, ybottom = 0,
+                                   col = value$col, border = NA, ...)
+      circlize::circos.genomicText(region, value,
+                                   y = 0.4, labels = value$label,
+                                   adj = 0, cex = 0.6, ...)
+    }
+  )
+
+  # 轨道 3: 差异基因数
+  circlize::circos.genomicTrack(
+    bed3,
+    ylim = c(0, 1),
+    track.height = 0.1,
+    bg.border = "white",
+    panel.fun = function(region, value, ...) {
+      circlize::circos.genomicRect(region, value,
+                                   ytop = 1, ybottom = 0,
+                                   col = "#BA55D3", border = NA, ...)
+      circlize::circos.genomicText(region, value,
+                                   y = 0.4, labels = value$label,
+                                   adj = 0, cex = 0.6, ...)
+    }
+  )
+
+  # 轨道 4: 富集因子
+  circlize::circos.genomicTrack(
+    bed4,
+    ylim = c(0, 10),
+    track.height = 0.35,
+    bg.border = "white",
+    bg.col = "grey90",
+    panel.fun = function(region, value, ...) {
+      cell.xlim <- circlize::get.cell.meta.data("cell.xlim")
+      cell.ylim <- circlize::get.cell.meta.data("cell.ylim")
+      for (j in 1:9) {
+        y <- cell.ylim[1] + (cell.ylim[2] - cell.ylim[1]) / 10 * j
+        grid::grid.lines(cell.xlim, c(y, y), gp = grid::gpar(col = "#FFFFFF", lwd = 0.3))
+      }
+      circlize::circos.genomicRect(region, value,
+                                   ytop = value$ratio, ybottom = 0,
+                                   col = value$col, border = NA, ...)
+    }
+  )
+
+  circlize::circos.clear()
+
+  # 绘制图例
+  circle_size <- grid::unit(1, "snpc")
+  ComplexHeatmap::draw(ComplexHeatmap::Legend(
+    labels = c("Number of Genes", "Number of Select", "Rich Factor(0-1)"),
+    type = "points",
+    pch = c(15, 15, 17),
+    legend_gp = grid::gpar(col = c("pink", "#BA55D3", "#00AFBB")),
+    title = "",
+    nrow = 3,
+    size = grid::unit(3, "mm")
+  ), x = circle_size * 0.83, y = circle_size * 0.5, just = "center")
+
+  ComplexHeatmap::draw(ComplexHeatmap::Legend(
+    labels = c("(0,2]", "(2,4]", "(4,6]", "(6,8]", "(8,10]", "(10,15]", "(15,20]", ">=20"),
+    type = "points",
+    pch = 16,
+    legend_gp = grid::gpar(col = logpvalue.col),
+    title = "-log10(Pvalue)",
+    title_position = "topcenter",
+    grid_height = grid::unit(5, "mm"),
+    grid_width = grid::unit(5, "mm"),
+    size = grid::unit(3, "mm")
+  ), x = circle_size * 1.4, y = circle_size * 0.5, just = "left")
+
+  if (!is.null(output_pdf)) grDevices::dev.off()
+  message("GO Circos plot finished!")
+}
+
+
+
 #' Enrichment Analysis Module UI
 #'
 #' This function creates the user interface for the enrichment analysis module.
@@ -109,7 +299,9 @@ enrichment_analysis_ui <- function(id) {
                              position = "left",
                              open = "closed",
                              selectInput(ns("go_plot_type"), "Select plot type:",
-                                         choices = c("Bar plot" = "bar", "Dot plot" = "dot"),
+                                         choices = c("Bar plot" = "bar",
+                                                     "Dot plot" = "dot",
+                                                     "Circle plot" = "circle"),
                                          selected = "bar"),
                              sliderInput(ns("go_top_n"), "Top N terms:",
                                          min = 5, max = 20, value = 10),
@@ -144,7 +336,9 @@ enrichment_analysis_ui <- function(id) {
                              position = "left",
                              open = "closed",
                              selectInput(ns("kegg_plot_type"), "Select plot type:",
-                                         choices = c("Bar plot" = "bar", "Dot plot" = "dot"),
+                                         choices = c("Bar plot" = "bar",
+                                                     "Dot plot" = "dot",
+                                                     "Circle plot" = "circle"),
                                          selected = "bar"),
                              sliderInput(ns("kegg_top_n"), "Top N pathways:",
                                          min = 5, max = 20, value = 10),
@@ -168,114 +362,6 @@ enrichment_analysis_ui <- function(id) {
     )
   )
 }
-
-# enrichment_analysis_server <- function(id, shared_state) {
-#   moduleServer(id, function(input, output, session) {
-#     ns <- session$ns
-#     rv <- reactiveValues(
-#       sample_info = NULL,
-#       load_success = FALSE,
-#       normalized_matrix = NULL,
-#       compare_data = NULL,
-#       input_mode = TRUE,
-#       dep_results = list(),
-#       file_check_msg = NULL
-#     )
-#
-#     # 内置空表
-#     template_df <- reactive({
-#       data.frame(
-#         ID = c(NA, NA, NA),
-#         stringsAsFactors = FALSE
-#       )
-#     })
-#
-#     # 数据加载
-#     observeEvent(input$load_data, {
-#       req(shared_state$workdir)
-#       rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
-#       if (file.exists(rda_path)) {
-#         e <- new.env()
-#         load(rda_path, envir = e)
-#         if (exists("dep_results2", envir = e)) {
-#           rv$dep_results <- e$dep_results2
-#           updateSelectInput(session, "dep_compare", choices = names(rv$dep_results))
-#         } else {
-#           rv$dep_results <- NULL
-#           showNotification("Step7_DEP_result.rda does not contain dep_results2.",
-#                            type = "warning")
-#         }
-#         rv$load_success <- TRUE
-#         showNotification("✅ Data loaded successfully.", type = "message")
-#       }
-#     })
-#
-#     # 显示加载状态
-#     output$load_status_panel <- renderUI({
-#       if (rv$load_success) {
-#         span("✅ Data loaded", style = "color: green;")
-#       } else {
-#         span("❌ Data not loaded", style = "color: red;")
-#       }
-#     })
-#
-#     # 下拉菜单 UI
-#     output$compare_select_ui <- renderUI({
-#       req(rv$load_success)
-#       selectInput(ns("dep_compare"),
-#                   label = "Select DEP comparison",
-#                   choices = names(rv$dep_results),
-#                   selected = names(rv$dep_results)[1])
-#     })
-#
-#     observeEvent(input$dep_compare, {
-#       req(rv$dep_results)
-#       rv$compare_data <- rv$dep_results[[input$dep_compare]]
-#     })
-#
-#     # 检查上传的富集背景文件
-#     observeEvent(input$check_file, {
-#       req(input$enrichment_analysis_file)
-#
-#       file <- input$enrichment_analysis_file$datapath
-#       ext <- tools::file_ext(file)
-#
-#       if (ext != "xlsx") {
-#         rv$file_check_msg <- "❌ Please upload a .xlsx file (not .csv)"
-#       } else {
-#         sheets <- readxl::excel_sheets(file)
-#         required_sheets <- c("GO_background", "KEGG_background")
-#
-#         if (!all(required_sheets %in% sheets)) {
-#           rv$file_check_msg <- paste0("❌ Missing required sheets. Found: ",
-#                                       paste(sheets, collapse = ", "))
-#         } else {
-#           # 检查每个 sheet 是否包含 GENE TERM NAME
-#           check_results <- lapply(required_sheets, function(sh) {
-#             df <- readxl::read_excel(file, sheet = sh, n_max = 1)
-#             required_cols <- c("GENE", "TERM", "NAME")
-#             if (!all(required_cols %in% colnames(df))) {
-#               return(paste0("❌ Sheet ", sh, " missing required columns"))
-#             }
-#             return(paste0("✅ Sheet ", sh, " is valid"))
-#           })
-#
-#           rv$file_check_msg <- paste(check_results, collapse = "\n")
-#         }
-#       }
-#     })
-#
-#     # 输出检查结果
-#     output$file_check_result <- renderText({
-#       rv$file_check_msg
-#     })
-#     # 运行富集分析
-#     observeEvent(input$run_enrichment_analysis, {
-#
-#     })
-#
-#   })
-# }
 
 
 # -------------------------------------------------------------------------
@@ -451,21 +537,26 @@ enrichment_analysis_server <- function(id, shared_state) {
     # ============ 可视化 ============
     output$go_plot <- renderPlot({
       req(rv$go_res)
-      if (input$go_plot_type == "dot") {
+      if (input$go_plot_type == "bar") {
+        barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color)
+      } else if (input$go_plot_type == "dot") {
         clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
           ggplot2::scale_color_manual(values = input$go_color)
       } else {
-        barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color)
+        plot_go_circos(rv$go_res, top_n = input$go_top_n)
       }
     })
 
+
     output$kegg_plot <- renderPlot({
       req(rv$kegg_res)
-      if (input$kegg_plot_type == "dot") {
-        clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
-          ggplot2::scale_color_manual(values = input$kegg_color)
+      if (input$kegg_plot_type == "bar") {
+        barplot(rv$kegg_res, showCategory = input$go_top_n, fill = input$go_color)
+      } else if (input$kegg_plot_type == "dot") {
+        clusterProfiler::dotplot(rv$kegg_res, showCategory = input$go_top_n) +
+          ggplot2::scale_color_manual(values = input$go_color)
       } else {
-        barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color)
+        plot_go_circos(rv$kegg_res, top_n = input$go_top_n)
       }
     })
 
@@ -497,6 +588,16 @@ enrichment_analysis_server <- function(id, shared_state) {
         dev.off()
       }
     )
+    # === GO plot 下载 ===
+    output$download_go_plot <- downloadHandler(
+      filename = function() {
+        paste0("GO_enrichment_plot_", Sys.Date(), ".pdf")
+      },
+      content = function(file) {
+        req(rv$go_res)
+        plot_go_circos(rv$go_res, top_n = input$go_top_n, output_pdf = file)
+      }
+    )
 
     # === GO table 下载 ===
     output$download_go_table <- downloadHandler(
@@ -510,22 +611,45 @@ enrichment_analysis_server <- function(id, shared_state) {
     )
 
     # === KEGG plot 下载 ===
+    # output$download_kegg_plot <- downloadHandler(
+    #   filename = function() {
+    #     paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
+    #   },
+    #   content = function(file) {
+    #     req(rv$kegg_res)
+    #     pdf(file, width = input$kegg_width, height = input$kegg_height)
+    #     if (input$kegg_plot_type == "dot") {
+    #       print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
+    #               ggplot2::scale_color_manual(values = input$kegg_color))
+    #     } else {
+    #       print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+    #     }
+    #     dev.off()
+    #   }
+    # )
+    # === KEGG plot 下载（支持 circlize 圈图） ===
     output$download_kegg_plot <- downloadHandler(
       filename = function() {
         paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
       },
       content = function(file) {
         req(rv$kegg_res)
-        pdf(file, width = input$kegg_width, height = input$kegg_height)
-        if (input$kegg_plot_type == "dot") {
-          print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
-                  ggplot2::scale_color_manual(values = input$kegg_color))
-        } else {
-          print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+        if (input$kegg_plot_type %in% c("bar", "dot")) {
+          pdf(file, width = input$kegg_width, height = input$kegg_height)
+          if (input$kegg_plot_type == "dot") {
+            print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
+                    ggplot2::scale_color_manual(values = input$kegg_color))
+          } else {
+            print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+          }
+          dev.off()
+        } else if (input$kegg_plot_type == "circle") {
+          # 使用 GO circos 绘图函数绘制 KEGG
+          plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n, output_pdf = file)
         }
-        dev.off()
       }
     )
+
 
     # === KEGG table 下载 ===
     output$download_kegg_table <- downloadHandler(
