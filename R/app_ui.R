@@ -125,7 +125,8 @@ app_ui <- function(request) {
       nav_menu(
         "Multi-omics data",
         icon = bs_icon("database-gear"),
-        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile"))
+        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile")),
+        nav_panel("Nine Quadrant", nine_quadrant_ui("nine"))
       ),
       #### Release data ####
       nav_panel(
