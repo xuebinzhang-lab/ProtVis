@@ -108,20 +108,26 @@ DEP_analysis_ui <- function(id) {
 #' @param shared_state A reactive list containing shared state variables across modules
 #' @return A reactive list containing comparison data, normalized matrix, sample info, and DEP results
 #' @export
+
+
 DEP_analysis_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # helper: replace %||% behaviour
+    coalesce_input <- function(x, default) {
+      if (is.null(x) || length(x) == 0) default else x
+    }
 
     rv <- reactiveValues(
       sample_info = NULL,
       load_success = FALSE,
       normalized_matrix = NULL,
       compare_data = NULL,
-      input_mode = TRUE,
-      dep_results = list()  # Store DEP results for each comparison
+      dep_results = list()  # Store DEP results
     )
 
-    # Built-in empty table template
+    # --- Template for compare_data ---
     template_df <- reactive({
       data.frame(
         Group1 = c(NA, NA, NA),
@@ -130,7 +136,7 @@ DEP_analysis_server <- function(id, shared_state) {
       )
     })
 
-    # Original data loading logic
+    # --- Data loading ---
     observeEvent(input$load_data, {
       req(shared_state$workdir)
       rda_path <- file.path(shared_state$workdir, "Step6_data_normalization.rda")
@@ -142,15 +148,16 @@ DEP_analysis_server <- function(id, shared_state) {
           rv$normalized_matrix <- e$normalized_data
         } else {
           rv$normalized_matrix <- NULL
-          showNotification("Step6_data_normalization.rda does not exist. Expression matrix cannot be loaded.",
-                           type = "warning")
+          showNotification("Step6_data_normalization.rda does not contain normalized data.", type = "warning")
         }
         rv$load_success <- TRUE
         showNotification("✅ Data loaded successfully.", type = "message")
+      } else {
+        showNotification("Step6_data_normalization.rda not found.", type = "error")
       }
     })
 
-    # Display loading status
+    # --- Load status ---
     output$load_status_panel <- renderUI({
       if (rv$load_success) {
         span("✅ Data loaded", style = "color: green;")
@@ -159,36 +166,34 @@ DEP_analysis_server <- function(id, shared_state) {
       }
     })
 
-    # Render editable hot table
+    # --- Editable hot table ---
     output$hot_compare <- rhandsontable::renderRHandsontable({
       df <- if(!is.null(rv$compare_data)) rv$compare_data else template_df()
       rhandsontable::rhandsontable(df, stretchH = "all") %>%
         rhandsontable::hot_table(highlightCol = TRUE, highlightRow = TRUE)
     })
 
-    # Handle file upload
+    # --- File upload ---
     observeEvent(input$compare_file, {
       req(input$compare_file)
       ext <- tools::file_ext(input$compare_file$name)
-
       df <- tryCatch({
         if(ext == "csv") {
           read.csv(input$compare_file$datapath)
-        } else if(ext == "xlsx") {
+        } else if(ext %in% c("xls", "xlsx")) {
           readxl::read_excel(input$compare_file$datapath)
         }
       }, error = function(e) {
         showNotification(paste("Failed to read file:", e$message), type = "error")
         NULL
       })
-
       if(!is.null(df)) {
         rv$compare_data <- df
         showNotification("Comparison group file loaded!", type = "message")
       }
     })
 
-    # Handle paste data
+    # --- Paste data ---
     observeEvent(input$apply_paste, {
       req(input$paste_data)
       tryCatch({
@@ -196,25 +201,21 @@ DEP_analysis_server <- function(id, shared_state) {
         rv$compare_data <- df
         showNotification("Pasted data applied!", type = "message")
       }, error = function(e) {
-        showNotification("Invalid paste data format. Please check separators and headers", type = "error")
+        showNotification("Invalid paste data format.", type = "error")
       })
     })
 
-    # Sync hot table changes to data
+    # --- Sync hot table changes ---
     observeEvent(input$hot_compare, {
       rv$compare_data <- rhandsontable::hot_to_r(input$hot_compare)
     })
 
-    # Generate dynamic DEP tabs based on comparison groups
+    # --- Dynamic tabs for DEP results ---
     output$dynamic_dep_tabs <- renderUI({
       req(rv$compare_data)
-
       compare_data <- rv$compare_data[complete.cases(rv$compare_data), ]
-      if(nrow(compare_data) == 0) {
-        return(tags$p("No valid comparison groups found."))
-      }
+      if(nrow(compare_data) == 0) return(tags$p("No valid comparison groups found."))
 
-      # Create a tabset for each comparison
       tabs <- lapply(1:nrow(compare_data), function(i) {
         group1 <- compare_data[i, "Group1"]
         group2 <- compare_data[i, "Group2"]
@@ -225,32 +226,85 @@ DEP_analysis_server <- function(id, shared_state) {
           layout_column_wrap(
             width = 1/2,
             height = 600,
+
+            # DEP table
             card(
               height = "800px",
               card_header(paste("DEP table -", tab_name)),
-              card_body(
-                DT::dataTableOutput(ns(paste0("dep_table_", i)))
-              )
+              card_body(DT::dataTableOutput(ns(paste0("dep_table_", i))))
             ),
+
+            # Volcano plot
             card(
               height = "800px",
               card_header(paste("Volcano plot -", tab_name)),
               card_body(
-                plotOutput(ns(paste0("volcano_plot_", i)))
+                layout_sidebar(
+                  sidebar = sidebar(
+                    id = ns(paste0("volcano_sidebar_", i)),
+                    position = "left",
+                    open = TRUE,
+                    width = 250,
+                    accordion(
+                      accordion_panel(
+                        title = "Parameter",
+                        icon = correlation_icon,
+                        numericInput(ns(paste0("volcano_logfc_", i)), "logFC threshold", value = 1.0, min = 0, max = 5, step = 0.1),
+                        numericInput(ns(paste0("volcano_pval_", i)), "P-value threshold", value = 0.05, min = 0, max = 1, step = 0.01),
+                        colourpicker::colourInput(ns(paste0("color_up_", i)), "Upregulated colour", value = "#d62728"),
+                        colourpicker::colourInput(ns(paste0("color_down_", i)), "Downregulated colour", value = "#1f77b4"),
+                        colourpicker::colourInput(ns(paste0("color_ns_", i)), "Not significant colour", value = "#7f7f7f")
+                      ),
+                      accordion_panel(
+                        title = "Download",
+                        icon = bs_icon("download"),
+                        numericInput(ns(paste0("go_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
+                        numericInput(ns(paste0("go_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
+                        downloadButton(ns(paste0("download_volcano_", i)), "Download Plot")
+                      )
+                    )
+                  ),
+                  plotOutput(ns(paste0("volcano_plot_", i)))
+                )
               )
             ),
+
+            # Heatmap
             card(
               height = "800px",
               card_header(paste("Heatmap -", tab_name)),
-              card_body(
-                plotOutput(ns(paste0("heatmap_", i)))
-              )
+              card_body(plotOutput(ns(paste0("heatmap_", i))))
             ),
+
+            # Bar of DEP (with sidebar)
             card(
               height = "800px",
               card_header(paste("Bar of DEP -", tab_name)),
               card_body(
-                plotOutput(ns(paste0("bar_dep_", i)))
+                layout_sidebar(
+                  sidebar = sidebar(
+                    id = ns(paste0("bar_sidebar_", i)),
+                    position = "left",
+                    open = TRUE,
+                    width = 250,
+                    accordion(
+                      accordion_panel(
+                        title = "Parameter",
+                        icon = correlation_icon,
+                        colourpicker::colourInput(ns(paste0("bar_color_up_", i)), "Upregulated colour", value = "#d62728"),
+                        colourpicker::colourInput(ns(paste0("bar_color_down_", i)), "Downregulated colour", value = "#1f77b4")
+                      ),
+                      accordion_panel(
+                        title = "Download",
+                        icon = bs_icon("download"),
+                        numericInput(ns(paste0("bar_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
+                        numericInput(ns(paste0("bar_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
+                        downloadButton(ns(paste0("download_bar_", i)), "Download Plot")
+                      )
+                    )
+                  ),
+                  plotOutput(ns(paste0("bar_dep_", i)))
+                )
               )
             )
           )
@@ -260,159 +314,230 @@ DEP_analysis_server <- function(id, shared_state) {
       navset_card_tab(full_screen = TRUE, !!!tabs)
     })
 
-    # Perform DEP analysis and generate plots for each comparison
+    # --- DEP analysis and plots ---
     observe({
       req(rv$compare_data, rv$normalized_matrix, rv$sample_info)
       compare_data <- rv$compare_data[complete.cases(rv$compare_data), ]
 
       if(nrow(compare_data) > 0) {
         lapply(1:nrow(compare_data), function(i) {
-          group1 <- compare_data[i, "Group1"]
-          group2 <- compare_data[i, "Group2"]
+          local({
+            i_local <- i
+            group1 <- compare_data[i_local, "Group1"]
+            group2 <- compare_data[i_local, "Group2"]
 
-          # Get samples
-          samples_group1 <- rv$sample_info %>%
-            dplyr::filter(group == group1) %>%
-            dplyr::pull(sample_id)
-          samples_group2 <- rv$sample_info %>%
-            dplyr::filter(group == group2) %>%
-            dplyr::pull(sample_id)
+            samples_group1 <- rv$sample_info %>% dplyr::filter(group == group1) %>% dplyr::pull(sample_id)
+            samples_group2 <- rv$sample_info %>% dplyr::filter(group == group2) %>% dplyr::pull(sample_id)
+            exp_matrix <- rv$normalized_matrix %>% as.data.frame() %>% dplyr::select(all_of(c(samples_group1, samples_group2)))
 
-          # Subset expression matrix
-          exp_matrix <- rv$normalized_matrix %>%
-            as.data.frame() %>%
-            dplyr::select(all_of(c(samples_group1, samples_group2)))
+            # limma
+            group_list <- rep(c(group1, group2), c(length(samples_group1), length(samples_group2))) %>% factor(levels = c(group1, group2))
+            design <- model.matrix(~factor(group_list)+0)
+            colnames(design) <- c(group1, group2)
+            df.fit <- limma::lmFit(exp_matrix, design)
+            contrast <- limma::makeContrasts(contrasts = paste(group1, group2, sep = " - "), levels = design)
+            fit <- limma::contrasts.fit(df.fit, contrast) %>% limma::eBayes()
+            result <- limma::topTable(fit, n = Inf, adjust = "fdr")
 
-          # limma analysis
-          group_list <- rep(c(group1, group2),
-                            c(length(samples_group1), length(samples_group2))) %>%
-            factor(., levels = c(group1, group2), ordered = F)
-          design <- model.matrix(~factor(group_list)+0)
-          colnames(design) <- c(group1, group2)
-
-          df.fit <- limma::lmFit(exp_matrix, design)
-          contrast <- limma::makeContrasts(contrasts = paste(group1, group2, sep = " - "),
-                                           levels = design)
-          fit <- limma::contrasts.fit(df.fit, contrast)
-          fit <- limma::eBayes(fit)
-          result <- limma::topTable(fit, n = Inf, adjust = "fdr")
-
-          # Add regulation
-          new_result <- result %>%
-            dplyr::mutate(
-              regulation = case_when(
+            new_result <- result %>%
+              dplyr::mutate(regulation = case_when(
                 logFC > 1 & P.Value <= 0.05 ~ "Upregulated",
                 logFC < -1 & P.Value <= 0.05 ~ "Downregulated",
                 TRUE ~ "Not significant"
+              )) %>%
+              tibble::rownames_to_column("ID") %>%
+              dplyr::mutate(FC = 2^logFC)
+
+            rv$dep_results[[paste0(group1, "_vs_", group2)]] <- new_result
+
+            # DEP table
+            output[[paste0("dep_table_", i_local)]] <- DT::renderDataTable({
+              DT::datatable(new_result, options = list(scrollX = TRUE, pageLength = 10,
+                                                       dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
+                            extensions = 'Buttons', rownames = FALSE)
+            })
+
+            # Volcano plot
+            output[[paste0("volcano_plot_", i_local)]] <- renderPlot({
+              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])
+              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+
+              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+              pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
+              color_up <- coalesce_input(input[[paste0("color_up_", i_local)]], "#d62728")
+              color_down <- coalesce_input(input[[paste0("color_down_", i_local)]], "#1f77b4")
+              color_ns <- coalesce_input(input[[paste0("color_ns_", i_local)]], "#7f7f7f")
+
+              df <- df %>% dplyr::mutate(
+                regulation = case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
               )
-            ) %>%
-            tibble::rownames_to_column("ID") %>%
-            dplyr::mutate(FC = 2^logFC)
 
-          rv$dep_results[[paste0(group1, "_vs_", group2)]] <- new_result
+              ggplot(df, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
+                geom_point(alpha = 0.8, size = 3) +
+                scale_color_manual(values = c("Upregulated" = color_up,
+                                              "Downregulated" = color_down,
+                                              "Not significant" = color_ns)) +
+                theme_bw() +
+                labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+                theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
+                geom_hline(yintercept = -log10(pval_thresh), linetype = "dashed", color = "black") +
+                geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
+            })
 
-          # === 自动保存 ===
-          tryCatch({
-            save_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
-            compare_data2 <- rv$compare_data
-            normalized_matrix2 <- rv$normalized_matrix
-            sample_info2 <- rv$sample_info
-            dep_results2 <- rv$dep_results
-            save(
-              compare_data2,
-              normalized_matrix2,
-              sample_info2,
-              dep_results2,
-              file = save_path
+            # Volcano download
+            output[[paste0("download_volcano_", i_local)]] <- downloadHandler(
+              filename = function() {
+                paste0("Volcano_", group1, "_vs_", group2, ".pdf")
+              },
+              content = function(file) {
+                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+                logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+                pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
+                color_up <- coalesce_input(input[[paste0("color_up_", i_local)]], "#d62728")
+                color_down <- coalesce_input(input[[paste0("color_down_", i_local)]], "#1f77b4")
+                color_ns <- coalesce_input(input[[paste0("color_ns_", i_local)]], "#7f7f7f")
+
+                df <- df %>% dplyr::mutate(
+                  regulation = case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+
+                g <- ggplot(df, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
+                  geom_point(alpha = 0.8, size = 3) +
+                  scale_color_manual(values = c("Upregulated" = color_up,
+                                                "Downregulated" = color_down,
+                                                "Not significant" = color_ns)) +
+                  theme_bw() +
+                  labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+                  theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
+                  geom_hline(yintercept = -log10(pval_thresh), linetype = "dashed", color = "black") +
+                  geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
+
+                ggsave(
+                  filename = file, plot = g,
+                  width = coalesce_input(input[[paste0("go_width_", i_local)]], 8),
+                  height = coalesce_input(input[[paste0("go_height_", i_local)]], 6),
+                  units = "in"
+                )
+              }
             )
-            showNotification(paste("✅ DEP results saved to", save_path), type = "message")
-          }, error = function(e) {
-            showNotification(paste("❌ Failed to save results:", e$message), type = "error")
-          })
 
-          # Render DEP table
-          output[[paste0("dep_table_", i)]] <- DT::renderDataTable({
-            DT::datatable(
-              new_result,
-              options = list(scrollX = TRUE, pageLength = 10,
-                             dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
-              extensions = 'Buttons',
-              rownames = FALSE
-            )
-          })
+            # Heatmap
+            output[[paste0("heatmap_", i_local)]] <- renderPlot({
+              sig_proteins <- new_result %>% dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>% dplyr::pull(ID)
+              if(length(sig_proteins) > 0) {
+                heatmap_data <- exp_matrix[rownames(exp_matrix) %in% sig_proteins, ]
+                pheatmap::pheatmap(heatmap_data, scale = "row",
+                                   clustering_distance_rows = "euclidean",
+                                   clustering_distance_cols = "euclidean",
+                                   clustering_method = "complete",
+                                   show_rownames = FALSE,
+                                   main = paste("Heatmap:", group1, "vs", group2))
+              } else {
+                ggplot() + annotate("text", x = 0.5, y = 0.5, label = "No significant proteins", size = 8) + theme_void()
+              }
+            })
 
-          # Volcano plot
-          output[[paste0("volcano_plot_", i)]] <- renderPlot({
-            ggplot(new_result, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
-              geom_point(alpha = 0.8, size = 3) +
-              scale_color_manual(values = c("Upregulated" = "red",
-                                            "Downregulated" = "blue",
-                                            "Not significant" = "gray")) +
-              theme_bw() +
-              labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
-              theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
-              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
-              geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black")
-          })
+            # Barplot (uses bar colors)
+            # Bar plot
+            output[[paste0("bar_dep_", i_local)]] <- renderPlot({
+              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])
+              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
 
-          # Heatmap
-          output[[paste0("heatmap_", i)]] <- renderPlot({
-            sig_proteins <- new_result %>%
-              filter(regulation %in% c("Upregulated", "Downregulated")) %>%
-              pull(ID)
-            if(length(sig_proteins) > 0) {
-              heatmap_data <- exp_matrix[rownames(exp_matrix) %in% sig_proteins, ]
-              pheatmap::pheatmap(
-                heatmap_data, scale = "row",
-                clustering_distance_rows = "euclidean",
-                clustering_distance_cols = "euclidean",
-                clustering_method = "complete",
-                show_rownames = FALSE,
-                main = paste("Heatmap:", group1, "vs", group2)
+              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+              pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
+              color_up     <- coalesce_input(input[[paste0("bar_color_up_", i_local)]], "#d62728")
+              color_down   <- coalesce_input(input[[paste0("bar_color_down_", i_local)]], "#1f77b4")
+
+              df <- df %>% dplyr::mutate(
+                regulation = case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
               )
-            } else {
-              ggplot() + annotate("text", x = 0.5, y = 0.5,
-                                  label = "No significant proteins", size = 8) +
-                theme_void()
-            }
-          })
 
-          # Barplot
-          output[[paste0("bar_dep_", i)]] <- renderPlot({
-            dep_counts <- new_result %>%
-              filter(regulation != "Not significant") %>%
-              count(regulation)
-            ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
-              geom_bar(stat = "identity") +
-              scale_fill_manual(values = c("Upregulated" = "red",
-                                           "Downregulated" = "blue")) +
-              labs(title = paste("Number of DEPs:", group1, "vs", group2),
-                   x = "Regulation", y = "Count") +
-              theme_bw() + theme(legend.position = "none")
-          })
-        })
+              dep_counts <- df %>%
+                filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                count(regulation)
+
+              ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
+                geom_bar(stat = "identity") +
+                scale_fill_manual(values = c("Upregulated" = color_up,
+                                             "Downregulated" = color_down)) +
+                labs(title = paste("Number of DEPs:", group1, "vs", group2),
+                     x = "Regulation", y = "Count") +
+                theme_bw() + theme(legend.position = "none")
+            })
+
+            # Bar download
+            output[[paste0("download_bar_", i_local)]] <- downloadHandler(
+              filename = function() {
+                paste0("Bar_DEP_", group1, "_vs_", group2, ".pdf")
+              },
+              content = function(file) {
+                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+
+                logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+                pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
+                color_up     <- coalesce_input(input[[paste0("bar_color_up_", i_local)]], "#d62728")
+                color_down   <- coalesce_input(input[[paste0("bar_color_down_", i_local)]], "#1f77b4")
+
+                df <- df %>% dplyr::mutate(
+                  regulation = case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+
+                dep_counts <- df %>%
+                  filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                  count(regulation)
+
+                g <- ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
+                  geom_bar(stat = "identity") +
+                  scale_fill_manual(values = c("Upregulated" = color_up,
+                                               "Downregulated" = color_down)) +
+                  labs(title = paste("Number of DEPs:", group1, "vs", group2),
+                       x = "Regulation", y = "Count") +
+                  theme_bw() + theme(legend.position = "none")
+
+                ggsave(file, g,
+                       width  = coalesce_input(input[[paste0("bar_width_", i_local)]], 8),
+                       height = coalesce_input(input[[paste0("bar_height_", i_local)]], 6))
+              }
+            )
+
+          }) # end local
+        }) # end lapply
       }
     })
 
-    # Preview sample info
+    # --- Preview tables ---
     output$sample_info <- DT::renderDataTable({
       req(rv$sample_info)
       DT::datatable(rv$sample_info, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
-    # Preview normalized data
     output$normalized_data <- DT::renderDataTable({
       req(rv$normalized_matrix)
       DT::datatable(rv$normalized_matrix, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
-    # Preview group comparison
     output$group_comparison <- DT::renderDataTable({
       req(rv$compare_data)
       DT::datatable(rv$compare_data, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
 
-    # Return comparison data
+    # --- Return state ---
     return(
       reactive({
         list(
@@ -425,3 +550,6 @@ DEP_analysis_server <- function(id, shared_state) {
     )
   })
 }
+
+
+

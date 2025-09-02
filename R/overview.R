@@ -1,3 +1,11 @@
+#' Overview UI Module
+#'
+#' Creates the user interface for the overview analysis module
+#'
+#' @param id Character string specifying the namespace id
+#' @return A Shiny UI tagList containing the overview analysis interface
+#' @export
+#'
 overview_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -87,6 +95,15 @@ overview_ui <- function(id) {
   )
 }
 
+#' Overview Server Module
+#'
+#' Server-side logic for the overview analysis module
+#'
+#' @param id Character string specifying the namespace id
+#' @param shared_state Reactive values shared across modules
+#' @return A module server function that handles the overview analysis logic
+#' @export
+#'
 overview_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
