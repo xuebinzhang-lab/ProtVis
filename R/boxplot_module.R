@@ -130,7 +130,7 @@ boxplot_module_server <- function(id) {
         ) +
         geom_jitter(width = input$box_width/4, alpha = 0.5, size = input$point_size, color = "black") +
         scale_fill_manual(values = group_colors()) +
-        stat_compare_means(
+        ggpubr::stat_compare_means(
           method = "t.test",
           comparisons = comparisons,
           label = "p.format",
