@@ -29,7 +29,7 @@ boxplot_module_ui <- function(id) {
         uiOutput(ns("color_ui")),
         numericInput(ns("box_width"), "Box width", value = 0.4, min = 0.1, max = 1, step = 0.05),
         numericInput(ns("point_size"), "Point size", value = 1, min = 0.1, max = 5, step = 0.1),
-        colourInput(ns("line_color"), "Box line color", value = "black"),
+        colourpicker::colourInput(ns("line_color"), "Box line color", value = "black"),
 
         hr(),
         h4("Theme"),
@@ -101,7 +101,7 @@ boxplot_module_server <- function(id) {
         cols_ui <- lapply(1:ncol, function(c) {
           idx <- (r - 1) * ncol + c
           if (idx <= n) {
-            column(12/ncol, colourInput(ns(paste0("col_", groups[idx])), groups[idx],
+            column(12/ncol, colourpicker::colourInput(ns(paste0("col_", groups[idx])), groups[idx],
                                         value = RColorBrewer::brewer.pal(8, "Set2")[(idx-1) %% 8 + 1]))
           } else NULL
         })
