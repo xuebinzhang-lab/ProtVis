@@ -261,6 +261,17 @@ enrichment_analysis_ui <- function(id) {
           accordion_panel(
             title = "Enrichment analysis",
             icon = enrichment_bubble_icon,
+            selectInput(
+              inputId = ns("species"),
+              label = "Select species:",
+              choices = c("Plant" = "Plant",
+                          "Animals" = "Animals",
+                          "Bacteria" = "Bacteria",
+                          "Fungi" = "Fungi",
+                          "Eukaryotes"  = "Eukaryotes",
+                          "Hsa"  = "Hsa"),
+              selected = "Plant"
+            ),
             checkboxGroupInput(
               inputId = ns("choices"),
               label = "Please select the analysis content:",
@@ -377,6 +388,295 @@ enrichment_analysis_ui <- function(id) {
 #' @export
 #'
 
+# enrichment_analysis_server <- function(id, shared_state) {
+#   moduleServer(id, function(input, output, session) {
+#     ns <- session$ns
+#     rv <- reactiveValues(
+#       sample_info = NULL,
+#       load_success = FALSE,
+#       normalized_matrix = NULL,
+#       compare_data = NULL,
+#       input_mode = TRUE,
+#       dep_results = list(),
+#       file_check_msg = NULL,
+#       background_data = NULL,
+#       go_res = NULL,
+#       kegg_res = NULL
+#     )
+#
+#     # 内置空表
+#     template_df <- reactive({
+#       data.frame(
+#         ID = c(NA, NA, NA),
+#         stringsAsFactors = FALSE
+#       )
+#     })
+#
+#     # ============ 数据加载 (完全保留原有内容) ============
+#     observeEvent(input$load_data, {
+#       req(shared_state$workdir)
+#       rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
+#       if (file.exists(rda_path)) {
+#         e <- new.env()
+#         load(rda_path, envir = e)
+#         if (exists("dep_results2", envir = e)) {
+#           rv$dep_results <- e$dep_results2
+#           updateSelectInput(session, "dep_compare", choices = names(rv$dep_results))
+#         } else {
+#           rv$dep_results <- NULL
+#           showNotification("Step7_DEP_result.rda does not contain dep_results2.",
+#                            type = "warning")
+#         }
+#         rv$load_success <- TRUE
+#         showNotification("✅ Data loaded successfully.", type = "message")
+#       }
+#     })
+#
+#     # 显示加载状态
+#     output$load_status_panel <- renderUI({
+#       if (rv$load_success) {
+#         span("✅ Data loaded", style = "color: green;")
+#       } else {
+#         span("❌ Data not loaded", style = "color: red;")
+#       }
+#     })
+#
+#     # 下拉菜单 UI
+#     output$compare_select_ui <- renderUI({
+#       req(rv$load_success)
+#       selectInput(ns("dep_compare"),
+#                   label = "Select DEP comparison",
+#                   choices = names(rv$dep_results),
+#                   selected = names(rv$dep_results)[1])
+#     })
+#
+#     observeEvent(input$dep_compare, {
+#       req(rv$dep_results)
+#       rv$compare_data <- rv$dep_results[[input$dep_compare]]
+#     })
+#
+#     # ============ 基因列表处理 ============
+#     genelist <- reactive({
+#       # 从 DEP 结果获取
+#       if (!is.null(rv$compare_data)) {
+#         genes <- rv$compare_data %>%
+#           dplyr::filter(regulation != "Not significant") %>%
+#           dplyr::pull(ID)
+#         return(unique(genes))
+#       }
+#
+#       # 上传基因列表
+#       if (!is.null(input$genelist_file)) {
+#         ext <- tools::file_ext(input$genelist_file$name)
+#         if (ext == "csv") {
+#           df <- read.csv(input$genelist_file$datapath)
+#         } else if (ext == "xlsx") {
+#           df <- readxl::read_excel(input$genelist_file$datapath)
+#         }
+#         if ("ID" %in% colnames(df)) {
+#           return(unique(df$ID))
+#         }
+#       }
+#
+#       # 粘贴模式
+#       if (!is.null(input$paste_data) && nchar(input$paste_data) > 0) {
+#         df <- read.table(text = input$paste_data, header = TRUE, sep = "\t")
+#         if ("ID" %in% colnames(df)) {
+#           return(unique(df$ID))
+#         }
+#       }
+#
+#       return(NULL)
+#     })
+#
+#     # ============ 背景文件检查 ============
+#     observeEvent(input$check_file, {
+#       req(input$enrichment_analysis_file)
+#       file <- input$enrichment_analysis_file$datapath
+#       sheets <- readxl::excel_sheets(file)
+#
+#       if (!all(c("GO_background", "KEGG_background") %in% sheets)) {
+#         rv$file_check_msg <- "❌ Missing required sheets: GO_background or KEGG_background"
+#         return()
+#       }
+#
+#       GO_background <- readxl::read_excel(file, sheet = "GO_background")
+#       KEGG_background <- readxl::read_excel(file, sheet = "KEGG_background")
+#
+#       rv$background_data <- list(GO_background = GO_background,
+#                                  KEGG_background = KEGG_background)
+#       rv$file_check_msg <- "✅ Background file valid."
+#     })
+#
+#     output$file_check_result <- renderText({
+#       rv$file_check_msg
+#     })
+#
+#     # ============ 富集分析 ============
+#     observeEvent(input$run_enrichment_analysis, {
+#       req(genelist(), rv$background_data)
+#
+#       if ("go_analysis" %in% input$choices) {
+#         t2g.go <- rv$background_data$GO_background %>% dplyr::select(TERM,GENE)
+#         t2n.go <- rv$background_data$GO_background %>% dplyr::select(TERM,NAME)
+#
+#         rv$go_res <- clusterProfiler::enricher(
+#           gene = genelist(),
+#           TERM2GENE = t2g.go,
+#           TERM2NAME = t2n.go,
+#           pvalueCutoff = 1,
+#           qvalueCutoff = 1
+#         )
+#       }
+#
+#       if ("kegg_analysis" %in% input$choices) {
+#         t2g.kegg <- rv$background_data$KEGG_background %>% dplyr::select(TERM,GENE)
+#         t2n.kegg <- rv$background_data$KEGG_background %>% dplyr::select(TERM,NAME)
+#
+#         rv$kegg_res <- clusterProfiler::enricher(
+#           gene = genelist(),
+#           TERM2GENE = t2g.kegg,
+#           TERM2NAME = t2n.kegg,
+#           pvalueCutoff = 1,
+#           qvalueCutoff = 1
+#         )
+#       }
+#
+#       showNotification("✅ Enrichment analysis completed.", type = "message")
+#     })
+#
+#     # ============ 可视化 ============
+#     output$go_plot <- renderPlot({
+#       req(rv$go_res)
+#       if (input$go_plot_type == "bar") {
+#         barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color)
+#       } else if (input$go_plot_type == "dot") {
+#         clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
+#           ggplot2::scale_color_manual(values = input$go_color)
+#       } else {
+#         plot_go_circos(rv$go_res, top_n = input$go_top_n)
+#       }
+#     })
+#
+#
+#     output$kegg_plot <- renderPlot({
+#       req(rv$kegg_res)
+#       if (input$kegg_plot_type == "bar") {
+#         barplot(rv$kegg_res, showCategory = input$go_top_n, fill = input$go_color)
+#       } else if (input$kegg_plot_type == "dot") {
+#         clusterProfiler::dotplot(rv$kegg_res, showCategory = input$go_top_n) +
+#           ggplot2::scale_color_manual(values = input$go_color)
+#       } else {
+#         plot_go_circos(rv$kegg_res, top_n = input$go_top_n)
+#       }
+#     })
+#
+#     # ============ 表格输出 ============
+#     output$go_res_table <- renderDT({
+#       req(rv$go_res)
+#       as.data.frame(rv$go_res@result)
+#     }, options = list(pageLength = 10, scrollX = TRUE))
+#
+#     output$kegg_res_table <- renderDT({
+#       req(rv$kegg_res)
+#       as.data.frame(rv$kegg_res@result)
+#     }, options = list(pageLength = 10, scrollX = TRUE))
+#
+#     # === GO plot 下载 ===
+#     output$download_go_plot <- downloadHandler(
+#       filename = function() {
+#         paste0("GO_enrichment_plot_", Sys.Date(), ".pdf")
+#       },
+#       content = function(file) {
+#         req(rv$go_res)
+#         pdf(file, width = input$go_width, height = input$go_height)
+#         if (input$go_plot_type == "dot") {
+#           print(clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
+#                   ggplot2::scale_color_manual(values = input$go_color))
+#         } else {
+#           print(barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
+#         }
+#         dev.off()
+#       }
+#     )
+#     # === GO plot 下载 ===
+#     output$download_go_plot <- downloadHandler(
+#       filename = function() {
+#         paste0("GO_enrichment_plot_", Sys.Date(), ".pdf")
+#       },
+#       content = function(file) {
+#         req(rv$go_res)
+#         plot_go_circos(rv$go_res, top_n = input$go_top_n, output_pdf = file)
+#       }
+#     )
+#
+#     # === GO table 下载 ===
+#     output$download_go_table <- downloadHandler(
+#       filename = function() {
+#         paste0("GO_enrichment_table_", Sys.Date(), ".csv")
+#       },
+#       content = function(file) {
+#         req(rv$go_res)
+#         write.csv(as.data.frame(rv$go_res@result), file, row.names = FALSE)
+#       }
+#     )
+#
+#     # === KEGG plot 下载 ===
+#     # output$download_kegg_plot <- downloadHandler(
+#     #   filename = function() {
+#     #     paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
+#     #   },
+#     #   content = function(file) {
+#     #     req(rv$kegg_res)
+#     #     pdf(file, width = input$kegg_width, height = input$kegg_height)
+#     #     if (input$kegg_plot_type == "dot") {
+#     #       print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
+#     #               ggplot2::scale_color_manual(values = input$kegg_color))
+#     #     } else {
+#     #       print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+#     #     }
+#     #     dev.off()
+#     #   }
+#     # )
+#     # === KEGG plot 下载（支持 circlize 圈图） ===
+#     output$download_kegg_plot <- downloadHandler(
+#       filename = function() {
+#         paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
+#       },
+#       content = function(file) {
+#         req(rv$kegg_res)
+#         if (input$kegg_plot_type %in% c("bar", "dot")) {
+#           pdf(file, width = input$kegg_width, height = input$kegg_height)
+#           if (input$kegg_plot_type == "dot") {
+#             print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
+#                     ggplot2::scale_color_manual(values = input$kegg_color))
+#           } else {
+#             print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+#           }
+#           dev.off()
+#         } else if (input$kegg_plot_type == "circle") {
+#           # 使用 GO circos 绘图函数绘制 KEGG
+#           plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n, output_pdf = file)
+#         }
+#       }
+#     )
+#
+#
+#     # === KEGG table 下载 ===
+#     output$download_kegg_table <- downloadHandler(
+#       filename = function() {
+#         paste0("KEGG_enrichment_table_", Sys.Date(), ".csv")
+#       },
+#       content = function(file) {
+#         req(rv$kegg_res)
+#         write.csv(as.data.frame(rv$kegg_res@result), file, row.names = FALSE)
+#       }
+#     )
+#
+#
+#   })
+# }
+
 enrichment_analysis_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -395,13 +695,10 @@ enrichment_analysis_server <- function(id, shared_state) {
 
     # 内置空表
     template_df <- reactive({
-      data.frame(
-        ID = c(NA, NA, NA),
-        stringsAsFactors = FALSE
-      )
+      data.frame(ID = c(NA, NA, NA), stringsAsFactors = FALSE)
     })
 
-    # ============ 数据加载 (完全保留原有内容) ============
+    # ============ 数据加载 ============
     observeEvent(input$load_data, {
       req(shared_state$workdir)
       rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
@@ -413,8 +710,7 @@ enrichment_analysis_server <- function(id, shared_state) {
           updateSelectInput(session, "dep_compare", choices = names(rv$dep_results))
         } else {
           rv$dep_results <- NULL
-          showNotification("Step7_DEP_result.rda does not contain dep_results2.",
-                           type = "warning")
+          showNotification("Step7_DEP_result.rda does not contain dep_results2.", type = "warning")
         }
         rv$load_success <- TRUE
         showNotification("✅ Data loaded successfully.", type = "message")
@@ -501,6 +797,41 @@ enrichment_analysis_server <- function(id, shared_state) {
       rv$file_check_msg
     })
 
+    # ----------------------------
+    # 动态选择 KEGG 背景
+    # ----------------------------
+    selected_kegg_background <- reactive({
+      req(input$species)
+      background_data <- switch(input$species,
+                                "Plant"      = ProtVisDatabase::Plant_KEGG_Background,
+                                "Animals"    = ProtVisDatabase::Animals_KEGG_Background,
+                                "Bacteria"   = ProtVisDatabase::Bacteria_KEGG_Background,
+                                "Fungi"      = ProtVisDatabase::Fungi_KEGG_Background,
+                                "Eukaryotes" = ProtVisDatabase::Eukaryotes_KEGG_Background,
+                                "Hsa"        = ProtVisDatabase::hsa_KEGG_Background,
+                                NULL
+      )
+      req(background_data)
+
+      map_id <- background_data %>%
+        tidyr::separate(
+          col = V3,
+          into = c("Pathway_ID", "Pathway_Name"),
+          sep = " ",
+          extra = "merge"
+        ) %>%
+        dplyr::mutate(dplyr::across(dplyr::everything(), stringr::str_trim)) %>%
+        dplyr::pull(Pathway_ID) %>%
+        unique() %>%
+        paste0("map", .)
+
+      req(rv$background_data)
+      filtered_bg <- rv$background_data$KEGG_background %>%
+        dplyr::filter(TERM %in% map_id)
+
+      return(filtered_bg)
+    })
+
     # ============ 富集分析 ============
     observeEvent(input$run_enrichment_analysis, {
       req(genelist(), rv$background_data)
@@ -519,8 +850,9 @@ enrichment_analysis_server <- function(id, shared_state) {
       }
 
       if ("kegg_analysis" %in% input$choices) {
-        t2g.kegg <- rv$background_data$KEGG_background %>% dplyr::select(TERM,GENE)
-        t2n.kegg <- rv$background_data$KEGG_background %>% dplyr::select(TERM,NAME)
+        filtered_bg <- selected_kegg_background()
+        t2g.kegg <- filtered_bg %>% dplyr::select(TERM,GENE)
+        t2n.kegg <- filtered_bg %>% dplyr::select(TERM,NAME)
 
         rv$kegg_res <- clusterProfiler::enricher(
           gene = genelist(),
@@ -547,16 +879,15 @@ enrichment_analysis_server <- function(id, shared_state) {
       }
     })
 
-
     output$kegg_plot <- renderPlot({
       req(rv$kegg_res)
       if (input$kegg_plot_type == "bar") {
-        barplot(rv$kegg_res, showCategory = input$go_top_n, fill = input$go_color)
+        barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color)
       } else if (input$kegg_plot_type == "dot") {
-        clusterProfiler::dotplot(rv$kegg_res, showCategory = input$go_top_n) +
-          ggplot2::scale_color_manual(values = input$go_color)
+        clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
+          ggplot2::scale_color_manual(values = input$kegg_color)
       } else {
-        plot_go_circos(rv$kegg_res, top_n = input$go_top_n)
+        plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n)
       }
     })
 
@@ -571,67 +902,39 @@ enrichment_analysis_server <- function(id, shared_state) {
       as.data.frame(rv$kegg_res@result)
     }, options = list(pageLength = 10, scrollX = TRUE))
 
-    # === GO plot 下载 ===
+    # ============ 下载功能 ============
+    # GO plot
     output$download_go_plot <- downloadHandler(
-      filename = function() {
-        paste0("GO_enrichment_plot_", Sys.Date(), ".pdf")
-      },
+      filename = function() { paste0("GO_enrichment_plot_", Sys.Date(), ".pdf") },
       content = function(file) {
         req(rv$go_res)
-        pdf(file, width = input$go_width, height = input$go_height)
-        if (input$go_plot_type == "dot") {
-          print(clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
-                  ggplot2::scale_color_manual(values = input$go_color))
+        if (input$go_plot_type %in% c("bar", "dot")) {
+          pdf(file, width = input$go_width, height = input$go_height)
+          if (input$go_plot_type == "dot") {
+            print(clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
+                    ggplot2::scale_color_manual(values = input$go_color))
+          } else {
+            print(barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
+          }
+          dev.off()
         } else {
-          print(barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
+          plot_go_circos(rv$go_res, top_n = input$go_top_n, output_pdf = file)
         }
-        dev.off()
-      }
-    )
-    # === GO plot 下载 ===
-    output$download_go_plot <- downloadHandler(
-      filename = function() {
-        paste0("GO_enrichment_plot_", Sys.Date(), ".pdf")
-      },
-      content = function(file) {
-        req(rv$go_res)
-        plot_go_circos(rv$go_res, top_n = input$go_top_n, output_pdf = file)
       }
     )
 
-    # === GO table 下载 ===
+    # GO table
     output$download_go_table <- downloadHandler(
-      filename = function() {
-        paste0("GO_enrichment_table_", Sys.Date(), ".csv")
-      },
+      filename = function() { paste0("GO_enrichment_table_", Sys.Date(), ".csv") },
       content = function(file) {
         req(rv$go_res)
         write.csv(as.data.frame(rv$go_res@result), file, row.names = FALSE)
       }
     )
 
-    # === KEGG plot 下载 ===
-    # output$download_kegg_plot <- downloadHandler(
-    #   filename = function() {
-    #     paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
-    #   },
-    #   content = function(file) {
-    #     req(rv$kegg_res)
-    #     pdf(file, width = input$kegg_width, height = input$kegg_height)
-    #     if (input$kegg_plot_type == "dot") {
-    #       print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
-    #               ggplot2::scale_color_manual(values = input$kegg_color))
-    #     } else {
-    #       print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
-    #     }
-    #     dev.off()
-    #   }
-    # )
-    # === KEGG plot 下载（支持 circlize 圈图） ===
+    # KEGG plot
     output$download_kegg_plot <- downloadHandler(
-      filename = function() {
-        paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf")
-      },
+      filename = function() { paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf") },
       content = function(file) {
         req(rv$kegg_res)
         if (input$kegg_plot_type %in% c("bar", "dot")) {
@@ -643,27 +946,22 @@ enrichment_analysis_server <- function(id, shared_state) {
             print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
           }
           dev.off()
-        } else if (input$kegg_plot_type == "circle") {
-          # 使用 GO circos 绘图函数绘制 KEGG
+        } else {
           plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n, output_pdf = file)
         }
       }
     )
 
-
-    # === KEGG table 下载 ===
+    # KEGG table
     output$download_kegg_table <- downloadHandler(
-      filename = function() {
-        paste0("KEGG_enrichment_table_", Sys.Date(), ".csv")
-      },
+      filename = function() { paste0("KEGG_enrichment_table_", Sys.Date(), ".csv") },
       content = function(file) {
         req(rv$kegg_res)
         write.csv(as.data.frame(rv$kegg_res@result), file, row.names = FALSE)
       }
     )
-
-
   })
 }
+
 
 
