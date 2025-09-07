@@ -263,7 +263,7 @@ enrichment_analysis_ui <- function(id) {
             icon = enrichment_bubble_icon,
             selectInput(
               inputId = ns("species"),
-              label = "Select species:",
+              label = "Select Select taxonomic group:",
               choices = c("Plant" = "Plant",
                           "Animals" = "Animals",
                           "Bacteria" = "Bacteria",
