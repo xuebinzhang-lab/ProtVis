@@ -118,7 +118,8 @@ app_ui <- function(request) {
         icon = bs_icon("tools"),
         nav_panel("Overview", overview_ui("overview")),
         nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
-        nav_panel("Enrichment analysis", enrichment_analysis_ui("enrichment_analysis"))
+        nav_panel("Enrichment analysis", enrichment_analysis_ui("enrichment_analysis")),
+        nav_panel("GSEA analysis", gsea_ui("gsea"))
       ),
 
       #### Multi-omics Data ####

@@ -34,6 +34,7 @@ app_server <- function(input, output, session) {
   overview_server("overview", shared_state)
   DEP_analysis_server("DEP_analysis", shared_state = shared_state)
   enrichment_analysis_server("enrichment_analysis", shared_state = shared_state)
+  gsea_server("gsea")
   release_data_server("release_data1", shared_state)
 
   # -------------------------------------------------------------------------
