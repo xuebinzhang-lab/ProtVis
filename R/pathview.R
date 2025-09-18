@@ -1,10 +1,5 @@
-library(shiny)
-library(data.table)
-library(pathview)
-library(clusterProfiler)
-library(bslib)
 #' Pathview Pathway Visualization Module UI
-#' @import shiny bslib data.table pathview clusterProfiler
+#' @import shiny bslib data.table pathview clusterProfiler dplyr
 #' @noRd
 pathview_ui <- function(id) {
   ns <- NS(id)
@@ -65,6 +60,40 @@ pathview_ui <- function(id) {
 pathview_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # ----- create bods fallback -----
+    if (!exists("bods", envir = .GlobalEnv)) {
+      assign("bods",
+             data.frame(
+               package = c(
+                 "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
+                 "org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
+                 "org.Hs.eg.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db","org.Pt.eg.db",
+                 "org.Rn.eg.db","org.Sc.sgd.db","org.Ss.eg.db","org.Xl.eg.db"
+               ),
+               species = c(
+                 "Anopheles","Arabidopsis","Bovine","Worm","Canine",
+                 "Fly","Zebrafish","E coli strain K12","E coli strain Sakai","Chicken",
+                 "Human","Mouse","Rhesus","Malaria","Chimp",
+                 "Rat","Yeast","Pig","Xenopus"
+               ),
+               kegg = c(
+                 "aga","ath","bta","cel","cfa",
+                 "dme","dre","eco","ecs","gga",
+                 "hsa","mmu","mcc","pfa","ptr",
+                 "rno","sce","ssc","xla"
+               ),
+               code = c(
+                 "eg","tair","eg","eg","eg",
+                 "eg","eg","eg","eg","eg",
+                 "eg","eg","eg","orf","eg",
+                 "eg","orf","eg","eg"
+               ),
+               stringsAsFactors = FALSE
+             ),
+             envir = .GlobalEnv
+      )
+    }
 
     output$wd_text <- renderText(getwd())
     geneList_react <- reactiveVal()
@@ -157,7 +186,15 @@ pathview_server <- function(id) {
       pid <- sub("^(map|ko)", "", input$selected_pathway)
       geneList <- geneList_react()
 
-      if (exists("bods", envir = .GlobalEnv)) rm(bods, envir = .GlobalEnv)
+      # KO ID sanity check
+      names(geneList) <- toupper(sub(".*:", "", names(geneList)))
+      valid_idx <- grepl("^K\\d{5}$", names(geneList))
+      geneList <- geneList[valid_idx]
+
+      if (length(geneList) == 0) {
+        showNotification("No valid KO IDs (Kxxxxx) found!", type = "error")
+        return()
+      }
 
       tryCatch({
         pathview(
