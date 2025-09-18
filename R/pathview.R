@@ -4,7 +4,6 @@
 pathview_ui <- function(id) {
   ns <- NS(id)
 
-  # Theme
   my_theme <- bs_theme(
     version = 5,
     bg = "#FFFFFF",
@@ -17,7 +16,7 @@ pathview_ui <- function(id) {
 
   fluidPage(
     theme = my_theme,
-    titlePanel("Pathway Visualization"),
+    titlePanel("Pathview Pathway Visualization (Offline)"),
 
     layout_sidebar(
       sidebar = sidebar(
@@ -54,18 +53,29 @@ pathview_ui <- function(id) {
 #' @noRd
 pathview_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns   # ← ADD THIS LINE
+    ns <- session$ns
 
     output$wd_text <- renderText(getwd())
     geneList_react <- reactiveVal()
     desc_df <- reactiveVal()
 
+    # ---------- Enrichment ----------
     observeEvent(input$enrich, {
       req(input$file, input$pathway)
 
-      # Read KO-logFC data
+      # Read KO-logFC
       gene_df <- fread(input$file$datapath)
-      gene_df[[1]] <- sub(".*:", "", gene_df[[1]])
+      gene_df[[1]] <- toupper(sub(".*:", "", gene_df[[1]]))
+
+      # Keep only valid Kxxxxx IDs
+      valid_idx <- grepl("^K\\d{5}$", gene_df[[1]])
+      gene_df <- gene_df[valid_idx]
+
+      if (nrow(gene_df) == 0) {
+        showNotification("No valid KO IDs (Kxxxxx) found!", type = "error")
+        return()
+      }
+
       geneList <- gene_df[[2]]
       names(geneList) <- gene_df[[1]]
       geneList_react(geneList)
@@ -88,7 +98,7 @@ pathview_server <- function(id) {
 
       if (!is.null(eg) && nrow(eg@result) > 0) {
         result <- merge(
-          eg@result %>% select(-Description),
+          eg@result %>% dplyr::select(-Description),
           desc,
           by.x = "ID",
           by.y = "pathway",
@@ -97,7 +107,7 @@ pathview_server <- function(id) {
 
         output$pathway_select <- renderUI({
           selectInput(
-            ns("selected_pathway"),   # now ns is available
+            ns("selected_pathway"),
             "Select KEGG Pathway",
             choices = setNames(result$ID, result$Description),
             multiple = FALSE
@@ -112,27 +122,45 @@ pathview_server <- function(id) {
       })
     })
 
+    # ---------- Pathview PNG Drawing ----------
     observeEvent(input$run, {
       req(geneList_react(), input$selected_pathway)
 
       pid <- sub("^(map|ko)", "", input$selected_pathway)
       geneList <- geneList_react()
 
-      pathview(
-        gene.data = geneList,
-        pathway.id = pid,
-        species = "ko",
-        out.suffix = "KOmap",
-        kegg.native = TRUE
-      )
+      if (exists("bods", envir = .GlobalEnv)) rm(bods, envir = .GlobalEnv)
 
-      img_file <- normalizePath(file.path(getwd(), paste0("ko", pid, ".KOmap.png")))
+      tryCatch({
+        pathview(
+          gene.data = geneList,
+          pathway.id = pid,
+          species = "ko",
+          gene.idtype = "KEGG",
+          kegg.native = TRUE,      # PNG mode with KEGG background
+          out.format = "png",
+          out.suffix = "KOmap",
+          node.sum = "mean"
+        )
 
-      output$plot_ui <- renderImage({
-        list(src = img_file, contentType = "image/png",
-             width = "100%", alt = paste("Pathway:", pid))
-      }, deleteFile = FALSE)
+        png_file <- normalizePath(file.path(getwd(), paste0("ko", pid, ".KOmap.png")))
+
+        if (!file.exists(png_file)) {
+          showNotification("No PNG file generated. Check KO IDs or network.", type = "error")
+          return()
+        }
+
+        output$plot_ui <- renderImage({
+          list(src = png_file, contentType = "image/png",
+               width = "100%", alt = paste("Pathway:", pid))
+        }, deleteFile = FALSE)
+
+      }, error = function(e) {
+        showNotification(
+          paste("Pathview error:", e$message),
+          type = "error"
+        )
+      })
     })
   })
 }
-
