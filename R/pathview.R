@@ -1,3 +1,8 @@
+library(shiny)
+library(data.table)
+library(pathview)
+library(clusterProfiler)
+library(bslib)
 #' Pathview Pathway Visualization Module UI
 #' @import shiny bslib data.table pathview clusterProfiler
 #' @noRd
@@ -16,7 +21,7 @@ pathview_ui <- function(id) {
 
   fluidPage(
     theme = my_theme,
-    titlePanel("Pathview Pathway Visualization (Offline)"),
+    titlePanel("Pathway Visualization"),
 
     layout_sidebar(
       sidebar = sidebar(
