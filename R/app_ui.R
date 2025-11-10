@@ -131,6 +131,12 @@ app_ui <- function(request) {
         nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
         nav_panel("Venn", venn_ui("venn"))
       ),
+      #### PTM ####
+      nav_menu(
+        "PTM",
+        icon = bs_icon("database-gear"),
+        nav_panel("PTM", PTM_ui("PTM"))
+      ),
       #### Release data ####
       nav_panel(
         "Release data",
