@@ -447,7 +447,7 @@ DEP_analysis_server <- function(id, shared_state) {
                 ggplot() + annotate("text", x = 0.5, y = 0.5, label = "No significant proteins", size = 8) + theme_void()
               }
             })
-
+            # Bar
             output[[paste0("bar_dep_", i_local)]] <- renderPlot({
               req(rv$dep_results[[paste0(group1, "_vs_", group2)]])  # 确保数据存在
               df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]  # 获取当前组别的结果
