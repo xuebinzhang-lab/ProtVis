@@ -249,7 +249,7 @@ DEP_analysis_server <- function(id, shared_state) {
                       accordion_panel(
                         title = "Parameter",
                         icon = correlation_icon,
-                        numericInput(ns(paste0("volcano_logfc_", i)), "logFC threshold", value = 1.0, min = 0, max = 5, step = 0.1),
+                        numericInput(ns(paste0("volcano_logfc_", i)), "logFC threshold", value = 0.27, min = 0, max = 5, step = 0.1),
                         numericInput(ns(paste0("volcano_pval_", i)), "P-value threshold", value = 0.05, min = 0, max = 1, step = 0.01),
                         colourpicker::colourInput(ns(paste0("color_up_", i)), "Upregulated colour", value = "#d62728"),
                         colourpicker::colourInput(ns(paste0("color_down_", i)), "Downregulated colour", value = "#1f77b4"),
@@ -339,10 +339,14 @@ DEP_analysis_server <- function(id, shared_state) {
             fit <- limma::contrasts.fit(df.fit, contrast) %>% limma::eBayes()
             result <- limma::topTable(fit, n = Inf, adjust = "fdr")
 
+            # Dynamic regulation based on user input logFC threshold
+            logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+            pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
+
             new_result <- result %>%
               dplyr::mutate(regulation = case_when(
-                logFC > 1 & P.Value <= 0.05 ~ "Upregulated",
-                logFC < -1 & P.Value <= 0.05 ~ "Downregulated",
+                logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
                 TRUE ~ "Not significant"
               )) %>%
               tibble::rownames_to_column("ID") %>%
@@ -362,7 +366,7 @@ DEP_analysis_server <- function(id, shared_state) {
               req(rv$dep_results[[paste0(group1, "_vs_", group2)]])
               df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
 
-              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
+              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 0.5)
               pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
               color_up <- coalesce_input(input[[paste0("color_up_", i_local)]], "#d62728")
               color_down <- coalesce_input(input[[paste0("color_down_", i_local)]], "#1f77b4")
@@ -420,11 +424,10 @@ DEP_analysis_server <- function(id, shared_state) {
                   geom_hline(yintercept = -log10(pval_thresh), linetype = "dashed", color = "black") +
                   geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
 
-                ggsave(
-                  filename = file, plot = g,
-                  width = coalesce_input(input[[paste0("go_width_", i_local)]], 8),
-                  height = coalesce_input(input[[paste0("go_height_", i_local)]], 6),
-                  units = "in"
+                ggsave(file, g,
+                       width = coalesce_input(input[[paste0("go_width_", i_local)]], 8),
+                       height = coalesce_input(input[[paste0("go_height_", i_local)]], 6),
+                       units = "in"
                 )
               }
             )
@@ -445,36 +448,48 @@ DEP_analysis_server <- function(id, shared_state) {
               }
             })
 
-            # Barplot (uses bar colors)
-            # Bar plot
             output[[paste0("bar_dep_", i_local)]] <- renderPlot({
-              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])
-              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])  # 确保数据存在
+              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]  # 获取当前组别的结果
 
+              # 获取用户设置的logFC和P-value阈值
               logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
               pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-              color_up     <- coalesce_input(input[[paste0("bar_color_up_", i_local)]], "#d62728")
-              color_down   <- coalesce_input(input[[paste0("bar_color_down_", i_local)]], "#1f77b4")
 
+              # 调试信息：打印logFC和P-value的阈值
+              print(paste("logFC threshold:", logfc_thresh))
+              print(paste("P-value threshold:", pval_thresh))
+
+              # 更新regulation列
               df <- df %>% dplyr::mutate(
                 regulation = case_when(
-                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
-                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
-                  TRUE ~ "Not significant"
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",  # 上调
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",  # 下调
+                  TRUE ~ "Not significant"  # 不显著
                 )
               )
 
+              # 调试信息：检查更新后的regulation列
+              print(table(df$regulation))
+
+              # 计算Upregulated和Downregulated的数量
               dep_counts <- df %>%
                 filter(regulation %in% c("Upregulated", "Downregulated")) %>%
-                count(regulation)
+                count(regulation)  # 统计每个类别的数量
 
+              # 如果没有Upregulated或Downregulated的条目，显示调试信息
+              if (nrow(dep_counts) == 0) {
+                print("No Upregulated or Downregulated proteins found.")
+              }
+
+              # 绘制条形图
               ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
                 geom_bar(stat = "identity") +
-                scale_fill_manual(values = c("Upregulated" = color_up,
-                                             "Downregulated" = color_down)) +
+                scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
                 labs(title = paste("Number of DEPs:", group1, "vs", group2),
                      x = "Regulation", y = "Count") +
-                theme_bw() + theme(legend.position = "none")
+                theme_bw() +
+                theme(legend.position = "none")  # 隐藏图例
             })
 
             # Bar download
@@ -483,13 +498,13 @@ DEP_analysis_server <- function(id, shared_state) {
                 paste0("Bar_DEP_", group1, "_vs_", group2, ".pdf")
               },
               content = function(file) {
-                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]  # 获取当前组别的结果
 
+                # 获取用户设置的logFC和P-value阈值
                 logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
                 pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-                color_up     <- coalesce_input(input[[paste0("bar_color_up_", i_local)]], "#d62728")
-                color_down   <- coalesce_input(input[[paste0("bar_color_down_", i_local)]], "#1f77b4")
 
+                # 更新regulation列
                 df <- df %>% dplyr::mutate(
                   regulation = case_when(
                     logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
@@ -498,20 +513,21 @@ DEP_analysis_server <- function(id, shared_state) {
                   )
                 )
 
+                # 计算Upregulated和Downregulated的数量
                 dep_counts <- df %>%
                   filter(regulation %in% c("Upregulated", "Downregulated")) %>%
                   count(regulation)
 
+                # 绘制条形图
                 g <- ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
                   geom_bar(stat = "identity") +
-                  scale_fill_manual(values = c("Upregulated" = color_up,
-                                               "Downregulated" = color_down)) +
+                  scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
                   labs(title = paste("Number of DEPs:", group1, "vs", group2),
                        x = "Regulation", y = "Count") +
-                  theme_bw() + theme(legend.position = "none")
+                  theme_bw() +
+                  theme(legend.position = "none")
 
-                ggsave(file, g,
-                       width  = coalesce_input(input[[paste0("bar_width_", i_local)]], 8),
+                ggsave(file, g, width = coalesce_input(input[[paste0("bar_width_", i_local)]], 8),
                        height = coalesce_input(input[[paste0("bar_height_", i_local)]], 6))
               }
             )
@@ -550,6 +566,8 @@ DEP_analysis_server <- function(id, shared_state) {
     )
   })
 }
+
+
 
 
 
