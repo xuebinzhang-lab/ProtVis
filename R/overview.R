@@ -361,24 +361,23 @@ overview_server <- function(id, shared_state) {
       # 根据选择的方法执行降维
       switch(method,
              "PCA" = {
-               prcomp(t_data, scale. = TRUE)$x[, 1:2]
+               as.data.frame(prcomp(t_data)$x[, 1:2]) %>% data.table::setnames(c("V1","V2"))
              },
              "PCoA" = {
-               dist_matrix <- dist(t_data)
-               cmdscale(dist_matrix, k = 2)
+               as.data.frame(cmdscale(dist(t_data), k = 2))
              },
              "tSNE" = {
-               Rtsne::Rtsne(t_data, perplexity = 5)$Y
+               as.data.frame(Rtsne::Rtsne(t_data, perplexity = 5)$Y) %>%
+                 magrittr::set_rownames(rownames(t_data))
              },
              "UMAP" = {
-               umap::umap(t_data)$layout[, 1:2]
+               as.data.frame(umap::umap(t_data)$layout[, 1:2])
              },
              "NMDS" = {
-               vegan::metaMDS(t_data, k = 2)$points
+               as.data.frame(vegan::metaMDS(t_data, k = 2)[["points"]])%>% data.table::setnames(c("V1","V2"))
              }
       )
     }
-
     # 标准化前降维图
     output$DR_BeforeNormalization <- renderPlot({
       req(DR_results$before)
