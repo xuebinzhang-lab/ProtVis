@@ -47,6 +47,7 @@ app_server <- function(input, output, session) {
   venn_server("venn")
   protein_structure_server("protein_structure")
   boxplot_module_server("box1")
+  swissmodel_server("swissmodel")
   # -------------------------------------------------------------------------
 
 

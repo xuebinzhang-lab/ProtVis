@@ -22,7 +22,12 @@ background_make_ui <- function(id) {
                          class = "btn btn-success fw-bold mb-2"),
             div(style = "border-top: 3px solid #ff0000; margin: 10px 0;"),
             textInput(
-              inputId = "separator",
+              inputId = ns("transcript_Separator"),
+              label = "Transcript Separator:",
+              value = "_"
+            ),
+            textInput(
+              inputId = ns("separator"),
               label = "Separator:",
               value = "_"
             ),
@@ -176,7 +181,7 @@ background_make_server <- function(id) {
 
       kegg_background <- df %>%
         dplyr::select(query, KEGG_Pathway) %>%
-        dplyr::mutate(query = stringr::str_extract(query, pattern)) %>%  # 动态分隔符
+        dplyr::mutate(query = stringr::str_extract(query, paste0("^[^", input$separator, "]+"))) %>%  # 动态提取，基于分隔符
         tidyr::separate_rows(KEGG_Pathway, sep = ",") %>%
         dplyr::filter(KEGG_Pathway != "-") %>%
         dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) %>%

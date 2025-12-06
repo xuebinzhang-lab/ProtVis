@@ -151,8 +151,8 @@ app_ui <- function(request) {
         nav_panel("Background Make", background_make_ui("background_make")),
         nav_panel("Protein Links", protein_links_ui("prot_links")),
         nav_panel("Protein Structure", protein_structure_ui("protein_structure")),
-        nav_panel("Boxplot", boxplot_module_ui("box1"))
-
+        nav_panel("Boxplot", boxplot_module_ui("box1")),
+        nav_panel("swissmodel", swissmodel_ui("swissmodel"))
         ),
       #### Help ####
       nav_panel(
