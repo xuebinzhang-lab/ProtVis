@@ -79,7 +79,7 @@ swissmodel_ui <- function(id) {
             "PDB Plot",
             div(
               style = "height: 500px; overflow: auto;",
-              plotOutput(ns("pdb_plot"), height = "100%")  # 用 plotOutput 来渲染 PDB 结构图
+              r3dmol::r3dmolOutput(ns("pdb_plot"), height = "100%")
             )
           )
         )
@@ -169,8 +169,8 @@ swissmodel_server <- function(id) {
       })
       # 显示 PDB 信息
       output$pdb_information <- renderText({
-        print(pdb_info(pdb))
-        paste(utils::capture.output(print(pdb_info(pdb))), collapse = "\n")
+        print(swissmodel::pdb_info(pdb))
+        paste(utils::capture.output(print(swissmodel::pdb_info(pdb))), collapse = "\n")
       })
 
       # 显示模型质量（这是一个示例，应该替换为实际数据）
@@ -188,10 +188,8 @@ swissmodel_server <- function(id) {
       output$residue_composition <- renderPlot({
         swissmodel::plot_residue_composition(pdb)
       })
-      output$pdb_plot <- rgl::renderRglwidget({
-        rgl::open3d()
+      output$pdb_plot <- r3dmol::renderR3dmol({
         swissmodel::plot_pdb(pdb)
-        rgl::rglwidget()
       })
     })
   })
