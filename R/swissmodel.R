@@ -126,7 +126,7 @@ swissmodel_server <- function(id) {
       }
 
       # 设置 SwissModel API token
-      set_swissmodel_token(api_token)
+      swissmodel::set_swissmodel_token(api_token)
 
       # 使用蛋白质序列运行模型
       result <- tryCatch({
