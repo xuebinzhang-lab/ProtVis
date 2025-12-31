@@ -17,18 +17,15 @@ swissmodel_ui <- function(id) {
         textAreaInput(ns("sequence"), "Protein sequence",
                       value = "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKVADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHASLDKFLASVSTVLTSKYR",
                       rows = 10),
-
         # API token input
         textInput(ns("api_token"), "API Token",
                   value = "",
                   placeholder = "Enter your API token"),
-
         # External link for getting API token (with smaller text)
         tags$small(
           p("How to get an API token? ",
             tags$a(href = "https://github.com/anhuikylin/", "Click here to get the token", target = "_blank"))
         ),
-
         # Action button to run the model
         actionButton(ns("run_model"), "Run Model"),
         # Display project info after the action button
@@ -102,8 +99,6 @@ swissmodel_server <- function(id) {
     observeEvent(input$run_model, {
       sequence <- input$sequence
       api_token <- input$api_token
-
-      # 验证蛋白质序列是否为空
       if (nchar(sequence) == 0) {
         showModal(modalDialog(
           title = "Error",
@@ -111,10 +106,8 @@ swissmodel_server <- function(id) {
           easyClose = TRUE,
           footer = NULL
         ))
-        return()  # 如果序列为空，停止执行
+        return()
       }
-
-      # 验证 API token 是否为空
       if (nchar(api_token) == 0) {
         showModal(modalDialog(
           title = "Error",
@@ -122,13 +115,9 @@ swissmodel_server <- function(id) {
           easyClose = TRUE,
           footer = NULL
         ))
-        return()  # 如果 API token 为空，停止执行
+        return()
       }
-
-      # 设置 SwissModel API token
       swissmodel::set_swissmodel_token(api_token)
-
-      # 使用蛋白质序列运行模型
       result <- tryCatch({
         swissmodel::run_automodel_workflow(sequence)
       }, error = function(e) {
@@ -138,13 +127,9 @@ swissmodel_server <- function(id) {
           easyClose = TRUE,
           footer = NULL
         ))
-        return(NULL)  # 如果出错，返回 NULL
+        return(NULL)
       })
-
-      # 如果结果为 NULL，则退出
       if (is.null(result)) return()
-
-      # 处理结果（假设结果包含必要的信息）
       pdb_file <- result$downloaded_files[[1]]
       pdb <- bio3d::read.pdb(pdb_file)
       output$project_info_view_url <- renderUI({
@@ -156,7 +141,6 @@ swissmodel_server <- function(id) {
         )
         HTML(output_text)
       })
-      # 显示项目信息文件（显示 URL）
       output$project_info_file <- renderText({
         project_info <- jsonlite::fromJSON(result$project_info_file)
         project_info_text <- capture.output(print(project_info))
@@ -167,24 +151,17 @@ swissmodel_server <- function(id) {
           sep = "\n\n"
         )
       })
-      # 显示 PDB 信息
       output$pdb_information <- renderText({
         print(swissmodel::pdb_info(pdb))
         paste(utils::capture.output(print(swissmodel::pdb_info(pdb))), collapse = "\n")
       })
-
-      # 显示模型质量（这是一个示例，应该替换为实际数据）
       output$model_quality <- renderDT({
-        model_quality <- swissmodel::analyze_model_quality(pdb)  # 获取模型质量数据
+        model_quality <- swissmodel::analyze_model_quality(pdb)
         data.frame(Value = unlist(model_quality))
       })
-
-      # 渲染 Ramachandran 图
       output$Ramachandran_plot <- renderPlot({
-        swissmodel::plot_ramachandran(pdb)  # 绘制 Ramachandran 图
+        swissmodel::plot_ramachandran(pdb)
       })
-
-      # 渲染残基组成图
       output$residue_composition <- renderPlot({
         swissmodel::plot_residue_composition(pdb)
       })
