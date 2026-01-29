@@ -117,15 +117,12 @@ data_normalization_ui <- function(id) {
 data_normalization_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     rv <- reactiveValues(
       sample_info = NULL,
       expression_matrix = NULL,
       load_success = FALSE,
       normalized_matrix = NULL
     )
-
-    # 加载数据
     observeEvent(input$load_data, {
       req(shared_state$workdir)
       rda_path <- file.path(shared_state$workdir, "Step5_data_imputation.rda")
@@ -159,8 +156,6 @@ data_normalization_server <- function(id, shared_state) {
       req(rv$expression_matrix)
       DT::datatable(rv$expression_matrix, options = list(scrollX = TRUE))
     })
-
-    # 原始数据箱线图
     output$originalPlot <- renderPlot({
       req(rv$sample_info)
       req(rv$expression_matrix)
@@ -174,29 +169,23 @@ data_normalization_server <- function(id, shared_state) {
         tibble::rownames_to_column("ID") %>%
         pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
         left_join(sample_info)
-
-      # 确定每个group的颜色
       unique_groups <- unique(sample_info$group)
       n_groups <- length(unique_groups)
-      colors <- RColorBrewer::brewer.pal(n_groups, "Set3")  # 使用RColorBrewer的Set3调色板
-
+      colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
       ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
         xlab("") +
         ylab("Relative intensity") +
         geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
         coord_flip() +
-        scale_fill_manual(values = colors) +  # 为每个组指定颜色
+        scale_fill_manual(values = colors) +
         theme_bw()
     })
-
-    # 归一化数据
     observeEvent(input$run_normalization, {
       req(rv$expression_matrix)
       req(rv$sample_info)
       sample_info <- rv$sample_info
       normalized_data <- sample_subtract(rv$expression_matrix)
       rv$normalized_matrix <- as.data.frame(normalized_data)
-
       save(sample_info, normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
       showNotification("Normalization completed", type = "message")
     })
@@ -205,44 +194,34 @@ data_normalization_server <- function(id, shared_state) {
       req(rv$normalized_matrix)
       DT::datatable(rv$normalized_matrix, options = list(scrollX = TRUE))
     })
-
-    # 归一化数据箱线图
     output$dataNormalizationPlot <- renderPlot({
       req(rv$sample_info)
       req(rv$normalized_matrix)
-
       sample_info <- rv$sample_info
       normalized_matrix <- rv$normalized_matrix
-
       expmat_before <- normalized_matrix
       expmat_before.long <-
         expmat_before %>%
         tibble::rownames_to_column("ID") %>%
         pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
         left_join(sample_info)
-
-      # 确定每个group的颜色
       unique_groups <- unique(sample_info$group)
       n_groups <- length(unique_groups)
-      colors <- RColorBrewer::brewer.pal(n_groups, "Set3")  # 使用RColorBrewer的Set3调色板
-
+      colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
       ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
         xlab("") +
         ylab("Relative intensity") +
         geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
         coord_flip() +
-        scale_fill_manual(values = colors) +  # 为每个组指定颜色
+        scale_fill_manual(values = colors) +
         theme_bw()
     })
-
-    # 下载原始数据箱线图
     output$download_original_plot <- downloadHandler(
       filename = function() {
         paste("original_data_boxplot", ".pdf", sep = "")
       },
       content = function(file) {
-        # 在downloadHandler中直接渲染和保存图形
-        pdf(file, width = input$plot_width, height = input$plot_height)  # 使用用户设置的宽度和高度
+        pdf(file, width = input$plot_width, height = input$plot_height)
         print({
           req(rv$sample_info)
           req(rv$expression_matrix)
@@ -256,57 +235,46 @@ data_normalization_server <- function(id, shared_state) {
             tibble::rownames_to_column("ID") %>%
             pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
             left_join(sample_info)
-
-          # 确定每个group的颜色
           unique_groups <- unique(sample_info$group)
           n_groups <- length(unique_groups)
           colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-
           ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
             xlab("") +
             ylab("Relative intensity") +
             geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
             coord_flip() +
-            scale_fill_manual(values = colors) +  # 为每个组指定颜色
+            scale_fill_manual(values = colors) +
             theme_bw()
         })
         dev.off()
       }
     )
-
-    # 下载归一化数据箱线图
     output$download_normalized_plot <- downloadHandler(
       filename = function() {
         paste("normalized_data_boxplot", ".pdf", sep = "")
       },
       content = function(file) {
-        # 在downloadHandler中直接渲染和保存图形
-        pdf(file, width = input$plot_width, height = input$plot_height)  # 使用用户设置的宽度和高度
+        pdf(file, width = input$plot_width, height = input$plot_height)
         print({
           req(rv$sample_info)
           req(rv$normalized_matrix)
-
           sample_info <- rv$sample_info
           normalized_matrix <- rv$normalized_matrix
-
           expmat_before <- normalized_matrix
           expmat_before.long <-
             expmat_before %>%
             tibble::rownames_to_column("ID") %>%
             pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
             left_join(sample_info)
-
-          # 确定每个group的颜色
           unique_groups <- unique(sample_info$group)
           n_groups <- length(unique_groups)
           colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-
           ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
             xlab("") +
             ylab("Relative intensity") +
             geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
             coord_flip() +
-            scale_fill_manual(values = colors) +  # 为每个组指定颜色
+            scale_fill_manual(values = colors) +
             theme_bw()
         })
         dev.off()
@@ -314,13 +282,3 @@ data_normalization_server <- function(id, shared_state) {
     )
   })
 }
-
-
-
-
-
-
-
-
-
-
