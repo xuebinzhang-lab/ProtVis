@@ -24,7 +24,22 @@ overview_ui <- function(id) {
               choices = c("Pearson", "Spearman", "Kendall"),
               selected = "Pearson"
             ),
-            actionButton(ns("run_correlation"), "Run Correlation")
+            colourpicker::colourInput(
+              ns("high_color"),
+              "High Color",
+              value = "purple"),
+            colourpicker::colourInput(
+              ns("mid_color"),
+              "middle Color",
+              value = "black"),
+            colourpicker::colourInput(
+              ns("low_color"),
+              "Low Color",
+              value = "yellow"),
+            numericInput(ns("color_min"), "Set Min Value", value = -1, step = 0.1),
+            numericInput(ns("color_max"), "Set Max Value", value = 1, step = 0.1),
+            actionButton(ns("run_correlation"), "Run Correlation"),
+            downloadButton(ns("download_pdf"), "Download PDF")
           ),
           accordion_panel(
             title = "Expression pattern",
@@ -60,7 +75,7 @@ overview_ui <- function(id) {
       page_fluid(
         layout_column_wrap(
           width = 1/2,
-          height = 600,
+          height = 750,
           card(
             height = "800px",
             card_header("Correlation"),
@@ -209,7 +224,8 @@ overview_server <- function(id, shared_state) {
       })
     })
 
-    output$cor_res <- renderPlot({
+    # 创建reactive对象ht来动态生成热图
+    ht_reactive <- reactive({
       req(rv$cor_results)
       req(rv$sample_info)
 
@@ -236,7 +252,13 @@ overview_server <- function(id, shared_state) {
         )
       )
 
-      ht <- ComplexHeatmap::Heatmap(
+      # 获取用户输入的最小值和最大值
+      min_break <- input$color_min
+      max_break <- input$color_max
+      mid_break <- (min_break + max_break) / 2  # 自动计算中间值
+
+      # 创建热图
+      ComplexHeatmap::Heatmap(
         rv$cor_results,
         right_annotation = left_anno,
         show_row_names = TRUE,
@@ -245,16 +267,43 @@ overview_server <- function(id, shared_state) {
         border = 'black',
         name = "r",
         col = circlize::colorRamp2(
-          colors = c("purple", "black", "yellow"),
-          breaks = c(-1, 0, 1)
+          colors = c(input$low_color, input$mid_color, input$high_color),
+          breaks = c(min_break, mid_break, max_break)
         ),
         heatmap_legend_param = list(
           title_gp = grid::gpar(fontsize = 6),
           labels_gp = grid::gpar(fontsize = 6)
-        )
+        ),
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          # 在每个单元格内显示数字
+          grid::textGrob(
+            label = round(rv$cor_results[i, j], 2),  # 四舍五入显示两位小数
+            x = x, y = y,
+            gp = grid::gpar(fontsize = 6, col = "white")  # 设置字体颜色为白色，字体大小为6
+          )
+        }
       )
-      ComplexHeatmap::draw(ht)
     })
+
+    # 显示热图
+    output$cor_res <- renderPlot({
+      ht_reactive()
+    })
+
+    # 下载PDF文件的处理
+    output$download_pdf <- downloadHandler(
+      filename = function() {
+        paste("correlation_heatmap_", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        # 设置PDF输出的尺寸，宽度和高度根据需求调整
+        pdf(file, width = 10, height = 8)  # 设置宽度10英寸，高度8英寸
+
+        # 绘制热图
+        ComplexHeatmap::draw(ht_reactive())  # 使用reactive生成的热图
+        dev.off()  # 关闭设备
+      }
+    )
 
     # 表达模式分析
     observeEvent(input$run_expression, {
