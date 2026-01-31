@@ -346,7 +346,8 @@ overview_server <- function(id, shared_state) {
       })
     })
 
-    output$expression_pattern <- renderPlot({
+    # 创建reactive对象ht来动态生成热图
+    ht_reactive_exp <- reactive({
       req(rv$exp_results)
       req(rv$sample_info)
 
@@ -373,10 +374,14 @@ overview_server <- function(id, shared_state) {
         )
       )
 
-      ht_expmat <- ComplexHeatmap::Heatmap(
+      # 获取用户输入的最小值和最大值
+      min_break <- input$exp_color_min
+      max_break <- input$exp_color_max
+      mid_break <- (min_break + max_break) / 2  # 自动计算中间值
+
+      # 使用 `layer_fun` 替代 `cell_fun`
+      ComplexHeatmap::Heatmap(
         t(rv$exp_results),
-        use_raster = TRUE,
-        raster_quality = 2,
         right_annotation = left_anno,
         show_row_names = TRUE,
         show_column_names = FALSE,
@@ -384,16 +389,46 @@ overview_server <- function(id, shared_state) {
         border = 'black',
         name = ifelse(input$exp_scale, "Z-score", "Intensity"),
         col = circlize::colorRamp2(
-          colors = c("purple", "black", "yellow"),
-          breaks = c(-1, 0, 1)
+          colors = c(input$exp_low_color, input$exp_mid_color, input$exp_high_color),
+          breaks = c(min_break, mid_break, max_break)
         ),
         heatmap_legend_param = list(
           title_gp = grid::gpar(fontsize = 6),
           labels_gp = grid::gpar(fontsize = 6)
-        )
+        ),
+        layer_fun = function(j, i, x, y, width, height, fill) {
+          # 确保条件为单一逻辑值，避免"长度大于1"错误
+          if (length(i) == 1 && length(j) == 1) {  # 检查是否是单一的行列索引
+            grid::textGrob(
+              label = round(rv$exp_results[i, j], 2),  # 四舍五入显示两位小数
+              x = x, y = y,
+              gp = grid::gpar(fontsize = 6, col = "white")  # 设置字体颜色为白色，字体大小为6
+            )
+          }
+        }
       )
-      ComplexHeatmap::draw(ht_expmat)
     })
+
+    # 显示热图
+    output$expression_pattern <- renderPlot({
+      ht_reactive_exp()
+    })
+
+    # 下载PDF文件的处理
+    output$exp_download_pdf <- downloadHandler(
+      filename = function() {
+        paste("expression_pattern_heatmap_", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        # 设置PDF输出的尺寸，宽度和高度根据需求调整
+        pdf(file, width = input$exp_plot_width, height = input$exp_plot_height)  # 设置宽度10英寸，高度8英寸
+
+        # 绘制热图
+        ComplexHeatmap::draw(ht_reactive_exp())  # 使用reactive生成的热图
+        dev.off()  # 关闭设备
+      }
+    )
+
 
     # 存储降维结果的reactiveValues
     DR_results <- reactiveValues(
