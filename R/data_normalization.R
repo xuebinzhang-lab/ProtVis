@@ -45,10 +45,10 @@ data_normalization_ui <- function(id) {
             colourpicker::colourInput(ns("normalized_boxplot_color"), "Normalized Data Boxplot Color", value = "#ff7f0e")
         ),
         div(style = "margin-top: 15px;",
-            numericInput(ns("plot_width"), "Download Plot Width (inches)", value = 7, min = 5, max = 20)
+            numericInput(ns("plot_width"), "Download Plot Width (inches)", value = 7, min = 0, max = 200)
         ),
         div(style = "margin-top: 15px;",
-            numericInput(ns("plot_height"), "Download Plot Height (inches)", value = 10, min = 5, max = 20)
+            numericInput(ns("plot_height"), "Download Plot Height (inches)", value = 10, min = 0, max = 200)
         ),
         div(style = "margin-top: 15px;",
             downloadButton(ns("download_original_plot"), "Download Original Plot (PDF)")

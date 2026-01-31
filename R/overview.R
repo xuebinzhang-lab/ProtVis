@@ -25,21 +25,23 @@ overview_ui <- function(id) {
               selected = "Pearson"
             ),
             colourpicker::colourInput(
-              ns("high_color"),
+              ns("cor_high_color"),
               "High Color",
               value = "purple"),
             colourpicker::colourInput(
-              ns("mid_color"),
+              ns("cor_mid_color"),
               "middle Color",
               value = "black"),
             colourpicker::colourInput(
-              ns("low_color"),
+              ns("cor_low_color"),
               "Low Color",
               value = "yellow"),
-            numericInput(ns("color_min"), "Set Min Value", value = -1, step = 0.1),
-            numericInput(ns("color_max"), "Set Max Value", value = 1, step = 0.1),
+            numericInput(ns("cor_color_min"), "Set Min Value", value = -1, step = 0.1),
+            numericInput(ns("cor_color_max"), "Set Max Value", value = 1, step = 0.1),
             actionButton(ns("run_correlation"), "Run Correlation"),
-            downloadButton(ns("download_pdf"), "Download PDF")
+            numericInput(ns("cor_plot_width"), "Download Plot Width (inches)", value = 10),
+            numericInput(ns("cor_plot_height"), "Download Plot Height (inches)", value = 7),
+            downloadButton(ns("cor_download_pdf"), "Download PDF")
           ),
           accordion_panel(
             title = "Expression pattern",
@@ -253,8 +255,8 @@ overview_server <- function(id, shared_state) {
       )
 
       # 获取用户输入的最小值和最大值
-      min_break <- input$color_min
-      max_break <- input$color_max
+      min_break <- input$cor_color_min
+      max_break <- input$cor_color_max
       mid_break <- (min_break + max_break) / 2  # 自动计算中间值
 
       # 创建热图
@@ -267,7 +269,7 @@ overview_server <- function(id, shared_state) {
         border = 'black',
         name = "r",
         col = circlize::colorRamp2(
-          colors = c(input$low_color, input$mid_color, input$high_color),
+          colors = c(input$cor_low_color, input$cor_mid_color, input$cor_high_color),
           breaks = c(min_break, mid_break, max_break)
         ),
         heatmap_legend_param = list(
@@ -291,13 +293,13 @@ overview_server <- function(id, shared_state) {
     })
 
     # 下载PDF文件的处理
-    output$download_pdf <- downloadHandler(
+    output$cor_download_pdf <- downloadHandler(
       filename = function() {
         paste("correlation_heatmap_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
         # 设置PDF输出的尺寸，宽度和高度根据需求调整
-        pdf(file, width = 10, height = 8)  # 设置宽度10英寸，高度8英寸
+        pdf(file, width = input$cor_plot_width, height = input$cor_plot_height)  # 设置宽度10英寸，高度8英寸
 
         # 绘制热图
         ComplexHeatmap::draw(ht_reactive())  # 使用reactive生成的热图
