@@ -59,7 +59,24 @@ overview_ui <- function(id) {
               label = "Scale Data",
               value = TRUE
             ),
-            actionButton(ns("run_expression"), "Run Expression")
+            colourpicker::colourInput(
+              ns("exp_high_color"),
+              "High Color",
+              value = "purple"),
+            colourpicker::colourInput(
+              ns("exp_mid_color"),
+              "middle Color",
+              value = "black"),
+            colourpicker::colourInput(
+              ns("exp_low_color"),
+              "Low Color",
+              value = "yellow"),
+            numericInput(ns("exp_color_min"), "Set Min Value", value = -1, step = 0.1),
+            numericInput(ns("exp_color_max"), "Set Max Value", value = 1, step = 0.1),
+            actionButton(ns("run_expression"), "Run Expression"),
+            numericInput(ns("exp_plot_width"), "Download Plot Width (inches)", value = 10),
+            numericInput(ns("exp_plot_height"), "Download Plot Height (inches)", value = 7),
+            downloadButton(ns("exp_download_pdf"), "Download PDF")
           ),
           accordion_panel(
             title = "Dimensionality Reduction",
