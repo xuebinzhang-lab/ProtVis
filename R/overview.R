@@ -87,7 +87,12 @@ overview_ui <- function(id) {
               choices = c("PCA", "PCoA", "tSNE", "UMAP", "NMDS"),
               selected = "UMAP"
             ),
-            actionButton(ns("DR_analyse"), "Run")
+            actionButton(ns("DR_analyse"), "Run"),
+            numericInput(ns("dr_plot_width"), "Download Plot Width (inches)", value = 10),
+            numericInput(ns("dr_plot_height"), "Download Plot Height (inches)", value = 7),
+            downloadButton(ns("dr_download_before_pdf"), "Download Before Normalization"),
+            downloadButton(ns("dr_download_after_pdf"), "Download After Normalization"),
+            downloadButton(ns("dr_download_both_pdf"), "Download Both Plots")
           )
         )
       ),
@@ -165,7 +170,7 @@ overview_server <- function(id, shared_state) {
         missing_files <- c(step5_path, step6_path)[!file.exists(c(step5_path, step6_path))]
         showNotification(paste("File(s) not found:", paste(basename(missing_files), collapse = ", ")),
                          type = "error")
-        rv$load_success <- FALSE
+        rv$load_success = FALSE
         return()
       }
 
@@ -181,21 +186,21 @@ overview_server <- function(id, shared_state) {
         # 验证Step5数据
         if (!exists("sample_info", envir = e5) || !exists("imputed_df", envir = e5)) {
           showNotification("Required data not found in Step5 file.", type = "error")
-          rv$load_success <- FALSE
+          rv$load_success = FALSE
           return()
         }
 
         # 验证Step6数据
         if (!exists("normalized_data", envir = e6)) {
           showNotification("Required data not found in Step6 file.", type = "error")
-          rv$load_success <- FALSE
+          rv$load_success = FALSE
           return()
         }
 
         # 检查样本一致性
         if (!identical(colnames(e5$imputed_df), colnames(e6$normalized_data))) {
           showNotification("Sample names don't match between imputed and normalized data.", type = "error")
-          rv$load_success <- FALSE
+          rv$load_success = FALSE
           return()
         }
 
@@ -204,13 +209,13 @@ overview_server <- function(id, shared_state) {
         rv$expression_matrix <- e6$normalized_data
         rv$normalized_matrix <- e6$normalized_data
         rv$imputed_matrix <- e5$imputed_df
-        rv$load_success <- TRUE
+        rv$load_success = TRUE
 
         showNotification("✅ Both datasets loaded successfully.", type = "message")
 
       }, error = function(e) {
         showNotification(paste("Error loading data:", e$message), type = "error")
-        rv$load_success <- FALSE
+        rv$load_success = FALSE
       })
     })
 
@@ -315,12 +320,10 @@ overview_server <- function(id, shared_state) {
         paste("correlation_heatmap_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        # 设置PDF输出的尺寸，宽度和高度根据需求调整
-        pdf(file, width = input$cor_plot_width, height = input$cor_plot_height)  # 设置宽度10英寸，高度8英寸
-
-        # 绘制热图
-        ComplexHeatmap::draw(ht_reactive())  # 使用reactive生成的热图
-        dev.off()  # 关闭设备
+        # 设置PDF输出的尺寸
+        pdf(file, width = input$cor_plot_width, height = input$cor_plot_height)
+        ComplexHeatmap::draw(ht_reactive())
+        dev.off()
       }
     )
 
@@ -420,15 +423,12 @@ overview_server <- function(id, shared_state) {
         paste("expression_pattern_heatmap_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        # 设置PDF输出的尺寸，宽度和高度根据需求调整
-        pdf(file, width = input$exp_plot_width, height = input$exp_plot_height)  # 设置宽度10英寸，高度8英寸
-
-        # 绘制热图
-        ComplexHeatmap::draw(ht_reactive_exp())  # 使用reactive生成的热图
-        dev.off()  # 关闭设备
+        # 设置PDF输出的尺寸
+        pdf(file, width = input$exp_plot_width, height = input$exp_plot_height)
+        ComplexHeatmap::draw(ht_reactive_exp())
+        dev.off()
       }
     )
-
 
     # 存储降维结果的reactiveValues
     DR_results <- reactiveValues(
@@ -481,17 +481,6 @@ overview_server <- function(id, shared_state) {
              }
       )
     }
-    # 标准化前降维图
-    output$DR_BeforeNormalization <- renderPlot({
-      req(DR_results$before)
-      plot_DR_results(DR_results$before, rv$sample_info, "Before Normalization")
-    })
-
-    # 标准化后降维图
-    output$DR_AfterNormalization <- renderPlot({
-      req(DR_results$after)
-      plot_DR_results(DR_results$after, rv$sample_info, "After Normalization")
-    })
 
     # 通用绘图函数
     plot_DR_results <- function(dr_data, sample_info, title_suffix) {
@@ -529,6 +518,68 @@ overview_server <- function(id, shared_state) {
         )
     }
 
+    # 标准化前降维图
+    output$DR_BeforeNormalization <- renderPlot({
+      req(DR_results$before)
+      plot_DR_results(DR_results$before, rv$sample_info, "Before Normalization")
+    })
+
+    # 标准化后降维图
+    output$DR_AfterNormalization <- renderPlot({
+      req(DR_results$after)
+      plot_DR_results(DR_results$after, rv$sample_info, "After Normalization")
+    })
+
+    # 下载标准化前降维图的PDF
+    output$dr_download_before_pdf <- downloadHandler(
+      filename = function() {
+        paste(input$dimReductionMethod, "_before_normalization_", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        req(DR_results$before)
+
+        # 设置PDF输出的尺寸
+        pdf(file, width = input$dr_plot_width, height = input$dr_plot_height)
+        print(plot_DR_results(DR_results$before, rv$sample_info, "Before Normalization"))
+        dev.off()
+      }
+    )
+
+    # 下载标准化后降维图的PDF
+    output$dr_download_after_pdf <- downloadHandler(
+      filename = function() {
+        paste(input$dimReductionMethod, "_after_normalization_", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        req(DR_results$after)
+
+        # 设置PDF输出的尺寸
+        pdf(file, width = input$dr_plot_width, height = input$dr_plot_height)
+        print(plot_DR_results(DR_results$after, rv$sample_info, "After Normalization"))
+        dev.off()
+      }
+    )
+
+    # 下载两个降维图的PDF（组合）
+    output$dr_download_both_pdf <- downloadHandler(
+      filename = function() {
+        paste(input$dimReductionMethod, "_both_plots_", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        req(DR_results$before, DR_results$after)
+
+        # 设置PDF输出的尺寸
+        pdf(file, width = input$dr_plot_width * 2, height = input$dr_plot_height)
+
+        # 创建两行一列的布局
+        gridExtra::grid.arrange(
+          plot_DR_results(DR_results$before, rv$sample_info, "Before Normalization"),
+          plot_DR_results(DR_results$after, rv$sample_info, "After Normalization"),
+          ncol = 2
+        )
+        dev.off()
+      }
+    )
 
   })
 }
