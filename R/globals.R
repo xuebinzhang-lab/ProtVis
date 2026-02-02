@@ -142,3 +142,44 @@ download_icon <- HTML('
   <path d="M9 8H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 </svg>
 ')
+volcano_icon <- HTML('
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 坐标轴 -->
+  <path d="M5 19L19 19" stroke="#333333" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M5 19L5 5" stroke="#333333" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- 坐标轴箭头 -->
+  <path d="M20 19L18 17M20 19L18 21" stroke="#333333" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M5 4L3 6M5 4L7 6" stroke="#333333" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- 坐标轴标签 -->
+  <text x="22" y="20" font-size="3" text-anchor="start" fill="#333333">x</text>
+  <text x="4" y="3" font-size="3" text-anchor="start" fill="#333333">y</text>
+
+  <!-- 火山图散点 -->
+  <!-- 左侧：下调点（蓝色） -->
+  <circle cx="8" cy="12" r="1" fill="#3498db" fill-opacity="0.8" stroke="#2980b9" stroke-width="0.5"/>
+  <circle cx="6" cy="14" r="0.8" fill="#3498db" fill-opacity="0.8" stroke="#2980b9" stroke-width="0.5"/>
+  <circle cx="7" cy="10" r="0.6" fill="#3498db" fill-opacity="0.6" stroke="#2980b9" stroke-width="0.5"/>
+  <circle cx="5" cy="16" r="1.2" fill="#3498db" fill-opacity="0.9" stroke="#2980b9" stroke-width="0.5"/>
+  <circle cx="9" cy="8" r="0.5" fill="#3498db" fill-opacity="0.5" stroke="#2980b9" stroke-width="0.5"/>
+
+  <!-- 中间：不显著点（灰色） -->
+  <circle cx="12" cy="10" r="0.4" fill="#95a5a6" fill-opacity="0.4" stroke="#7f8c8d" stroke-width="0.5"/>
+  <circle cx="10" cy="12" r="0.5" fill="#95a5a6" fill-opacity="0.4" stroke="#7f8c8d" stroke-width="0.5"/>
+  <circle cx="14" cy="8" r="0.3" fill="#95a5a6" fill-opacity="0.4" stroke="#7f8c8d" stroke-width="0.5"/>
+  <circle cx="13" cy="14" r="0.6" fill="#95a5a6" fill-opacity="0.4" stroke="#7f8c8d" stroke-width="0.5"/>
+  <circle cx="11" cy="16" r="0.4" fill="#95a5a6" fill-opacity="0.4" stroke="#7f8c8d" stroke-width="0.5"/>
+
+  <!-- 右侧：上调点（红色） -->
+  <circle cx="16" cy="6" r="1.5" fill="#e74c3c" fill-opacity="0.9" stroke="#c0392b" stroke-width="0.5"/>
+  <circle cx="18" cy="8" r="1.3" fill="#e74c3c" fill-opacity="0.9" stroke="#c0392b" stroke-width="0.5"/>
+  <circle cx="14" cy="4" r="1" fill="#e74c3c" fill-opacity="0.8" stroke="#c0392b" stroke-width="0.5"/>
+  <circle cx="20" cy="10" r="0.8" fill="#e74c3c" fill-opacity="0.7" stroke="#c0392b" stroke-width="0.5"/>
+  <circle cx="16" cy="3" r="1.8" fill="#e74c3c" fill-opacity="0.9" stroke="#c0392b" stroke-width="0.5"/>
+
+  <!-- 阈值线 -->
+  <path d="M5 9L19 9" stroke="#2ecc71" stroke-width="0.8" stroke-dasharray="2 2"/>
+  <path d="M5 15L19 15" stroke="#2ecc71" stroke-width="0.8" stroke-dasharray="2 2"/>
+</svg>
+')

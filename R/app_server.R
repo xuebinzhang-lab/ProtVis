@@ -49,6 +49,7 @@ app_server <- function(input, output, session) {
   boxplot_module_server("box1")
   swissmodel_server("swissmodel")
   stacked_column_chart_server("stacked_column_chart")
+  DEG_server("DEG")
   # -------------------------------------------------------------------------
 
 
