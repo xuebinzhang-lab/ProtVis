@@ -1,3 +1,4 @@
+# UI 部分
 DEG_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -5,27 +6,64 @@ DEG_ui <- function(id) {
       sidebar = sidebar(
         width = 300,
         fileInput(ns("data_count_file"), "Upload Gene Expression Data", accept = c(".xlsx")),
-        helpText("Note: The first column name should be 'GeneID'"),
-        actionButton(ns("generate_plot"), "Run"),
+        helpText("Note: The first column name in expression file should be 'GeneID'"),
+        fileInput(ns("group_file"), "Upload Group Information", accept = c(".xlsx")),
+        helpText("Note: The first column in the group file should be 'Sample', and the second column should be 'Group'"),
+        actionButton(ns("generate_plot"), "Run Analysis", class = "btn-primary"),
+
+        hr(),
+
         accordion(
           accordion_panel(
-            title = "PCA",
-            icon = correlation_icon,
-            numericInput(ns("download_width_pca"), "Width of PCA Plot Download (inches)", value = 7),
-            numericInput(ns("download_height_pca"), "Height of PCA Plot Download (inches)", value = 7),
-            downloadButton(ns("download_pca"), "Download PCA Plot PDF")  # PCA下载按钮
-          )
-        ),
-        accordion(
+            title = "PCA Settings",
+            icon = pca_icon,
+            # PCA图形设置
+            selectInput(ns("pca_colby"), "Color by:",
+                        choices = c("None" = "none"),
+                        selected = "none"),
+            selectInput(ns("pca_shapeby"), "Shape by:",
+                        choices = c("None" = "none"),
+                        selected = "none"),
+            selectInput(ns("pca_pointsize"), "Point Size:",
+                        choices = c("Small" = 2, "Medium" = 3, "Large" = 4),
+                        selected = 3),
+
+            # 动态组颜色设置
+            uiOutput(ns("group_colors_ui")),
+
+            colourpicker::colourInput(ns("pca_base_color"), "Base Color (when no grouping)", value = "#2E86AB"),
+            checkboxInput(ns("pca_show_labels"), "Show Sample Labels", value = FALSE),
+            checkboxInput(ns("pca_encircle"), "Encircle Groups", value = TRUE),
+            checkboxInput(ns("pca_show_ellipse"), "Show Confidence Ellipse", value = TRUE),
+            numericInput(ns("pca_ellipse_alpha"), "Ellipse Transparency",
+                         value = 0.2, min = 0, max = 1, step = 0.1),
+            numericInput(ns("pca_legend_size"), "Legend Text Size",
+                         value = 12, min = 8, max = 20, step = 1),
+
+            hr(),
+            numericInput(ns("download_width_pca"), "Width of PCA Plot (inches)",
+                         value = 8, min = 3, max = 20),
+            numericInput(ns("download_height_pca"), "Height of PCA Plot (inches)",
+                         value = 7, min = 3, max = 20),
+            downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm")
+          ),
           accordion_panel(
-            title = "Volcano Map",
+            title = "Volcano Plot Settings",
             icon = volcano_icon,
-            colourpicker::colourInput(ns("color_up"), "Color for Up", value = "salmon"),
-            colourpicker::colourInput(ns("color_down"), "Color for Down", value = "lightblue"),
+            colourpicker::colourInput(ns("color_up"), "Color for Up-regulated", value = "salmon"),
+            colourpicker::colourInput(ns("color_down"), "Color for Down-regulated", value = "lightblue"),
             colourpicker::colourInput(ns("color_not_sig"), "Color for Not Significant", value = "grey"),
-            downloadButton(ns("download_pdf"), "Download Volcano Plot PDF"),
-            numericInput(ns("download_width_voc"), "Width of Volcano Plot Download (inches)", value = 7),
-            numericInput(ns("download_height_voc"), "Height of Volcano Plot Download (inches)", value = 7)
+            numericInput(ns("volcano_point_size"), "Point Size",
+                         value = 2, min = 1, max = 5, step = 0.5),
+            sliderInput(ns("volcano_alpha"), "Point Transparency",
+                        min = 0.1, max = 1, value = 0.7, step = 0.1),
+            checkboxInput(ns("volcano_show_grid"), "Show Grid", value = FALSE),
+            hr(),
+            numericInput(ns("download_width_voc"), "Width of Volcano Plot (inches)",
+                         value = 8, min = 3, max = 20),
+            numericInput(ns("download_height_voc"), "Height of Volcano Plot (inches)",
+                         value = 7, min = 3, max = 20),
+            downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm")
           )
         )
       ),
@@ -35,17 +73,16 @@ DEG_ui <- function(id) {
           height = 750,
           card(
             height = "800px",
-            card_header("PCA"),
+            card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
             card_body(
-              plotOutput(ns("pca_plot"))  # 用于展示PCA图
+              plotOutput(ns("pca_plot"), height = "700px")
             )
           ),
           card(
             height = "800px",
-            card_header("Volcano Map"),
+            card_header("Volcano Plot", icon = shiny::icon("fire")),
             card_body(
-              uiOutput(ns("progress_ui")),
-              plotOutput(ns("voc_plot"))
+              plotOutput(ns("voc_plot"), height = "700px")
             )
           )
         )
@@ -53,154 +90,450 @@ DEG_ui <- function(id) {
     )
   )
 }
+
+# Server 部分
 DEG_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # 状态管理
+    analysis_ready <- reactiveVal(FALSE)
+
     # 反应性加载数据
-    data_count <- reactive({
+    expression_data <- reactive({
       req(input$data_count_file)
-      readxl::read_xlsx(input$data_count_file$datapath)
+      df <- readxl::read_xlsx(input$data_count_file$datapath)
+      validate(
+        need("GeneID" %in% colnames(df), "Error: Expression file must contain 'GeneID' column"),
+        need(ncol(df) > 1, "Error: Expression file must contain sample columns")
+      )
+      return(df)
     })
 
-    # 创建进度条 UI - 可选
-    output$progress_ui <- renderUI({
-      req(input$generate_plot)
-      withProgress(message = 'Running Differential Expression Analysis...', value = 0, {
-        incProgress(0.5, detail = "Loading data...")
-        incProgress(0.5, detail = "Generating volcano plot...")
+    # 加载分组信息
+    group_data <- reactive({
+      req(input$group_file)
+      df <- readxl::read_xlsx(input$group_file$datapath)
+      validate(
+        need("Sample" %in% colnames(df), "Error: Group file must contain 'Sample' column"),
+        need("Group" %in% colnames(df), "Error: Group file must contain 'Group' column")
+      )
+      return(df)
+    })
+
+    # 获取分组数据的列名（用于PCA颜色和形状选择）
+    group_columns <- reactive({
+      req(group_data())
+      cols <- colnames(group_data())
+      # 排除Sample列
+      cols <- cols[cols != "Sample"]
+      return(cols)
+    })
+
+    # 获取当前分组变量的不同组别
+    selected_groups <- reactive({
+      req(group_data(), input$pca_colby)
+      if (input$pca_colby != "none") {
+        groups <- unique(group_data()[[input$pca_colby]])
+        return(sort(as.character(groups)))  # 确保是字符型并排序
+      }
+      return(NULL)
+    })
+
+    # 观察分组数据变化，更新PCA设置选项
+    observeEvent(group_data(), {
+      cols <- group_columns()
+      if(length(cols) > 0) {
+        # 更新颜色选择
+        updateSelectInput(session, "pca_colby",
+                          choices = c("None" = "none", cols),
+                          selected = "Group")
+        # 更新形状选择
+        updateSelectInput(session, "pca_shapeby",
+                          choices = c("None" = "none", cols),
+                          selected = "none")
+      }
+    })
+
+    # 观察分组列选择变化
+    observeEvent(input$pca_colby, {
+      if (input$pca_colby != "none" && !is.null(group_data())) {
+        # 清除之前可能存在的颜色输入
+        removeUI(
+          selector = paste0("#", ns("group_colors_title")),
+          immediate = TRUE
+        )
+      }
+    })
+
+    # 生成动态颜色选择器
+    output$group_colors_ui <- renderUI({
+      groups <- selected_groups()
+
+      if (is.null(groups) || input$pca_colby == "none") {
+        return(NULL)  # 如果没有选择分组或分组为"none"，不显示颜色选择器
+      }
+
+      # 生成一组美观的默认颜色
+      default_colors <- c(
+        "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+        "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
+        "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F",
+        "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA"
+      )
+
+      # 为每个组创建颜色选择器
+      color_pickers <- lapply(seq_along(groups), function(i) {
+        group <- groups[i]
+        default_color <- default_colors[(i-1) %% length(default_colors) + 1]
+
+        # 为每个组创建唯一的ID
+        group_id <- gsub("[^A-Za-z0-9]", "_", group)
+
+        tagList(
+          colourpicker::colourInput(
+            ns(paste0("color_", group_id)),
+            label = paste("Color for:", group),
+            value = default_color
+          )
+        )
       })
-    })
 
-    # 进行差异分析
-    res_tbl <- reactive({
-      count_data <- data_count()
-
-      # 处理count数据并做差异分析
-      data_count.mat <- count_data %>%
-        column_to_rownames("GeneID") %>%
-        mutate_if(is.numeric, ceiling) %>% as.matrix()
-
-      colData = data.frame(
-        row.names = colnames(data_count.mat),
-        group = rep(c("B73", "Y12"), each = 3) %>% factor(levels = c("B73", "Y12"))
+      # 添加一个重置按钮
+      reset_button <- actionButton(
+        ns("reset_colors"),
+        "Reset Colors to Default",
+        icon = icon("refresh"),
+        class = "btn-sm btn-outline-secondary"
       )
 
-      dds <- DESeqDataSetFromMatrix(countData = data_count.mat, colData = colData, design = ~ group)
-      dds <- DESeq(dds)
-      res <- results(dds, contrast = c("group", "B73", "Y12"))
-
-      res_tbl <- res %>%
-        as.data.frame() %>%
-        tibble::rownames_to_column("GeneID") %>%
-        mutate(regular = case_when(
-          padj < 0.05 & log2FoldChange > 1 ~ "up",
-          padj < 0.05 & log2FoldChange < -1 ~ "down",
-          TRUE ~ "not sig"
-        ))
-
-      return(res_tbl)
-    })
-
-    # PCA 计算和可视化
-    pca_res <- reactive({
-      count_data <- data_count()
-      data_count.mat <- count_data %>%
-        column_to_rownames("GeneID")
-
-      # 创建分组信息
-      group <- data.frame(
-        group = c("B73","B73","B73","Y12","Y12","Y12")
+      tagList(
+        h5("Customize Group Colors:", id = ns("group_colors_title")),
+        br(),
+        color_pickers,
+        br(),
+        reset_button
       )
-      rownames(group) <- colnames(data_count.mat)
-
-      # 进行PCA分析
-      pca_result <- PCAtools::pca(data_count.mat, metadata = group)
-
-      return(pca_result)
     })
 
-    # 保存PCA图的reactive值
-    pca_plot_ready <- reactiveVal(FALSE)  # 控制PCA图的显示
+    # 处理颜色重置按钮
+    observeEvent(input$reset_colors, {
+      groups <- selected_groups()
+      if (!is.null(groups)) {
+        default_colors <- c(
+          "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+          "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
+          "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F",
+          "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA"
+        )
 
-    # 在点击"Run"按钮后生成PCA图
+        for (i in seq_along(groups)) {
+          group <- groups[i]
+          default_color <- default_colors[(i-1) %% length(default_colors) + 1]
+          group_id <- gsub("[^A-Za-z0-9]", "_", group)
+          colourpicker::updateColourInput(
+            session,
+            paste0("color_", group_id),
+            value = default_color
+          )
+        }
+      }
+    })
+
+    # 获取用户选择的颜色
+    get_group_colors <- reactive({
+      groups <- selected_groups()
+      if (is.null(groups) || input$pca_colby == "none") {
+        return(NULL)
+      }
+
+      colors <- character(0)
+
+      for (group in groups) {
+        group_id <- gsub("[^A-Za-z0-9]", "_", group)
+        color_input <- paste0("color_", group_id)
+
+        if (!is.null(input[[color_input]])) {
+          colors <- c(colors, input[[color_input]])
+        } else {
+          # 如果颜色未设置，使用默认颜色
+          default_colors <- c(
+            "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+            "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5"
+          )
+          default_color <- default_colors[(which(groups == group) - 1) %% length(default_colors) + 1]
+          colors <- c(colors, default_color)
+        }
+      }
+
+      names(colors) <- groups
+      return(colors)
+    })
+
+    # 创建样本信息
+    sample_info <- reactive({
+      req(group_data())
+      col_data <- group_data() %>%
+        tibble::column_to_rownames("Sample")
+      return(col_data)
+    })
+
+    # 运行分析
     observeEvent(input$generate_plot, {
-      pca_plot_ready(TRUE)
+      # 验证数据
+      validate(
+        need(!is.null(expression_data()), "Please upload expression data"),
+        need(!is.null(sample_info()), "Please upload group information"),
+        need(nrow(expression_data()) > 0, "Expression data is empty"),
+        need(nrow(sample_info()) > 0, "Group information is empty")
+      )
+
+      # 检查样本名称是否匹配
+      expr_samples <- colnames(expression_data())[-1]  # 排除GeneID列
+      group_samples <- rownames(sample_info())
+
+      validate(
+        need(all(expr_samples %in% group_samples),
+             paste("Error: Sample names in expression data do not match group data.\n",
+                   "Expression samples:", paste(expr_samples, collapse = ", "), "\n",
+                   "Group samples:", paste(group_samples, collapse = ", ")))
+      )
+
+      analysis_ready(TRUE)
     })
 
-    # 绘制PCA图并保存到变量中
-    pca_plot_obj <- reactive({
-      req(pca_plot_ready())  # 确保PCA图只有在点击按钮后才显示
-      pca_result <- pca_res()
-      pca_plot <- PCAtools::biplot(pca_result,
-                                   x = "PC1",
-                                   y = "PC2",
-                                   colby = "group",        # 按组别着色
-                                   legendPosition = "right",  # 图例位置
-                                   lab = NULL,               # 不显示样本标签
-                                   encircle = TRUE,          # 添加分组椭圆
-                                   encircleFill = TRUE)      # 填充椭圆区域
-      return(pca_plot)
+    # 进行PCA分析
+    pca_result <- reactive({
+      req(analysis_ready(), expression_data(), sample_info())
+
+      # 提取表达矩阵
+      expr_mat <- expression_data() %>%
+        tibble::column_to_rownames("GeneID") %>%
+        as.matrix()
+
+      # 确保样本顺序一致
+      expr_mat <- expr_mat[, rownames(sample_info()), drop = FALSE]
+
+      # 运行PCA
+      pca <- PCAtools::pca(expr_mat, metadata = sample_info(), removeVar = 0.1)
+      return(pca)
     })
 
     # 绘制PCA图
-    output$pca_plot <- renderPlot({
-      req(pca_plot_ready())  # 只有点击后才绘制图形
-      pca_plot_obj()  # 使用保存的变量进行渲染
+    pca_plot_obj <- reactive({
+      req(pca_result())
+
+      # 获取颜色和形状设置
+      colby <- input$pca_colby
+      shapeby <- input$pca_shapeby
+      show_labels <- input$pca_show_labels
+      encircle <- input$pca_encircle
+      show_ellipse <- input$pca_show_ellipse
+      ellipse_alpha <- input$pca_ellipse_alpha
+      point_size <- as.numeric(input$pca_pointsize)
+      base_color <- input$pca_base_color
+      legend_size <- input$pca_legend_size
+
+      # 基础PCA图设置
+      pca_args <- list(
+        pca_result(),
+        x = "PC1",
+        y = "PC2",
+        legendPosition = "right",
+        legendLabSize = legend_size,
+        legendIconSize = 6,
+        pointSize = point_size,
+        title = "PCA Plot",
+        subtitle = "Principal Component Analysis"
+      )
+
+      # 设置颜色
+      if (colby != "none") {
+        pca_args$colby <- colby
+
+        # 获取用户定义的颜色
+        group_colors <- get_group_colors()
+        if (length(group_colors) > 0) {
+          pca_args$colkey <- group_colors
+        }
+      } else {
+        pca_args$colby <- NULL
+        pca_args$colkey <- base_color
+      }
+
+      # 设置形状
+      if (shapeby != "none") {
+        pca_args$shape <- shapeby
+      } else {
+        pca_args$shape <- NULL
+      }
+
+      # 设置样本标签
+      if (show_labels) {
+        pca_args$lab <- rownames(pca_result()$metadata)
+      } else {
+        pca_args$lab <- NULL
+      }
+
+      # 设置椭圆
+      if (encircle && colby != "none" && show_ellipse) {
+        pca_args$encircle <- TRUE
+        pca_args$encircleFill <- TRUE
+        pca_args$encircleAlpha <- ellipse_alpha
+        pca_args$encircleLineSize <- 1
+      } else {
+        pca_args$encircle <- FALSE
+      }
+
+      # 绘制图形
+      pca_plot <- do.call(PCAtools::biplot, pca_args)
+
+      return(pca_plot)
     })
 
-    # 绘制火山图并保存到变量中
-    voc_plot_obj <- reactive({
-      req(input$generate_plot)
-      res_tbl_data <- res_tbl()  # 获取差异分析结果
+    # 进行差异表达分析
+    deseq_results <- eventReactive(input$generate_plot, {
+      req(expression_data(), sample_info())
 
-      # 绘制火山图
-      voc_plot <- ggplot(res_tbl_data, aes(x = log2FoldChange, y = -log10(padj))) +
-        geom_point(aes(color = regular, size = -log10(padj)), alpha = 0.7) +
-        scale_color_manual(values = c(
-          "up" = input$color_up,
-          "down" = input$color_down,
-          "not sig" = input$color_not_sig
-        )) +
-        scale_size(range = c(0, 1.5)) +
-        geom_hline(aes(yintercept = -log10(0.05)), linewidth = 0.3, linetype = "dashed", color = "black") +
-        geom_vline(aes(xintercept = -1), linewidth = 0.3, linetype = "dashed", color = "black") +
-        geom_vline(aes(xintercept = 1), linewidth = 0.3, linetype = "dashed", color = "black") +
-        coord_cartesian(ylim = c(0, 50)) +
-        theme_bw() +
-        theme(
-          line = element_line(linewidth = 0.5, colour = "black"),
-          text = element_text(size = 7, colour = "black"),
-          axis.title = element_text(size = 7, colour = "black"),
-          rect = element_rect(linewidth = 0.5, colour = "black"),
-          panel.grid = element_blank(),
-          legend.position = "none"
+      withProgress(message = 'Running DESeq2 analysis...', value = 0.3, {
+        # 准备计数矩阵
+        count_mat <- expression_data() %>%
+          tibble::column_to_rownames("GeneID") %>%
+          mutate(across(everything(), ceiling)) %>%
+          as.matrix()
+
+        # 确保样本顺序一致
+        count_mat <- count_mat[, rownames(sample_info()), drop = FALSE]
+
+        # 创建DESeq2对象
+        incProgress(0.2, detail = "Creating DESeq2 object...")
+        dds <- DESeqDataSetFromMatrix(
+          countData = count_mat,
+          colData = sample_info(),
+          design = ~ Group
         )
-      return(voc_plot)
+
+        # 运行DESeq2
+        incProgress(0.3, detail = "Running DESeq2...")
+        dds <- DESeq(dds)
+
+        # 获取结果
+        incProgress(0.2, detail = "Extracting results...")
+        res <- results(dds, contrast = c("Group", "B73", "Y12"))
+
+        # 整理结果
+        res_tbl <- res %>%
+          as.data.frame() %>%
+          tibble::rownames_to_column("GeneID") %>%
+          mutate(
+            regular = case_when(
+              padj < 0.05 & log2FoldChange > 1 ~ "up",
+              padj < 0.05 & log2FoldChange < -1 ~ "down",
+              TRUE ~ "not sig"
+            ),
+            significant = ifelse(padj < 0.05 & abs(log2FoldChange) > 1, "yes", "no")
+          )
+
+        return(res_tbl)
+      })
     })
 
     # 绘制火山图
-    output$voc_plot <- renderPlot({
-      voc_plot_obj()  # 使用保存的变量进行渲染
+    voc_plot_obj <- reactive({
+      req(deseq_results())
+      res_tbl <- deseq_results()
+
+      # 计算统计信息用于副标题
+      stats <- list(
+        up_regulated = sum(res_tbl$regular == "up", na.rm = TRUE),
+        down_regulated = sum(res_tbl$regular == "down", na.rm = TRUE),
+        significant = sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE)
+      )
+
+      # 创建火山图
+      p <- ggplot(res_tbl, aes(x = log2FoldChange, y = -log10(padj))) +
+        geom_point(aes(color = regular),
+                   size = input$volcano_point_size,
+                   alpha = input$volcano_alpha) +
+        scale_color_manual(
+          values = c(
+            "up" = input$color_up,
+            "down" = input$color_down,
+            "not sig" = input$color_not_sig
+          ),
+          name = "Expression"
+        ) +
+        geom_hline(
+          yintercept = -log10(0.05),
+          linetype = "dashed",
+          color = "black",
+          alpha = 0.5
+        ) +
+        geom_vline(
+          xintercept = c(-1, 1),
+          linetype = "dashed",
+          color = "black",
+          alpha = 0.5
+        ) +
+        labs(
+          title = "Volcano Plot",
+          subtitle = paste(
+            "Up-regulated:", stats$up_regulated,
+            "| Down-regulated:", stats$down_regulated,
+            "| Total significant:", stats$significant
+          ),
+          x = "log2(Fold Change)",
+          y = "-log10(Adjusted p-value)"
+        ) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(size = 16, face = "bold"),
+          plot.subtitle = element_text(size = 12, color = "gray50"),
+          axis.title = element_text(size = 12),
+          legend.position = "right",
+          panel.grid = if(input$volcano_show_grid) element_line(color = "gray90") else element_blank(),
+          panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+        ) +
+        coord_cartesian(ylim = c(0, max(-log10(res_tbl$padj[is.finite(-log10(res_tbl$padj))]), na.rm = TRUE) * 1.1))
+
+      return(p)
     })
 
-    # 生成 PCA 图下载
+    # 渲染PCA图
+    output$pca_plot <- renderPlot({
+      req(pca_plot_obj())
+      pca_plot_obj()
+    })
+
+    # 渲染火山图
+    output$voc_plot <- renderPlot({
+      req(voc_plot_obj())
+      voc_plot_obj()
+    })
+
+    # 下载PCA图
     output$download_pca <- downloadHandler(
       filename = function() {
-        paste("PCA_plot", Sys.Date(), ".pdf", sep = "")
+        paste("PCA_plot_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        ggsave(file, plot = pca_plot_obj(), device = "pdf", width = input$download_width_pca, height = input$download_height_pca) # 使用用户输入的尺寸
+        req(pca_plot_obj())
+        pdf(file, width = input$download_width_pca, height = input$download_height_pca)
+        print(pca_plot_obj())
+        dev.off()
       }
     )
 
-    # 生成 Volcano Plot 下载
+    # 下载火山图
     output$download_pdf <- downloadHandler(
       filename = function() {
-        paste("volcano_plot", Sys.Date(), ".pdf", sep = "")
+        paste("volcano_plot_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        ggsave(file, plot = voc_plot_obj(), device = "pdf", width = input$download_width_voc, height = input$download_height_voc) # 使用用户输入的尺寸
+        req(voc_plot_obj())
+        pdf(file, width = input$download_width_voc, height = input$download_height_voc)
+        print(voc_plot_obj())
+        dev.off()
       }
     )
   })
