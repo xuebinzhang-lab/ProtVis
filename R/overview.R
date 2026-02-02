@@ -50,7 +50,7 @@ overview_ui <- function(id) {
               inputId = ns("exp_top_n"),
               label = "Top N Features:",
               min = 50,
-              max = 1000,
+              max = 2000,
               value = 500,
               step = 50
             ),

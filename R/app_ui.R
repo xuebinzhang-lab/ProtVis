@@ -152,7 +152,8 @@ app_ui <- function(request) {
         nav_panel("Protein Links", protein_links_ui("prot_links")),
         nav_panel("Protein Structure", protein_structure_ui("protein_structure")),
         nav_panel("Boxplot", boxplot_module_ui("box1")),
-        nav_panel("swissmodel", swissmodel_ui("swissmodel"))
+        nav_panel("swissmodel", swissmodel_ui("swissmodel")),
+        nav_panel("Stacked column diagram", stacked_column_chart_ui("stacked_column_chart"))
         ),
       #### Help ####
       nav_panel(

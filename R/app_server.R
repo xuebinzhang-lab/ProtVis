@@ -48,6 +48,7 @@ app_server <- function(input, output, session) {
   protein_structure_server("protein_structure")
   boxplot_module_server("box1")
   swissmodel_server("swissmodel")
+  stacked_column_chart_server("stacked_column_chart")
   # -------------------------------------------------------------------------
 
 
