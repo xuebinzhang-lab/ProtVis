@@ -31,7 +31,7 @@ data_transformed_ui <- function(id) {
             label = "Data transformed",
             choices = c("None", "log10", "log2", "Standardization", "Z-Score",
                         "scale", "center", "scale-center"),
-            selected = "None"
+            selected = "log2"
           )
         ),
         actionButton(ns("export_remove_noise_data"), "export data", class = "btn btn-light fw-bold"),

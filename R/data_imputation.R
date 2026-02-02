@@ -25,7 +25,6 @@ data_imputation_ui <- function(id) {
             selectInput(ns("choice_method"), "Method",
                         choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
                         selected = "Mean"),
-            numericInput(ns("knn_k"), "K for kNN", value = 5, min = 2, max = 20),
             numericInput(ns("minprob_q"), "q for MinProb", value = 0.01, min = 0, max = 0.05, step = 0.005),
             actionButton(ns("run_impute"), "Run Imputation", class = "btn btn-light fw-bold")
           ),
@@ -194,9 +193,9 @@ data_imputation_server <- function(id, shared_state) {
       req(rv$expression_matrix)
       df <- as.data.frame(rv$expression_matrix)
       method <- input$choice_method
-
+      set.seed(12345)
       if (method == "kNN") {
-        return(as.data.frame(VIM::kNN(df, k = input$knn_k)))
+        return(impute::impute.knn(as.matrix(df))$data)
       } else if (method == "RF") {
         return(as.data.frame(missForest::missForest(df)$ximp))
       } else if (method == "Mean") {
@@ -219,7 +218,7 @@ data_imputation_server <- function(id, shared_state) {
 
       # 先赋值到普通变量
       sample_info <- rv$sample_info
-      imputed_df <- imputed_data()
+      imputed_df <- as.data.frame(imputed_data())
 
       # 保存到 Step6_data_imputation.rda
       save(sample_info, imputed_df,

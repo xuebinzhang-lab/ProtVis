@@ -499,23 +499,26 @@ overview_server <- function(id, shared_state) {
                    size = 1.2, alpha = 0.8) +
         stat_ellipse(aes(x = V1, y = V2, fill = Type),
                      geom = 'polygon', level = 0.95, alpha = 0.25) +
+        stat_ellipse(aes(x = V1, y = V2, color = Type),
+                     geom = 'path', level = 0.95, alpha = 1, linewidth = 0.5)+
         ggsci::scale_color_lancet() +
-        theme_bw() +
+        ggsci::scale_fill_lancet()+
         labs(
           x = "Component 1",
           y = "Component 2",
           title = paste(input$dimReductionMethod, "analysis", title_suffix)
         ) +
-        theme(
-          plot.title = element_text(size = 12, hjust = 0.5),
-          panel.border = element_rect(colour = "black", size = 2),
-          axis.ticks = element_line(color = "black", linewidth = 2),
-          legend.text = element_text(size = 16),
-          axis.text = element_text(size = 16, colour = "black"),
-          axis.title = element_text(size = 16, colour = "black"),
-          panel.grid.major = element_line(color = "#EBEBEB", linewidth = 0.5),
-          panel.grid.minor = element_line(color = "#EBEBEB", linewidth = 0.2)
-        )
+        theme_bw()
+        # theme(
+        #   plot.title = element_text(size = 12, hjust = 0.5),
+        #   panel.border = element_rect(colour = "black", size = 2),
+        #   axis.ticks = element_line(color = "black", linewidth = 2),
+        #   legend.text = element_text(size = 16),
+        #   axis.text = element_text(size = 16, colour = "black"),
+        #   axis.title = element_text(size = 16, colour = "black"),
+        #   panel.grid.major = element_line(color = "#EBEBEB", linewidth = 0.5),
+        #   panel.grid.minor = element_line(color = "#EBEBEB", linewidth = 0.2)
+        # )
     }
 
     # 标准化前降维图
