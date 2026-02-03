@@ -45,7 +45,8 @@ DEG_ui <- function(id) {
                          value = 8, min = 3, max = 20),
             numericInput(ns("download_height_pca"), "Height of PCA Plot (inches)",
                          value = 7, min = 3, max = 20),
-            downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm")
+            downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm"),
+            downloadButton(ns("download_pca_data"), "Download PCA Data", class = "btn-sm")
           ),
           accordion_panel(
             title = "Volcano Plot Settings",
@@ -63,7 +64,8 @@ DEG_ui <- function(id) {
                          value = 8, min = 3, max = 20),
             numericInput(ns("download_height_voc"), "Height of Volcano Plot (inches)",
                          value = 7, min = 3, max = 20),
-            downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm")
+            downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm"),
+            downloadButton(ns("download_deg_data"), "Download DEG Data", class = "btn-sm")
           )
         )
       ),
@@ -75,14 +77,50 @@ DEG_ui <- function(id) {
             height = "800px",
             card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
             card_body(
-              plotOutput(ns("pca_plot"), height = "700px")
+              tabsetPanel(
+                type = "tabs",
+                tabPanel("Plot",
+                         plotOutput(ns("pca_plot"), height = "650px")
+                ),
+                tabPanel("PCA Data",
+                         div(
+                           style = "margin-bottom: 10px;",
+                           downloadButton(ns("download_pca_table"), "Download as CSV",
+                                          class = "btn-sm btn-success", style = "float: right;")
+                         ),
+                         DT::DTOutput(ns("pca_data_table"), height = "600px")
+                )
+              )
             )
           ),
           card(
             height = "800px",
             card_header("Volcano Plot", icon = shiny::icon("fire")),
             card_body(
-              plotOutput(ns("voc_plot"), height = "700px")
+              tabsetPanel(
+                type = "tabs",
+                tabPanel("Plot",
+                         plotOutput(ns("voc_plot"), height = "650px")
+                ),
+                tabPanel("DEG Results",
+                         div(
+                           style = "margin-bottom: 10px;",
+                           downloadButton(ns("download_degs"), "Download as CSV",
+                                          class = "btn-sm btn-success", style = "float: right;")
+                         ),
+                         DT::DTOutput(ns("deg_table"), height = "600px")
+                ),
+                tabPanel("Statistics",
+                         card(
+                           card_header("DEG Summary Statistics"),
+                           tableOutput(ns("deg_stats"))
+                         ),
+                         card(
+                           card_header("Top DEGs"),
+                           DT::DTOutput(ns("top_degs_table"), height = "300px")
+                         )
+                )
+              )
             )
           )
         )
@@ -391,6 +429,31 @@ DEG_server <- function(id) {
       return(pca_plot)
     })
 
+    # 准备PCA数据表格 (显示pca_result$rotated)
+    pca_rotated_data <- reactive({
+      req(pca_result())
+
+      # 获取旋转后的坐标
+      rotated_data <- as.data.frame(pca_result()$rotated)
+      rotated_data <- rotated_data[, 1:min(10, ncol(rotated_data))]  # 只显示前10个主成分
+
+      # 添加样本名
+      rotated_data <- cbind(
+        Sample = rownames(rotated_data),
+        rotated_data
+      )
+
+      # 添加分组信息
+      if (!is.null(sample_info())) {
+        rotated_data <- cbind(
+          rotated_data,
+          sample_info()
+        )
+      }
+
+      return(rotated_data)
+    })
+
     # 进行差异表达分析
     deseq_results <- eventReactive(input$generate_plot, {
       req(expression_data(), sample_info())
@@ -431,11 +494,49 @@ DEG_server <- function(id) {
               padj < 0.05 & log2FoldChange < -1 ~ "down",
               TRUE ~ "not sig"
             ),
-            significant = ifelse(padj < 0.05 & abs(log2FoldChange) > 1, "yes", "no")
-          )
+            significant = ifelse(padj < 0.05 & abs(log2FoldChange) > 1, "yes", "no"),
+            Regulation = case_when(
+              regular == "up" ~ "Up-regulated",
+              regular == "down" ~ "Down-regulated",
+              TRUE ~ "Not significant"
+            )
+          ) %>%
+          arrange(padj, desc(abs(log2FoldChange)))
 
         return(res_tbl)
       })
+    })
+
+    # 获取DEG统计信息
+    deg_stats <- reactive({
+      req(deseq_results())
+
+      res_tbl <- deseq_results()
+
+      stats <- list(
+        total_genes = nrow(res_tbl),
+        up_regulated = sum(res_tbl$regular == "up", na.rm = TRUE),
+        down_regulated = sum(res_tbl$regular == "down", na.rm = TRUE),
+        significant = sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE),
+        percent_sig = round(sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE) / nrow(res_tbl) * 100, 2)
+      )
+
+      return(stats)
+    })
+
+    # 获取top DEGs
+    top_degs <- reactive({
+      req(deseq_results())
+
+      res_tbl <- deseq_results()
+
+      # 获取显著差异表达的基因
+      sig_genes <- res_tbl %>%
+        filter(regular %in% c("up", "down")) %>%
+        arrange(padj, desc(abs(log2FoldChange))) %>%
+        head(20)  # 显示前20个
+
+      return(sig_genes)
     })
 
     # 绘制火山图
@@ -444,11 +545,7 @@ DEG_server <- function(id) {
       res_tbl <- deseq_results()
 
       # 计算统计信息用于副标题
-      stats <- list(
-        up_regulated = sum(res_tbl$regular == "up", na.rm = TRUE),
-        down_regulated = sum(res_tbl$regular == "down", na.rm = TRUE),
-        significant = sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE)
-      )
+      stats <- deg_stats()
 
       # 创建火山图
       p <- ggplot(res_tbl, aes(x = log2FoldChange, y = -log10(padj))) +
@@ -480,7 +577,8 @@ DEG_server <- function(id) {
           subtitle = paste(
             "Up-regulated:", stats$up_regulated,
             "| Down-regulated:", stats$down_regulated,
-            "| Total significant:", stats$significant
+            "| Total significant:", stats$significant,
+            paste0("(", stats$percent_sig, "%)")
           ),
           x = "log2(Fold Change)",
           y = "-log10(Adjusted p-value)"
@@ -511,6 +609,111 @@ DEG_server <- function(id) {
       voc_plot_obj()
     })
 
+    # 渲染PCA数据表格 (显示pca_result$rotated)
+    output$pca_data_table <- DT::renderDT({
+      req(pca_rotated_data())
+
+      DT::datatable(
+        pca_rotated_data(),
+        extensions = c('Buttons', 'Scroller'),
+        options = list(
+          pageLength = 10,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+          scrollX = TRUE,
+          scrollY = 550,
+          scroller = TRUE
+        ),
+        rownames = FALSE,
+        class = 'display compact'
+      )
+    })
+
+    # 渲染DEG结果表格 (显示res_tbl)
+    output$deg_table <- DT::renderDT({
+      req(deseq_results())
+
+      res_tbl <- deseq_results() %>%
+        select(GeneID, baseMean, log2FoldChange, lfcSE, stat, pvalue, padj, Regulation) %>%
+        mutate(
+          across(where(is.numeric), ~ round(., 4)),
+          padj = format(padj, scientific = TRUE, digits = 3)
+        )
+
+      DT::datatable(
+        res_tbl,
+        extensions = c('Buttons', 'Scroller'),
+        options = list(
+          pageLength = 10,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+          scrollX = TRUE,
+          scrollY = 550,
+          scroller = TRUE
+        ),
+        rownames = FALSE,
+        class = 'display compact'
+      ) %>%
+        DT::formatStyle(
+          'Regulation',
+          backgroundColor = DT::styleEqual(
+            c('Up-regulated', 'Down-regulated', 'Not significant'),
+            c('#FFCCCC', '#CCE5FF', '#F2F2F2')
+          )
+        )
+    })
+
+    # 渲染DEG统计表格
+    output$deg_stats <- renderTable({
+      req(deg_stats())
+
+      stats <- deg_stats()
+
+      data.frame(
+        Statistic = c("Total Genes", "Up-regulated", "Down-regulated",
+                      "Total Significant", "Percentage Significant"),
+        Value = c(
+          stats$total_genes,
+          paste(stats$up_regulated, "genes"),
+          paste(stats$down_regulated, "genes"),
+          paste(stats$significant, "genes"),
+          paste(stats$percent_sig, "%")
+        )
+      )
+    }, align = 'lr')
+
+    # 渲染Top DEGs表格
+    output$top_degs_table <- DT::renderDT({
+      req(top_degs())
+
+      top_genes <- top_degs() %>%
+        select(GeneID, log2FoldChange, padj, Regulation) %>%
+        mutate(
+          log2FoldChange = round(log2FoldChange, 3),
+          padj = format(padj, scientific = TRUE, digits = 3)
+        )
+
+      DT::datatable(
+        top_genes,
+        extensions = c('Buttons', 'Scroller'),
+        options = list(
+          pageLength = 5,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+          scrollX = TRUE
+        ),
+        rownames = FALSE,
+        class = 'display compact'
+      ) %>%
+        DT::formatStyle(
+          'Regulation',
+          backgroundColor = DT::styleEqual(
+            c('Up-regulated', 'Down-regulated', 'Not significant'),
+            c('#FFCCCC', '#CCE5FF', '#F2F2F2')
+          )
+        )
+    })
+
     # 下载PCA图
     output$download_pca <- downloadHandler(
       filename = function() {
@@ -534,6 +737,50 @@ DEG_server <- function(id) {
         pdf(file, width = input$download_width_voc, height = input$download_height_voc)
         print(voc_plot_obj())
         dev.off()
+      }
+    )
+
+    # 下载PCA数据 (pca_result$rotated)
+    output$download_pca_table <- downloadHandler(
+      filename = function() {
+        paste("pca_rotated_data_", Sys.Date(), ".csv", sep = "")
+      },
+      content = function(file) {
+        req(pca_rotated_data())
+        write.csv(pca_rotated_data(), file, row.names = FALSE)
+      }
+    )
+
+    # 下载PCA数据 (从侧边栏按钮)
+    output$download_pca_data <- downloadHandler(
+      filename = function() {
+        paste("pca_rotated_data_", Sys.Date(), ".csv", sep = "")
+      },
+      content = function(file) {
+        req(pca_rotated_data())
+        write.csv(pca_rotated_data(), file, row.names = FALSE)
+      }
+    )
+
+    # 下载DEG数据 (res_tbl) - 从侧边栏按钮
+    output$download_deg_data <- downloadHandler(
+      filename = function() {
+        paste("deg_analysis_results_", Sys.Date(), ".csv", sep = "")
+      },
+      content = function(file) {
+        req(deseq_results())
+        write.csv(deseq_results(), file, row.names = FALSE)
+      }
+    )
+
+    # 下载DEG数据 (res_tbl) - 从表格内按钮
+    output$download_degs <- downloadHandler(
+      filename = function() {
+        paste("deg_results_", Sys.Date(), ".csv", sep = "")
+      },
+      content = function(file) {
+        req(deseq_results())
+        write.csv(deseq_results(), file, row.names = FALSE)
       }
     )
   })
