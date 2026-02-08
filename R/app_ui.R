@@ -120,7 +120,8 @@ app_ui <- function(request) {
         nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
         nav_panel("Enrichment analysis", enrichment_analysis_ui("enrichment_analysis")),
         nav_panel("GSEA analysis", gsea_ui("gsea")),
-        nav_panel("Pathview", pathview_ui("pathview"))
+        nav_panel("Pathview", pathview_ui("pathview")),
+        nav_panel("Protein function", protein_fun_ui("protein_fun"))
       ),
 
       #### Multi-omics Data ####

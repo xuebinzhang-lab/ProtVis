@@ -28,7 +28,7 @@ protein_structure_ui <- function(id) {
       page_fluid(
         layout_column_wrap(
           width = 1,
-          height = 600,
+          height = 750,
           navset_card_tab(
             height = 600,
             full_screen = TRUE,
