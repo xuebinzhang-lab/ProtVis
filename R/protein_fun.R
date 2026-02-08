@@ -10,9 +10,8 @@ protein_fun_ui <- function(id) {
         uiOutput(ns("load_status_panel")),
         # 添加选中的蛋白信息显示
         uiOutput(ns("selected_protein_info")),
-        fileInput(ns("fasta_file"), "Upload FASTA File",
-                  accept = c(".fa", ".fasta", ".fasta.gz"),
-                  buttonLabel = "Browse...")
+        # 添加蛋白序列提取面板
+        uiOutput(ns("sequence_extract_panel"))
       ),
       page_fluid(
         layout_column_wrap(
@@ -75,9 +74,128 @@ protein_fun_server <- function(id, shared_state) {
       load_success = FALSE,
       selected_protein = NULL,
       protein_sequences = NULL,
-      domain_data = NULL
+      domain_data = NULL,
+      # 添加蛋白提取相关的reactive values
+      fasta_data = NULL,
+      extracted_seqs = NULL,
+      unmatched_ids = NULL,
+      current_protein_id = NULL  # 存储当前选中的蛋白ID
     )
 
+    # 蛋白序列提取面板UI - 简化版本
+    output$sequence_extract_panel <- renderUI({
+      tagList(
+        h4("Protein Sequence Extraction"),
+        # 只保留FASTA文件上传
+        fileInput(ns("fasta_file"), "Upload FASTA File",
+                  accept = c(".fa", ".fasta", ".fasta.gz"),
+                  buttonLabel = "Browse...",
+                  width = "100%"),
+
+        # 显示当前选中的蛋白ID
+        uiOutput(ns("current_protein_display")),
+
+        # 提取按钮
+        actionButton(ns("extract_seqs"), "Extract Sequence",
+                     class = "btn-primary btn-sm"),
+
+        # 状态显示
+        uiOutput(ns("extract_status"))
+      )
+    })
+
+    # 显示当前选中的蛋白ID
+    output$current_protein_display <- renderUI({
+      if (!is.null(rv$current_protein_id)) {
+        tagList(
+          div(style = "margin: 10px 0; padding: 8px; background: #f0f8ff; border-radius: 4px;",
+              strong("Current Protein ID:"),
+              br(),
+              tags$code(style = "color: #0066cc;", rv$current_protein_id)
+          )
+        )
+      } else {
+        div(style = "margin: 10px 0; padding: 8px; background: #fff3cd; border-radius: 4px;",
+            icon("info-circle"),
+            "Click on a point in the volcano plot to select a protein"
+        )
+      }
+    })
+
+    # 加载FASTA文件
+    observeEvent(input$fasta_file, {
+      req(input$fasta_file)
+
+      tryCatch({
+        if (endsWith(input$fasta_file$name, ".gz")) {
+          con <- gzfile(input$fasta_file$datapath)
+          rv$fasta_data <- Biostrings::readAAStringSet(con)
+          close(con)
+        } else {
+          rv$fasta_data <- Biostrings::readAAStringSet(input$fasta_file$datapath)
+        }
+        showNotification("FASTA file loaded successfully!", type = "message")
+      }, error = function(e) {
+        showNotification(paste("Error loading FASTA:", e$message), type = "error")
+        rv$fasta_data <- NULL
+      })
+    })
+
+    # 提取当前选中蛋白的序列
+    observeEvent(input$extract_seqs, {
+      req(rv$fasta_data, rv$current_protein_id)
+
+      tryCatch({
+        fasta_headers <- names(rv$fasta_data)
+
+        # 在FASTA头文件中查找匹配的蛋白ID
+        matched_idx <- stringr::str_detect(fasta_headers, rv$current_protein_id)
+
+        if (any(matched_idx)) {
+          rv$extracted_seqs <- rv$fasta_data[matched_idx]
+          showNotification(
+            sprintf("Sequence extracted for: %s", rv$current_protein_id),
+            type = "message"
+          )
+        } else {
+          showNotification(
+            sprintf("Protein ID '%s' not found in FASTA file", rv$current_protein_id),
+            type = "warning"
+          )
+          rv$extracted_seqs <- NULL
+        }
+      }, error = function(e) {
+        showNotification(paste("Extraction error:", e$message), type = "error")
+      })
+    })
+
+    # 提取状态显示
+    output$extract_status <- renderUI({
+      if (!is.null(rv$extracted_seqs) && !is.null(rv$current_protein_id)) {
+        tagList(
+          div(style = "margin-top: 10px; padding: 8px; background: #d4edda; border-radius: 4px;",
+              span(icon("check"), "Sequence extracted successfully!",
+                   style = "color: #155724; font-weight: bold;"),
+              br(),
+              span(sprintf("Protein: %s", rv$current_protein_id)),
+              br(),
+              span(sprintf("Sequence length: %d aa", Biostrings::width(rv$extracted_seqs)))
+          )
+        )
+      } else if (!is.null(rv$fasta_data)) {
+        div(style = "margin-top: 10px; padding: 8px; background: #d1ecf1; border-radius: 4px;",
+            span(icon("info"), "FASTA loaded. Click 'Extract Sequence' to get current protein.",
+                 style = "color: #0c5460;")
+        )
+      } else {
+        div(style = "margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px;",
+            span(icon("exclamation-triangle"), "Please upload a FASTA file first.",
+                 style = "color: #856404;")
+        )
+      }
+    })
+
+    # 原有的数据加载功能
     observeEvent(input$load_data, {
       req(shared_state$workdir)
       rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
@@ -191,7 +309,7 @@ protein_fun_server <- function(id, shared_state) {
 
           p <- ggplot(dep_data, aes(x = logFC, y = -log10(P.Value),
                                     color = regulation,
-                                    customdata = point_index,  # 添加自定义数据
+                                    customdata = point_index,
                                     text = paste("Protein:", ID,
                                                  "<br>logFC:", round(logFC, 3),
                                                  "<br>p-value:", format.pval(P.Value, digits = 3),
@@ -222,7 +340,7 @@ protein_fun_server <- function(id, shared_state) {
       }
     })
 
-    # 修复火山图点击事件
+    # 火山图点击事件 - 自动获取Protein ID
     observeEvent(event_data("plotly_click", source = "volcano"), {
       click_data <- event_data("plotly_click", source = "volcano")
       req(click_data, input$comparison_group, rv$dep_results)
@@ -255,8 +373,11 @@ protein_fun_server <- function(id, shared_state) {
 
         rv$selected_protein <- list(
           id = protein_id,
-          data = dep_data[point_index, , drop = FALSE]  # 使用drop=FALSE保持数据框结构
+          data = dep_data[point_index, , drop = FALSE]
         )
+
+        # 自动设置当前蛋白ID
+        rv$current_protein_id <- protein_id
 
         showNotification(paste("Selected protein:", protein_id))
       } else {
@@ -279,14 +400,29 @@ protein_fun_server <- function(id, shared_state) {
       )
     })
 
-    # 显示蛋白序列
+    # 显示蛋白序列 - 优先显示提取的序列
     output$protein_sequence <- renderPrint({
       req(rv$selected_protein)
 
       protein_id <- rv$selected_protein$id
 
+      # 优先从提取的序列中查找
+      if (!is.null(rv$extracted_seqs)) {
+        if (inherits(rv$extracted_seqs, "AAStringSet")) {
+          sequence <- as.character(rv$extracted_seqs[protein_id])
+          if (!is.null(sequence) && !is.na(sequence)) {
+            cat(">", protein_id, " (Extracted from FASTA)\n", sep = "")
+            seq_length <- nchar(sequence)
+            for (i in seq(1, seq_length, by = 60)) {
+              cat(substr(sequence, i, min(i+59, seq_length)), "\n")
+            }
+            return()
+          }
+        }
+      }
+
+      # 如果没有提取的序列，使用预加载的序列
       if (!is.null(rv$protein_sequences)) {
-        # 从序列数据中查找
         if (inherits(rv$protein_sequences, "AAStringSet")) {
           sequence <- as.character(rv$protein_sequences[protein_id])
         } else if (is.character(rv$protein_sequences)) {
@@ -296,19 +432,18 @@ protein_fun_server <- function(id, shared_state) {
         }
 
         if (!is.null(sequence) && !is.na(sequence)) {
-          cat(">", protein_id, "\n", sep = "")
-          # 格式化序列显示
+          cat(">", protein_id, " (Pre-loaded)\n", sep = "")
           seq_length <- nchar(sequence)
           for (i in seq(1, seq_length, by = 60)) {
             cat(substr(sequence, i, min(i+59, seq_length)), "\n")
           }
         } else {
           cat("Sequence not found for:", protein_id, "\n")
-          cat("Please check if sequence data is available.")
+          cat("Please upload a FASTA file and click 'Extract Sequence'")
         }
       } else {
-        cat("No sequence data loaded.\n")
-        cat("Please provide protein sequence data.")
+        cat("No sequence data available.\n")
+        cat("Please upload a FASTA file and click 'Extract Sequence'")
       }
     })
 
@@ -318,17 +453,33 @@ protein_fun_server <- function(id, shared_state) {
         paste0(rv$selected_protein$id, ".fasta")
       },
       content = function(file) {
-        req(rv$selected_protein, rv$protein_sequences)
+        req(rv$selected_protein)
 
         protein_id <- rv$selected_protein$id
-        if (inherits(rv$protein_sequences, "AAStringSet")) {
-          sequence <- as.character(rv$protein_sequences[protein_id])
-        } else {
-          sequence <- rv$protein_sequences[protein_id]
+        sequence <- NULL
+
+        # 优先使用提取的序列
+        if (!is.null(rv$extracted_seqs)) {
+          if (inherits(rv$extracted_seqs, "AAStringSet")) {
+            sequence <- as.character(rv$extracted_seqs[protein_id])
+          }
         }
 
-        fasta_content <- paste0(">", protein_id, "\n", sequence)
-        writeLines(fasta_content, file)
+        # 如果没有提取的序列，使用预加载的序列
+        if (is.null(sequence) && !is.null(rv$protein_sequences)) {
+          if (inherits(rv$protein_sequences, "AAStringSet")) {
+            sequence <- as.character(rv$protein_sequences[protein_id])
+          } else {
+            sequence <- rv$protein_sequences[protein_id]
+          }
+        }
+
+        if (!is.null(sequence)) {
+          fasta_content <- paste0(">", protein_id, "\n", sequence)
+          writeLines(fasta_content, file)
+        } else {
+          showNotification("No sequence available for download", type = "warning")
+        }
       }
     )
 
