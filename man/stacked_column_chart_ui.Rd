@@ -7,9 +7,18 @@
 stacked_column_chart_ui(id)
 }
 \arguments{
-\item{id}{A unique identifier for the module.}
+\item{id}{A unique identifier for the Shiny namespace.}
+}
+\value{
+A Shiny UI tagList containing the stacked bar chart interface.
 }
 \description{
-This UI function creates a stacked bar chart interface with a file upload, color input options,
-label customization, and chart download capabilities.
+Creates a user interface for generating customizable stacked bar charts
+from uploaded CSV data. Supports color customization, coordinate flipping,
+axis labeling, and chart download.
+}
+\examples{
+\dontrun{
+ui <- stacked_column_chart_ui("stacked_chart")
+}
 }

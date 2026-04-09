@@ -1,91 +1,85 @@
 #' Data Imputation UI Module
-#'
 #' This function creates the UI for the data imputation module.
 #' It includes controls for loading data, visualizing missing values,
 #' selecting imputation methods, and viewing imputed results.
-#'
 #' @param id Module ID used to namespace the UI elements.
-#'
 #' @return A Shiny UI element containing sidebar controls and main panel tabs.
+#' @name data_imputation_ui
 #' @export
 data_imputation_ui <- function(id) {
   ns <- NS(id)
-  tagList(
+  shiny::tagList(
     shinyjs::useShinyjs(),
-    layout_sidebar(
-      sidebar = sidebar(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
-        actionButton(ns("visualize_missing_values"), "Visualize missing values", class = "btn btn-light fw-bold"),
-        uiOutput(ns("load_status_panel")),
-        accordion(
-          accordion_panel(
+        shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
+        shiny::actionButton(ns("visualize_missing_values"), "Visualize missing values", class = "btn btn-light fw-bold"),
+        shiny::uiOutput(ns("load_status_panel")),
+        bslib::accordion(
+          bslib::accordion_panel(
             title = "Imputation Settings",
             icon = imputation_settings_icon,
-            selectInput(ns("choice_method"), "Method",
+            shiny::selectInput(ns("choice_method"), "Method",
                         choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
                         selected = "Mean"),
-            numericInput(ns("minprob_q"), "q for MinProb", value = 0.01, min = 0, max = 0.05, step = 0.005),
-            actionButton(ns("run_impute"), "Run Imputation", class = "btn btn-light fw-bold")
+            shiny::numericInput(ns("minprob_q"), "q for MinProb", value = 0.01, min = 0, max = 0.05, step = 0.005),
+            shiny::actionButton(ns("run_impute"), "Run Imputation", class = "btn btn-light fw-bold")
           ),
-          accordion_panel(
+          bslib::accordion_panel(
             title = "Download",
             icon = bs_icon("download"),
-            numericInput(ns("img_height"), "Height (inches):", value = 5, step = 1),
-            numericInput(ns("img_width"), "Width (inches):", value = 5, step = 1),
-            downloadButton(ns("downloadOriginalPlot"), "Download Original Plot"),
-            downloadButton(ns("downloadImputedPlot"), "Download Imputed Plot"),
+            shiny::numericInput(ns("img_height"), "Height (inches):", value = 5, step = 1),
+            shiny::numericInput(ns("img_width"), "Width (inches):", value = 5, step = 1),
+            shiny::downloadButton(ns("downloadOriginalPlot"), "Download Original Plot"),
+            shiny::downloadButton(ns("downloadImputedPlot"), "Download Imputed Plot"),
           )
-
         )
       ),
-      page_fluid(
-        tabsetPanel(
+      bslib::page_fluid(
+        shiny::tabsetPanel(
           id = ns("tabs"),
-          tabPanel(
+          shiny::tabPanel(
             title = "Sample Info",
             DT::DTOutput(ns("sample_info"))
           ),
-          tabPanel(
+          shiny::tabPanel(
             title = "Expression Matrix",
             DT::DTOutput(ns("expression_matrix"))
           ),
-          tabPanel(
+          shiny::tabPanel(
             title = "Visualize missing values",
-            page_fluid(
-              layout_column_wrap(
+            bslib::page_fluid(
+              bslib::layout_column_wrap(
                 width = 1/2,
                 height = 600,
-
-                card(
+                bslib::card(
                   height = "800px",
-                  card_header("Original Data"),
-                  card_body(
+                  bslib::card_header("Original Data"),
+                  bslib::card_body(
                     DT::DTOutput(ns("originalData"))
                   )
                 ),
-
-                card(
+                bslib::card(
                   height = "800px",
-                  card_header("Original Data visualize"),
-                  card_body(
-                    plotOutput(ns("originalPlot"))
+                  bslib::card_header("Original Data visualize"),
+                  bslib::card_body(
+                    shiny::plotOutput(ns("originalPlot"))
                   )
                 ),
 
-                card(
+                bslib::card(
                   height = "800px",
-                  card_header("Imputed Data"),
-                  card_body(
+                  bslib::card_header("Imputed Data"),
+                  bslib::card_body(
                     DT::DTOutput(ns("imputedData"))
                   )
                 ),
-
-                card(
+                bslib::card(
                   height = "800px",
-                  card_header("Imputed Data visualize"),
-                  card_body(
-                    plotOutput(ns("imputedPlot"))
+                  bslib::card_header("Imputed Data visualize"),
+                  bslib::card_body(
+                    shiny::plotOutput(ns("imputedPlot"))
                   )
                 )
               )
@@ -110,73 +104,68 @@ data_imputation_ui <- function(id) {
 #' @param id Module ID used to namespace the server elements.
 #' @param shared_state A reactive list containing shared application state,
 #'        including the working directory.
-#'
 #' @return No direct return value; generates Shiny server-side outputs.
+#' @name data_imputation_server
 #' @export
+#'
 data_imputation_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       sample_info = NULL,
       expression_matrix = NULL,
       load_success = FALSE
     )
 
     # Load processed data when "LOAD DATA" button is clicked
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step4_data_transformed.rda")
-      if (file.exists(rda_path)) {
-        e <- new.env()
-        load(rda_path, envir = e)
-        if (exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
-        if (exists("transformed", envir = e)) {
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
+      rda_path <- base::file.path(shared_state$workdir, "Step4_data_transformed.rda")
+      if (base::file.exists(rda_path)) {
+        e <- base::new.env()
+        base::load(rda_path, envir = e)
+        if (base::exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
+        if (base::exists("transformed", envir = e)) {
           rv$expression_matrix <- e$transformed
         } else {
           rv$expression_matrix <- NULL
-          showNotification("⚠️ Step4_data_transformed.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
+          shiny::showNotification("⚠️ Step4_data_transformed.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        showNotification("❌ Step4_select_protein_id.rda not found.", type = "error")
+        shiny::showNotification("❌ Step4_select_protein_id.rda not found.", type = "error")
       }
     })
-
     # Display load status in the UI
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
+        shiny::span("✅ Data loaded", style = "color: green;")
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
     # Display sample information table
     output$sample_info <- DT::renderDT({
-      req(rv$sample_info)
+      shiny::req(rv$sample_info)
       DT::datatable(rv$sample_info, options = list(scrollX = TRUE, pageLength = 10))
     })
-
     # Display expression matrix table
     output$expression_matrix <- DT::renderDT({
-      req(rv$expression_matrix)
+      shiny::req(rv$expression_matrix)
       DT::datatable(rv$expression_matrix, options = list(scrollX = TRUE, pageLength = 10))
     })
-
     # Visualize missing values in the original data
-    observeEvent(input$visualize_missing_values, {
+    shiny::observeEvent(input$visualize_missing_values, {
       output$originalData <- DT::renderDT({
-        req(rv$expression_matrix)
+        shiny::req(rv$expression_matrix)
         DT::datatable(rv$expression_matrix, options = list(pageLength = 10))
       })
-
       output$originalPlot <- renderPlot({
-        req(rv$expression_matrix)
+        shiny::req(rv$expression_matrix)
         visdat::vis_dat(data.frame(rv$expression_matrix)) +
-          scale_fill_manual(
+          ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
               "factor" = "lightgreen",
@@ -187,11 +176,10 @@ data_imputation_server <- function(id, shared_state) {
           )
       })
     })
-
     # Perform imputation when "Run Imputation" button is clicked
     imputed_data <- eventReactive(input$run_impute, {
-      req(rv$expression_matrix)
-      df <- as.data.frame(rv$expression_matrix)
+      shiny::req(rv$expression_matrix)
+      df <- base::as.data.frame(rv$expression_matrix)
       method <- input$choice_method
       set.seed(12345)
       if (method == "kNN") {
@@ -212,34 +200,25 @@ data_imputation_server <- function(id, shared_state) {
                                                   ~ifelse(is.na(.), min(., na.rm = TRUE), .))))
       }
     })
-
-    observeEvent(input$run_impute, {
-      req(imputed_data(), rv$sample_info)
-
-      # 先赋值到普通变量
+    shiny::observeEvent(input$run_impute, {
+      shiny::req(imputed_data(), rv$sample_info)
       sample_info <- rv$sample_info
-      imputed_df <- as.data.frame(imputed_data())
-
-      # 保存到 Step6_data_imputation.rda
-      save(sample_info, imputed_df,
-           file = file.path(shared_state$workdir, "Step5_data_imputation.rda")
+      imputed_df <- base::as.data.frame(imputed_data())
+      base::save(sample_info, imputed_df,
+           file = base::file.path(shared_state$workdir, "Step5_data_imputation.rda")
       )
-
-      showNotification("✅ Step5_data_imputation.rda 已保存", type = "message")
+      shiny::showNotification("✅ Step5_data_imputation.rda saved", type = "message")
     })
-
-
     # Display imputed data table
     output$imputedData <- DT::renderDT({
-      req(imputed_data())
+      shiny::req(imputed_data())
       DT::datatable(imputed_data(), options = list(pageLength = 10))
     })
-
     # Display imputed data visualization
-    output$imputedPlot <- renderPlot({
-      req(imputed_data())
+    output$imputedPlot <- shiny::renderPlot({
+      shiny::req(imputed_data())
       visdat::vis_dat(data.frame(imputed_data())) +
-        scale_fill_manual(
+        ggplot2::scale_fill_manual(
           values = c(
             "character" = "skyblue",
             "factor" = "lightgreen",
@@ -250,14 +229,14 @@ data_imputation_server <- function(id, shared_state) {
         )
     })
 
-    # 下载原始数据可视化图
-    output$downloadOriginalPlot <- downloadHandler(
+    # Download the original data visualization.
+    output$downloadOriginalPlot <- shiny::downloadHandler(
       filename = function() {
         paste0("original_data_plot_", Sys.Date(), ".pdf")
       },
       content = function(file) {
         g <- visdat::vis_dat(data.frame(rv$expression_matrix)) +
-          scale_fill_manual(
+          ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
               "factor" = "lightgreen",
@@ -266,18 +245,18 @@ data_imputation_server <- function(id, shared_state) {
               "NA" = "#BEBEBE"
             )
           )
-        ggsave(file, plot = g, width = input$img_width, height = input$img_height, units = "in")
+        ggplot2::ggsave(file, plot = g, width = input$img_width, height = input$img_height, units = "in")
       }
     )
 
-    # 下载插补后数据可视化图
-    output$downloadImputedPlot <- downloadHandler(
+    # Download the interpolated data visualization map.
+    output$downloadImputedPlot <- shiny::downloadHandler(
       filename = function() {
         paste0("imputed_data_plot_", Sys.Date(), ".pdf")
       },
       content = function(file) {
         g <- visdat::vis_dat(data.frame(imputed_data())) +
-          scale_fill_manual(
+          ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
               "factor" = "lightgreen",
@@ -286,9 +265,8 @@ data_imputation_server <- function(id, shared_state) {
               "NA" = "#BEBEBE"
             )
           )
-        ggsave(file, plot = g, width = input$img_width, height = input$img_height, units = "in")
+        ggplot2::ggsave(file, plot = g, width = input$img_width, height = input$img_height, units = "in")
       }
     )
-
   })
 }

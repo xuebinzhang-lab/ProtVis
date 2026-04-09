@@ -1,79 +1,64 @@
-options(shiny.maxRequestSize = 800*1024^2)
-
-# plot_go_circos ----------------------------------------------------------
-
-# =========================
-# GO Circos Plot Function
-# =========================
+#' @importFrom circlize colorRamp2 circos.clear circos.genomicInitialize circos.trackPlotRegion
+#'   get.cell.meta.data circos.text get.all.sector.index circos.axis circos.genomicTrack
+#'   circos.genomicRect circos.genomicText
+#' @importFrom ComplexHeatmap draw Legend
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom grid unit gpar grid.lines
+#' @importFrom utils head
+#' @importFrom grDevices pdf dev.off
+#' @importFrom pryr f
+#' @title plot_go_circos
+#' @name plot_go_circos
+#' @export
 plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
-
-  # 按 pvalue 排序并筛选显著项
   data <- go_data[order(go_data$pvalue), ]
   datasig <- data[data$pvalue < 0.05, , drop = FALSE]
-  data <- head(datasig, top_n)
-
-  if (nrow(data) == 0) {
+  data <- utils::head(datasig, top_n)
+  if (base::nrow(data) == 0) {
     message("No significant GO terms to plot.")
     return(NULL)
   }
-
-  # 计算基因数
-  BgGene <- as.numeric(sapply(strsplit(data$BgRatio, "/"), `[`, 1))
-  Gene <- as.numeric(sapply(strsplit(data$GeneRatio, "/"), `[`, 1))
-
-  # 富集因子和 -log10(pvalue)
+  BgGene <- base::as.numeric(base::sapply(base::strsplit(data$BgRatio, "/"), `[`, 1))
+  Gene <- base::as.numeric(base::sapply(base::strsplit(data$GeneRatio, "/"), `[`, 1))
   ratio <- Gene / BgGene
-  logpvalue <- -log10(data$pvalue)
-
-  # 颜色映射
+  logpvalue <- -base::log10(data$pvalue)
   logpvalue.col <- RColorBrewer::brewer.pal(n = 8, name = "Reds")
   f <- circlize::colorRamp2(
     breaks = c(0, 2, 4, 6, 8, 10, 15, 20),
     colors = logpvalue.col
   )
-  BgGene.col <- f(pmin(logpvalue, 20))
-
-  # circos 数据
-  df_circos <- data.frame(
+  BgGene.col <- pryr::f(base::pmin(logpvalue, 20))
+  df_circos <- base::data.frame(
     GO = data$ID,
     start = 1,
-    end = max(BgGene)
+    end = base::max(BgGene)
   )
-  rownames(df_circos) <- df_circos$GO
-
-  bed2 <- data.frame(
+  base::rownames(df_circos) <- df_circos$GO
+  bed2 <- base::data.frame(
     GO = data$ID,
     start = 1,
     end = BgGene,
     label = BgGene,
     col = BgGene.col
   )
-
-  bed3 <- data.frame(
+  bed3 <- base::data.frame(
     GO = data$ID,
     start = 1,
     end = Gene,
     label = Gene
   )
-
-  bed4 <- data.frame(
+  bed4 <- base::data.frame(
     GO = data$ID,
     start = 1,
-    end = max(BgGene),
-    ratio = ratio / max(ratio) * 9.5,   # 标准化到 0-10
+    end = base::max(BgGene),
+    ratio = ratio / base::max(ratio) * 9.5,
     col = "#00AFBB"
   )
-
-  # PDF 输出可选
   if (!is.null(output_pdf)) {
     grDevices::pdf(output_pdf, width = 10, height = 6)
   }
-
-  # 清除旧 circos 图
   circlize::circos.clear()
   circlize::circos.genomicInitialize(df_circos, plotType = "none")
-
-  # 轨道 1: GO term 标签
   circlize::circos.trackPlotRegion(
     ylim = c(0, 1),
     panel.fun = function(x, y) {
@@ -83,7 +68,7 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
       desc <- data[data$ID == sector.index, ]$Description
       desc <- paste(base::strwrap(desc, width = 20), collapse = "\n")
       circlize::circos.text(
-        mean(xlim), mean(ylim),
+        base::mean(xlim), base::mean(ylim),
         desc, cex = 0.6,
         facing = "bending.inside", niceFacing = TRUE
       )
@@ -92,20 +77,16 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
     bg.border = NA,
     bg.col = "grey95"
   )
-
-  # 添加轴标签
   for (si in circlize::get.all.sector.index()) {
     circlize::circos.axis(
       h = "top",
       labels.cex = 0.5,
       sector.index = si,
       track.index = 1,
-      major.at = seq(0, max(BgGene), by = 100),
+      major.at = base::seq(0, base::max(BgGene), by = 100),
       labels.facing = "clockwise"
     )
   }
-
-  # 轨道 2: 背景基因数
   circlize::circos.genomicTrack(
     bed2,
     ylim = c(0, 1),
@@ -120,8 +101,6 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
                                    adj = 0, cex = 0.6, ...)
     }
   )
-
-  # 轨道 3: 差异基因数
   circlize::circos.genomicTrack(
     bed3,
     ylim = c(0, 1),
@@ -136,8 +115,6 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
                                    adj = 0, cex = 0.6, ...)
     }
   )
-
-  # 轨道 4: 富集因子
   circlize::circos.genomicTrack(
     bed4,
     ylim = c(0, 10),
@@ -156,10 +133,7 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
                                    col = value$col, border = NA, ...)
     }
   )
-
   circlize::circos.clear()
-
-  # 绘制图例
   circle_size <- grid::unit(1, "snpc")
   ComplexHeatmap::draw(ComplexHeatmap::Legend(
     labels = c("Number of Genes", "Number of Select", "Rich Factor(0-1)"),
@@ -170,7 +144,6 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
     nrow = 3,
     size = grid::unit(3, "mm")
   ), x = circle_size * 0.83, y = circle_size * 0.5, just = "center")
-
   ComplexHeatmap::draw(ComplexHeatmap::Legend(
     labels = c("(0,2]", "(2,4]", "(4,6]", "(6,8]", "(8,10]", "(10,15]", "(15,20]", ">=20"),
     type = "points",
@@ -187,34 +160,31 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
   message("GO Circos plot finished!")
 }
 
-
-
 #' Enrichment Analysis Module UI
-#'
 #' This function creates the user interface for the enrichment analysis module.
 #' It includes file uploads, parameter settings, and visualization panels for GO and KEGG enrichment analysis.
-#'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing the enrichment analysis interface
+#' @name enrichment_analysis_ui
 #' @export
 #'
 enrichment_analysis_ui <- function(id) {
   ns <- NS(id)
-  tagList(
+  shiny::tagList(
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 300,
-        actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
-        uiOutput(ns("load_status_panel")),
-        uiOutput(ns("compare_select_ui")),
-        div(style = "margin-bottom: 15px;",
-            fileInput(ns("enrichment_analysis_file"), "Upload Enrichment Analysis File (Created by Toolkits > Background Make)",
+        shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
+        shiny::uiOutput(ns("load_status_panel")),
+        shiny::uiOutput(ns("compare_select_ui")),
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::fileInput(ns("enrichment_analysis_file"), "Upload Enrichment Analysis File (Created by Toolkits > Background Make)",
                       accept = c(".csv", ".xlsx"),
                       buttonLabel = "Browse..."),
-            actionButton(ns("check_file"), "Check File",
+                   shiny::actionButton(ns("check_file"), "Check File",
                          class = "btn btn-success fw-bold mb-2")
         ),
-        hr(),
+        shiny::hr(),
         tags$small("The genelist requires an ID column.(.xlsx or .csv)",
                    style = "color: #6c757d"),
         # Input mode toggle switch
@@ -226,42 +196,37 @@ enrichment_analysis_ui <- function(id) {
           offLabel = "Paste",
           width = "100%"
         ),
-
         # Conditional panel: File upload mode
-        conditionalPanel(
-          condition = paste0("input['", ns("input_mode"), "'] == true"),
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == true"),
           tags$small('Upload Genelist', style = "color: #6c757d"),
-          fileInput(
+          shiny::fileInput(
             inputId = ns('genelist_file'),
             label = NULL,
             multiple = FALSE,
             accept = c('.csv','.xlsx')
           )
         ),
-
         # Conditional panel: Manual input mode
-        conditionalPanel(
-          condition = paste0("input['", ns("input_mode"), "'] == false"),
-          div(
-            # tags$small("Edit Genelist", style = "color: #6c757d"),
-            # rhandsontable::rHandsontableOutput(ns("hot_compare")),
-            # br(),
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == false"),
+          shiny::div(
             tags$small("Paste Genelist", style = "color: #6c757d"),
-            textAreaInput(
+            shiny::textAreaInput(
               inputId = ns("paste_data"),
               label = NULL,
               placeholder = "Copy and paste Excel data here.",
               rows = 5
             ),
-            actionButton(ns("apply_paste"), "Apply paste data",
+            shiny::actionButton(ns("apply_paste"), "Apply paste data",
                          class = "btn btn-light fw-bold")
           )
         ),
-        accordion(
-          accordion_panel(
+        bslib::accordion(
+          bslib::accordion_panel(
             title = "Enrichment analysis",
             icon = enrichment_bubble_icon,
-            selectInput(
+            shiny::selectInput(
               inputId = ns("species"),
               label = "Select taxonomic group:",
               choices = c("Plant" = "Plant",
@@ -272,99 +237,96 @@ enrichment_analysis_ui <- function(id) {
                           "Hsa"  = "Hsa"),
               selected = "Plant"
             ),
-            checkboxGroupInput(
+            shiny::checkboxGroupInput(
               inputId = ns("choices"),
               label = "Please select the analysis content:",
               choices = c("GO" = "go_analysis",
                           "KEGG" = "kegg_analysis"),
               selected = c("go_analysis","kegg_analysis")
             ),
-            actionButton(ns("run_enrichment_analysis"), "Analysis")
+            shiny::actionButton(ns("run_enrichment_analysis"), "Analysis")
           )
         )
       ),
-      page_fluid(
-        card(
-          card_header("File Check Result"),
-          card_body(
-            textOutput(ns("file_check_result"))
+      bslib::page_fluid(
+        bslib::card(
+          bslib::card_header("File Check Result"),
+          bslib::card_body(
+            shiny::textOutput(ns("file_check_result"))
           )
         ),
-
-        layout_column_wrap(
+        bslib::layout_column_wrap(
           width = 1/2,
           height = 600,
-
           # === GO enrichment card ===
-          card(
+          bslib::card(
             height = "800px",
-            card_header("GO Enrichment Analysis"),
-            card_body(
-              tabsetPanel(
+            bslib::card_header("GO Enrichment Analysis"),
+            bslib::card_body(
+              shiny::tabsetPanel(
                 id = ns("go_tabs"),
                 type = "tabs",
-                tabPanel("Visualization",
-                         layout_sidebar(
-                           sidebar = sidebar(
-                             width = 250,
-                             position = "left",
-                             open = "closed",
-                             selectInput(ns("go_plot_type"), "Select plot type:",
+                shiny::tabPanel("Visualization",
+                                bslib::layout_sidebar(
+                                sidebar = sidebar(
+                                width = 250,
+                                position = "left",
+                                open = "closed",
+                                shiny::selectInput(ns("go_plot_type"), "Select plot type:",
                                          choices = c("Bar plot" = "bar",
                                                      "Dot plot" = "dot",
                                                      "Circle plot" = "circle"),
                                          selected = "bar"),
-                             sliderInput(ns("go_top_n"), "Top N terms:",
+                                shiny::sliderInput(ns("go_top_n"), "Top N terms:",
                                          min = 5, max = 20, value = 10),
                              colourpicker::colourInput(ns("go_color"), "Select color:", value = "#2c7bb6"),
-                             numericInput(ns("go_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
-                             numericInput(ns("go_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
-                             downloadButton(ns("download_go_plot"), "Download Plot (PDF)"),
-                             downloadButton(ns("download_go_table"), "Download Table (CSV)")
+                             shiny::numericInput(ns("go_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
+                             shiny::numericInput(ns("go_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
+                             shiny::downloadButton(ns("download_go_plot"), "Download Plot (PDF)"),
+                             shiny::downloadButton(ns("download_go_table"), "Download Table (CSV)")
                            ),
-                           card_body(
-                             plotOutput(ns("go_plot"))
+                           bslib::card_body(
+                             shiny::plotOutput(ns("go_plot"))
                            )
                          )
                 ),
-                tabPanel("Result Table", DTOutput(ns("go_res_table")))
+                shiny::tabPanel("Result Table", DT::DTOutput(ns("go_res_table")))
               )
             )
           ),
-
           # === KEGG enrichment card ===
-          card(
+          bslib::card(
             height = "800px",
-            card_header("KEGG Enrichment Analysis"),
-            card_body(
-              tabsetPanel(
+            bslib::card_header("KEGG Enrichment Analysis"),
+            bslib::card_body(
+              shiny::tabsetPanel(
                 id = ns("kegg_tabs"),
                 type = "tabs",
-                tabPanel("Visualization",
-                         layout_sidebar(
-                           sidebar = sidebar(
-                             width = 250,
-                             position = "left",
-                             open = "closed",
-                             selectInput(ns("kegg_plot_type"), "Select plot type:",
+                shiny::tabPanel("Visualization",
+                                bslib::layout_sidebar(
+                                sidebar = bslib::sidebar(
+                                width = 250,
+                                position = "left",
+                                open = "closed",
+                                shiny::selectInput(ns("kegg_plot_type"), "Select plot type:",
                                          choices = c("Bar plot" = "bar",
                                                      "Dot plot" = "dot",
                                                      "Circle plot" = "circle"),
                                          selected = "bar"),
-                             sliderInput(ns("kegg_top_n"), "Top N pathways:",
+                                shiny::sliderInput(ns("kegg_top_n"), "Top N pathways:",
                                          min = 5, max = 20, value = 10),
-                             colourpicker::colourInput(ns("kegg_color"), "Select color:", value = "#d7191c"),
-                             numericInput(ns("kegg_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
-                             numericInput(ns("kegg_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
-                             downloadButton(ns("download_kegg_plot"), "Download Plot (PDF)"),
-                             downloadButton(ns("download_kegg_table"), "Download Table (CSV)")
+                                colourpicker::colourInput(ns("kegg_color"), "Select color:", value = "#d7191c"),
+                                shiny::numericInput(ns("kegg_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
+                                shiny::numericInput(ns("kegg_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
+                                shiny::downloadButton(ns("download_kegg_plot"), "Download Plot (PDF)"),
+                                shiny::downloadButton(ns("download_kegg_table"), "Download Table (CSV)")
                            ),
-                           card_body(
-                             plotOutput(ns("kegg_plot"))
+                           bslib::card_body(
+                             shiny::plotOutput(ns("kegg_plot"))
                            )
                          )
                 ),
-                tabPanel("Result Table", DTOutput(ns("kegg_res_table")))
+                shiny::tabPanel("Result Table", DT::DTOutput(ns("kegg_res_table")))
               )
             )
           )
@@ -385,87 +347,75 @@ enrichment_analysis_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactive values list for sharing state between modules
 #' @return A module server function that handles enrichment analysis operations
+#' @name enrichment_analysis_server
 #' @export
 #'
 
+utils::globalVariables(c("regulation", "V3", "Pathway_ID", "TERM", "GENE", "NAME"))
 enrichment_analysis_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       sample_info = NULL,
       load_success = FALSE,
       normalized_matrix = NULL,
       compare_data = NULL,
       input_mode = TRUE,
-      dep_results = list(),
+      dep_results = base::list(),
       file_check_msg = NULL,
       background_data = NULL,
       go_res = NULL,
       kegg_res = NULL
     )
-
-    # 内置空表
-    template_df <- reactive({
-      data.frame(ID = c(NA, NA, NA), stringsAsFactors = FALSE)
+    template_df <- shiny::reactive({
+      base::data.frame(ID = c(NA, NA, NA), stringsAsFactors = FALSE)
     })
-
-    # ============ 数据加载 ============
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
-      if (file.exists(rda_path)) {
-        e <- new.env()
-        load(rda_path, envir = e)
-        if (exists("dep_results2", envir = e)) {
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
+      rda_path <- base::file.path(shared_state$workdir, "Step7_DEP_result.rda")
+      if (base::file.exists(rda_path)) {
+        e <- base::new.env()
+        base::load(rda_path, envir = e)
+        if (base::exists("dep_results2", envir = e)) {
           rv$dep_results <- e$dep_results2
-          updateSelectInput(session, "dep_compare", choices = names(rv$dep_results))
+          shiny::updateSelectInput(session, "dep_compare", choices = base::names(rv$dep_results))
         } else {
           rv$dep_results <- NULL
-          showNotification("Step7_DEP_result.rda does not contain dep_results2.", type = "warning")
+          shiny::showNotification("Step7_DEP_result.rda does not contain dep_results2.", type = "warning")
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
       }
     })
-
-    # 显示加载状态
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
+        shiny::span("✅ Data loaded", style = "color: green;")
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
-    # 下拉菜单 UI
-    output$compare_select_ui <- renderUI({
-      req(rv$load_success)
-      selectInput(ns("dep_compare"),
+    output$compare_select_ui <- shiny::renderUI({
+      shiny::req(rv$load_success)
+      shiny::selectInput(ns("dep_compare"),
                   label = "Select DEP comparison",
                   choices = names(rv$dep_results),
                   selected = names(rv$dep_results)[1])
     })
-
-    observeEvent(input$dep_compare, {
-      req(rv$dep_results)
+    shiny::observeEvent(input$dep_compare, {
+      shiny::req(rv$dep_results)
       rv$compare_data <- rv$dep_results[[input$dep_compare]]
     })
-
-    # ============ 基因列表处理 ============
-    genelist <- reactive({
-      # 从 DEP 结果获取
+    genelist <- shiny::reactive({
       if (!is.null(rv$compare_data)) {
         genes <- rv$compare_data %>%
           dplyr::filter(regulation != "Not significant") %>%
           dplyr::pull(ID)
         return(unique(genes))
       }
-
-      # 上传基因列表
       if (!is.null(input$genelist_file)) {
         ext <- tools::file_ext(input$genelist_file$name)
         if (ext == "csv") {
-          df <- read.csv(input$genelist_file$datapath)
+          df <- utils::read.csv(input$genelist_file$datapath)
         } else if (ext == "xlsx") {
           df <- readxl::read_excel(input$genelist_file$datapath)
         }
@@ -473,46 +423,33 @@ enrichment_analysis_server <- function(id, shared_state) {
           return(unique(df$ID))
         }
       }
-
-      # 粘贴模式
-      if (!is.null(input$paste_data) && nchar(input$paste_data) > 0) {
-        df <- read.table(text = input$paste_data, header = TRUE, sep = "\t")
+      if (!is.null(input$paste_data) && base::nchar(input$paste_data) > 0) {
+        df <- utils::read.table(text = input$paste_data, header = TRUE, sep = "\t")
         if ("ID" %in% colnames(df)) {
           return(unique(df$ID))
         }
       }
-
       return(NULL)
     })
-
-    # ============ 背景文件检查 ============
-    observeEvent(input$check_file, {
-      req(input$enrichment_analysis_file)
+    shiny::observeEvent(input$check_file, {
+      shiny::req(input$enrichment_analysis_file)
       file <- input$enrichment_analysis_file$datapath
       sheets <- readxl::excel_sheets(file)
-
       if (!all(c("GO_background", "KEGG_background") %in% sheets)) {
         rv$file_check_msg <- "❌ Missing required sheets: GO_background or KEGG_background"
         return()
       }
-
       GO_background <- readxl::read_excel(file, sheet = "GO_background")
       KEGG_background <- readxl::read_excel(file, sheet = "KEGG_background")
-
-      rv$background_data <- list(GO_background = GO_background,
+      rv$background_data <- base::list(GO_background = GO_background,
                                  KEGG_background = KEGG_background)
       rv$file_check_msg <- "✅ Background file valid."
     })
-
-    output$file_check_result <- renderText({
+    output$file_check_result <- shiny::renderText({
       rv$file_check_msg
     })
-
-    # ----------------------------
-    # 动态选择 KEGG 背景
-    # ----------------------------
-    selected_kegg_background <- reactive({
-      req(input$species)
+    selected_kegg_background <- shiny::reactive({
+      shiny::req(input$species)
       background_data <- switch(input$species,
                                 "Plant"      = ProtVisDatabase::Plant_KEGG_Background,
                                 "Animals"    = ProtVisDatabase::Animals_KEGG_Background,
@@ -522,8 +459,7 @@ enrichment_analysis_server <- function(id, shared_state) {
                                 "Hsa"        = ProtVisDatabase::hsa_KEGG_Background,
                                 NULL
       )
-      req(background_data)
-
+      shiny::req(background_data)
       map_id <- background_data %>%
         tidyr::separate(
           col = V3,
@@ -533,24 +469,18 @@ enrichment_analysis_server <- function(id, shared_state) {
         ) %>%
         dplyr::mutate(dplyr::across(dplyr::everything(), stringr::str_trim)) %>%
         dplyr::pull(Pathway_ID) %>%
-        unique() %>%
-        paste0("map", .)
-
-      req(rv$background_data)
+        base::unique() %>%
+        base::paste0("map", .)
+      shiny::req(rv$background_data)
       filtered_bg <- rv$background_data$KEGG_background %>%
         dplyr::filter(TERM %in% map_id)
-
       return(filtered_bg)
     })
-
-    # ============ 富集分析 ============
-    observeEvent(input$run_enrichment_analysis, {
-      req(genelist(), rv$background_data)
-
+    shiny::observeEvent(input$run_enrichment_analysis, {
+      shiny::req(genelist(), rv$background_data)
       if ("go_analysis" %in% input$choices) {
         t2g.go <- rv$background_data$GO_background %>% dplyr::select(TERM,GENE)
         t2n.go <- rv$background_data$GO_background %>% dplyr::select(TERM,NAME)
-
         rv$go_res <- clusterProfiler::enricher(
           gene = genelist(),
           TERM2GENE = t2g.go,
@@ -559,12 +489,10 @@ enrichment_analysis_server <- function(id, shared_state) {
           qvalueCutoff = 1
         )
       }
-
       if ("kegg_analysis" %in% input$choices) {
         filtered_bg <- selected_kegg_background()
         t2g.kegg <- filtered_bg %>% dplyr::select(TERM,GENE)
         t2n.kegg <- filtered_bg %>% dplyr::select(TERM,NAME)
-
         rv$kegg_res <- clusterProfiler::enricher(
           gene = genelist(),
           TERM2GENE = t2g.kegg,
@@ -573,15 +501,12 @@ enrichment_analysis_server <- function(id, shared_state) {
           qvalueCutoff = 1
         )
       }
-
-      showNotification("✅ Enrichment analysis completed.", type = "message")
+      shiny::showNotification("✅ Enrichment analysis completed.", type = "message")
     })
-
-    # ============ 可视化 ============
-    output$go_plot <- renderPlot({
-      req(rv$go_res)
+    output$go_plot <- shiny::renderPlot({
+      shiny::req(rv$go_res)
       if (input$go_plot_type == "bar") {
-        barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color)
+        graphics::barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color)
       } else if (input$go_plot_type == "dot") {
         clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
           ggplot2::scale_color_manual(values = input$go_color)
@@ -589,11 +514,10 @@ enrichment_analysis_server <- function(id, shared_state) {
         plot_go_circos(rv$go_res, top_n = input$go_top_n)
       }
     })
-
-    output$kegg_plot <- renderPlot({
-      req(rv$kegg_res)
+    output$kegg_plot <- shiny::renderPlot({
+      shiny::req(rv$kegg_res)
       if (input$kegg_plot_type == "bar") {
-        barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color)
+        graphics::barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color)
       } else if (input$kegg_plot_type == "dot") {
         clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
           ggplot2::scale_color_manual(values = input$kegg_color)
@@ -601,78 +525,68 @@ enrichment_analysis_server <- function(id, shared_state) {
         plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n)
       }
     })
-
-    # ============ 表格输出 ============
-    output$go_res_table <- renderDT({
-      req(rv$go_res)
-      as.data.frame(rv$go_res@result)
-    }, options = list(pageLength = 10, scrollX = TRUE))
+    output$go_res_table <- DT::renderDT({
+      shiny::req(rv$go_res)
+      base::as.data.frame(rv$go_res@result)
+    }, options = base::list(pageLength = 10, scrollX = TRUE))
 
     output$kegg_res_table <- renderDT({
-      req(rv$kegg_res)
-      as.data.frame(rv$kegg_res@result)
-    }, options = list(pageLength = 10, scrollX = TRUE))
-
-    # ============ 下载功能 ============
+      shiny::req(rv$kegg_res)
+      base::as.data.frame(rv$kegg_res@result)
+    }, options = base::list(pageLength = 10, scrollX = TRUE))
     # GO plot
-    output$download_go_plot <- downloadHandler(
-      filename = function() { paste0("GO_enrichment_plot_", Sys.Date(), ".pdf") },
+    output$download_go_plot <- shiny::downloadHandler(
+      filename = function() { base::paste0("GO_enrichment_plot_", base::Sys.Date(), ".pdf") },
       content = function(file) {
-        req(rv$go_res)
+        shiny::req(rv$go_res)
         if (input$go_plot_type %in% c("bar", "dot")) {
-          pdf(file, width = input$go_width, height = input$go_height)
+          grDevices::pdf(file, width = input$go_width, height = input$go_height)
           if (input$go_plot_type == "dot") {
             print(clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
                     ggplot2::scale_color_manual(values = input$go_color))
           } else {
-            print(barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
+            print(graphics::barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
           }
-          dev.off()
+          grDevices::dev.off()
         } else {
           plot_go_circos(rv$go_res, top_n = input$go_top_n, output_pdf = file)
         }
       }
     )
-
     # GO table
-    output$download_go_table <- downloadHandler(
-      filename = function() { paste0("GO_enrichment_table_", Sys.Date(), ".csv") },
+    output$download_go_table <- shiny::downloadHandler(
+      filename = function() { base::paste0("GO_enrichment_table_", base::Sys.Date(), ".csv") },
       content = function(file) {
-        req(rv$go_res)
-        write.csv(as.data.frame(rv$go_res@result), file, row.names = FALSE)
+        shiny::req(rv$go_res)
+        utils::write.csv(base::as.data.frame(rv$go_res@result), file, row.names = FALSE)
       }
     )
-
     # KEGG plot
-    output$download_kegg_plot <- downloadHandler(
-      filename = function() { paste0("KEGG_enrichment_plot_", Sys.Date(), ".pdf") },
+    output$download_kegg_plot <- shiny::downloadHandler(
+      filename = function() { base::paste0("KEGG_enrichment_plot_", base::Sys.Date(), ".pdf") },
       content = function(file) {
-        req(rv$kegg_res)
+        shiny::req(rv$kegg_res)
         if (input$kegg_plot_type %in% c("bar", "dot")) {
-          pdf(file, width = input$kegg_width, height = input$kegg_height)
+          grDevices::pdf(file, width = input$kegg_width, height = input$kegg_height)
           if (input$kegg_plot_type == "dot") {
             print(clusterProfiler::dotplot(rv$kegg_res, showCategory = input$kegg_top_n) +
                     ggplot2::scale_color_manual(values = input$kegg_color))
           } else {
-            print(barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
+            print(graphics::barplot(rv$kegg_res, showCategory = input$kegg_top_n, fill = input$kegg_color))
           }
-          dev.off()
+          grDevices::dev.off()
         } else {
           plot_go_circos(rv$kegg_res, top_n = input$kegg_top_n, output_pdf = file)
         }
       }
     )
-
     # KEGG table
-    output$download_kegg_table <- downloadHandler(
-      filename = function() { paste0("KEGG_enrichment_table_", Sys.Date(), ".csv") },
+    output$download_kegg_table <- shiny::downloadHandler(
+      filename = function() { base::paste0("KEGG_enrichment_table_", base::Sys.Date(), ".csv") },
       content = function(file) {
-        req(rv$kegg_res)
-        write.csv(as.data.frame(rv$kegg_res@result), file, row.names = FALSE)
+        shiny::req(rv$kegg_res)
+        utils::write.csv(base::as.data.frame(rv$kegg_res@result), file, row.names = FALSE)
       }
     )
   })
 }
-
-
-

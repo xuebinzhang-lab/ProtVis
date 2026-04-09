@@ -2,7 +2,11 @@
 % Please edit documentation in R/MaxQuant.R
 \name{MaxQuant_server}
 \alias{MaxQuant_server}
-\title{MaxQuant Server Logic Module}
+\title{MaxQuant Server Logic Module
+This function implements the server-side logic for processing proteomics data
+from MaxQuant output. It supports loading data, filtering proteins based on
+expression, removing unreliable peptides, selecting protein identifiers, and
+saving intermediate results.}
 \usage{
 MaxQuant_server(id, shared_state)
 }
@@ -17,6 +21,7 @@ A list of reactive values containing processed results, including:
   - `protein_id_select`: A reactive expression with selected protein IDs.
 }
 \description{
+MaxQuant Server Logic Module
 This function implements the server-side logic for processing proteomics data
 from MaxQuant output. It supports loading data, filtering proteins based on
 expression, removing unreliable peptides, selecting protein identifiers, and

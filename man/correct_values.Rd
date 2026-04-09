@@ -2,10 +2,10 @@
 % Please edit documentation in R/correct_noise.R
 \name{correct_values}
 \alias{correct_values}
-\title{Correct zero values in replicate measurements}
-\usage{
-correct_values(raw_mat)
-}
+\title{Correct zero values in replicate measurements
+This function processes a raw matrix of protein/peptide intensities and
+corrects zero values in replicates when at least 2 replicates have non-zero values.
+The correction replaces zeros with half the sum of the non-zero replicates.}
 \arguments{
 \item{raw_mat}{A data frame containing protein/peptide intensities with
 samples in columns and IDs in the first column. Sample names
@@ -16,6 +16,7 @@ A data frame with corrected values where zeros have been replaced
         according to the correction rules. Rows with all zeros remain unchanged.
 }
 \description{
+Correct zero values in replicate measurements
 This function processes a raw matrix of protein/peptide intensities and
 corrects zero values in replicates when at least 2 replicates have non-zero values.
 The correction replaces zeros with half the sum of the non-zero replicates.

@@ -142,7 +142,12 @@ overview_ui <- function(id) {
 #' @param shared_state Reactive values shared across modules
 #' @return A module server function that handles the overview analysis logic
 #' @export
-#'
+#' @name overview_server
+
+utils::globalVariables(c(
+  "tissue", "tissue2", "species", "Type", "Species"
+))
+
 overview_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -509,16 +514,6 @@ overview_server <- function(id, shared_state) {
           title = paste(input$dimReductionMethod, "analysis", title_suffix)
         ) +
         theme_bw()
-        # theme(
-        #   plot.title = element_text(size = 12, hjust = 0.5),
-        #   panel.border = element_rect(colour = "black", size = 2),
-        #   axis.ticks = element_line(color = "black", linewidth = 2),
-        #   legend.text = element_text(size = 16),
-        #   axis.text = element_text(size = 16, colour = "black"),
-        #   axis.title = element_text(size = 16, colour = "black"),
-        #   panel.grid.major = element_line(color = "#EBEBEB", linewidth = 0.5),
-        #   panel.grid.minor = element_line(color = "#EBEBEB", linewidth = 0.2)
-        # )
     }
 
     # 标准化前降维图

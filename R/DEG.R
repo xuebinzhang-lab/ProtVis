@@ -1,234 +1,235 @@
-# UI 部分
+#' @import bslib
+#' @import shiny
+#' @import readxl
+#' @name DEG_ui
+#' @title DEG Analysis UI
+#' @description This function creates the user interface for DEG (Differential Expression Analysis) that includes file upload options, PCA plot settings, and volcano plot settings.
+#' @param id A unique ID for the Shiny module, used to create input/output bindings.
+#' @export
+#'
 DEG_ui <- function(id) {
   ns <- NS(id)
-  tagList(
+  shiny::tagList(
     bslib::layout_sidebar(
-      sidebar = sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        fileInput(ns("data_count_file"), "Upload Gene Expression Data", accept = c(".xlsx")),
-        helpText("Note: The first column name in expression file should be 'GeneID'"),
-        fileInput(ns("group_file"), "Upload Group Information", accept = c(".xlsx")),
-        helpText("Note: The first column in the group file should be 'Sample', and the second column should be 'Group'"),
-        actionButton(ns("generate_plot"), "Run Analysis", class = "btn-primary"),
-
-        hr(),
-
-        accordion(
-          accordion_panel(
+        shiny::fileInput(ns("data_count_file"), "Upload Gene Expression Data", accept = c(".xlsx")),
+        shiny::helpText("Note: The first column name in expression file should be 'GeneID'"),
+        shiny::fileInput(ns("group_file"), "Upload Group Information", accept = c(".xlsx")),
+        shiny::helpText("Note: The first column in the group file should be 'Sample', and the second column should be 'Group'"),
+        shiny::actionButton(ns("generate_plot"), "Run Analysis", class = "btn-primary"),
+        shiny::hr(),
+        bslib::accordion(
+          bslib::accordion_panel(
             title = "PCA Settings",
             icon = pca_icon,
-            # PCA图形设置
-            selectInput(ns("pca_colby"), "Color by:",
+            # PCA graphic settings
+            shiny::selectInput(ns("pca_colby"), "Color by:",
                         choices = c("None" = "none"),
                         selected = "none"),
-            selectInput(ns("pca_shapeby"), "Shape by:",
+            shiny::selectInput(ns("pca_shapeby"), "Shape by:",
                         choices = c("None" = "none"),
                         selected = "none"),
-            selectInput(ns("pca_pointsize"), "Point Size:",
+            shiny::selectInput(ns("pca_pointsize"), "Point Size:",
                         choices = c("Small" = 2, "Medium" = 3, "Large" = 4),
                         selected = 3),
-
-            # 动态组颜色设置
-            uiOutput(ns("group_colors_ui")),
-
+            # Dynamic group color setting
+            shiny::uiOutput(ns("group_colors_ui")),
             colourpicker::colourInput(ns("pca_base_color"), "Base Color (when no grouping)", value = "#2E86AB"),
-            checkboxInput(ns("pca_show_labels"), "Show Sample Labels", value = FALSE),
-            checkboxInput(ns("pca_encircle"), "Encircle Groups", value = TRUE),
-            checkboxInput(ns("pca_show_ellipse"), "Show Confidence Ellipse", value = TRUE),
-            numericInput(ns("pca_ellipse_alpha"), "Ellipse Transparency",
+            shiny::checkboxInput(ns("pca_show_labels"), "Show Sample Labels", value = FALSE),
+            shiny::checkboxInput(ns("pca_encircle"), "Encircle Groups", value = TRUE),
+            shiny::checkboxInput(ns("pca_show_ellipse"), "Show Confidence Ellipse", value = TRUE),
+            shiny::numericInput(ns("pca_ellipse_alpha"), "Ellipse Transparency",
                          value = 0.2, min = 0, max = 1, step = 0.1),
-            numericInput(ns("pca_legend_size"), "Legend Text Size",
+            shiny::numericInput(ns("pca_legend_size"), "Legend Text Size",
                          value = 12, min = 8, max = 20, step = 1),
-
-            hr(),
-            numericInput(ns("download_width_pca"), "Width of PCA Plot (inches)",
+            shiny::hr(),
+            shiny::numericInput(ns("download_width_pca"), "Width of PCA Plot (inches)",
                          value = 8, min = 3, max = 20),
-            numericInput(ns("download_height_pca"), "Height of PCA Plot (inches)",
+            shiny::numericInput(ns("download_height_pca"), "Height of PCA Plot (inches)",
                          value = 7, min = 3, max = 20),
-            downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm"),
-            downloadButton(ns("download_pca_data"), "Download PCA Data", class = "btn-sm")
+            shiny::downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm"),
+            shiny::downloadButton(ns("download_pca_data"), "Download PCA Data", class = "btn-sm")
           ),
-          accordion_panel(
+          bslib::accordion_panel(
             title = "Volcano Plot Settings",
             icon = volcano_icon,
             colourpicker::colourInput(ns("color_up"), "Color for Up-regulated", value = "salmon"),
             colourpicker::colourInput(ns("color_down"), "Color for Down-regulated", value = "lightblue"),
             colourpicker::colourInput(ns("color_not_sig"), "Color for Not Significant", value = "grey"),
-            numericInput(ns("volcano_point_size"), "Point Size",
+            shiny::numericInput(ns("volcano_point_size"), "Point Size",
                          value = 2, min = 1, max = 5, step = 0.5),
-            sliderInput(ns("volcano_alpha"), "Point Transparency",
+            shiny::sliderInput(ns("volcano_alpha"), "Point Transparency",
                         min = 0.1, max = 1, value = 0.7, step = 0.1),
-            checkboxInput(ns("volcano_show_grid"), "Show Grid", value = FALSE),
-            hr(),
-            numericInput(ns("download_width_voc"), "Width of Volcano Plot (inches)",
+            shiny::checkboxInput(ns("volcano_show_grid"), "Show Grid", value = FALSE),
+            shiny::hr(),
+            shiny::numericInput(ns("download_width_voc"), "Width of Volcano Plot (inches)",
                          value = 8, min = 3, max = 20),
-            numericInput(ns("download_height_voc"), "Height of Volcano Plot (inches)",
+            shiny::numericInput(ns("download_height_voc"), "Height of Volcano Plot (inches)",
                          value = 7, min = 3, max = 20),
-            downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm"),
-            downloadButton(ns("download_deg_data"), "Download DEG Data", class = "btn-sm")
+            shiny::downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm"),
+            shiny::downloadButton(ns("download_deg_data"), "Download DEG Data", class = "btn-sm")
           )
         )
       ),
-      page_fluid(
-        layout_column_wrap(
+      bslib::page_fluid(
+        bslib::layout_column_wrap(
           width = 1/2,
           height = 750,
-          card(
+          bslib::card(
             height = "800px",
-            card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
-            card_body(
-              tabsetPanel(
+            bslib::card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
+            bslib::card_body(
+              shiny::tabsetPanel(
                 type = "tabs",
-                tabPanel("Plot",
-                         plotOutput(ns("pca_plot"), height = "650px")
+                shiny::tabPanel("Plot",
+                                shiny::plotOutput(ns("pca_plot"), height = "650px")
                 ),
-                tabPanel("PCA Data",
-                         div(
-                           style = "margin-bottom: 10px;",
-                           downloadButton(ns("download_pca_table"), "Download as CSV",
-                                          class = "btn-sm btn-success", style = "float: right;")
-                         ),
-                         DT::DTOutput(ns("pca_data_table"), height = "600px")
+                shiny::tabPanel("PCA Data",
+                                shiny::div(
+                                  style = "margin-bottom: 10px;",
+                                  shiny::downloadButton(ns("download_pca_table"), "Download as CSV",
+                                  class = "btn-sm btn-success", style = "float: right;")
+                                  ),
+                                DT::DTOutput(ns("pca_data_table"), height = "600px")
                 )
               )
             )
           ),
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Volcano Plot", icon = shiny::icon("fire")),
-            card_body(
-              tabsetPanel(
+            bslib::card_header("Volcano Plot", icon = shiny::icon("fire")),
+            bslib::card_body(
+              shiny::tabsetPanel(
                 type = "tabs",
-                tabPanel("Plot",
-                         plotOutput(ns("voc_plot"), height = "650px")
+                shiny::tabPanel("Plot",
+                                shiny::plotOutput(ns("voc_plot"), height = "650px")
                 ),
-                tabPanel("DEG Results",
-                         div(
-                           style = "margin-bottom: 10px;",
-                           downloadButton(ns("download_degs"), "Download as CSV",
-                                          class = "btn-sm btn-success", style = "float: right;")
-                         ),
-                         DT::DTOutput(ns("deg_table"), height = "600px")
-                ),
-                tabPanel("Statistics",
-                         card(
-                           card_header("DEG Summary Statistics"),
-                           tableOutput(ns("deg_stats"))
-                         ),
-                         card(
-                           card_header("Top DEGs"),
-                           DT::DTOutput(ns("top_degs_table"), height = "300px")
-                         )
+                shiny::tabPanel("DEG Results",
+                                shiny::div(
+                                  style = "margin-bottom: 10px;",
+                                  shiny::downloadButton(ns("download_degs"), "Download as CSV",
+                                  class = "btn-sm btn-success", style = "float: right;")
+                                  ),
+                         DT::DTOutput(ns("deg_table"), height = "600px")),
+                shiny::tabPanel("Statistics",
+                                bslib::card(
+                                  bslib::card_header("DEG Summary Statistics"),
+                                  shiny::tableOutput(ns("deg_stats"))),
+                                bslib::card(
+                                  bslib::card_header("Top DEGs"),
+                                  DT::DTOutput(ns("top_degs_table"), height = "300px")
+                                  )
+                                )
                 )
               )
             )
           )
         )
       )
-    )
   )
-}
+  }
 
-# Server 部分
+#' @title DEG Analysis Server Logic
+#' @description This function contains the server-side logic for performing DEG (Differential Expression Analysis), including PCA and volcano plot generation, and DEG result calculations.
+#' @param id A unique ID for the Shiny module, used to create input/output bindings.
+#' @import DESeq2
+#' @import ggplot2
+#' @import dplyr
+#' @import readxl
+#' @name DEG_server
+#' @export
+#'
+
+utils::globalVariables(c("padj", "log2FoldChange", "regular",
+                         "GeneID","baseMean","lfcSE","pvalue","Regulation"))
+
 DEG_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    # 状态管理
-    analysis_ready <- reactiveVal(FALSE)
-
-    # 反应性加载数据
-    expression_data <- reactive({
-      req(input$data_count_file)
+    # State management
+    analysis_ready <- shiny::reactiveVal(FALSE)
+    # Reactive loading data
+    expression_data <- shiny::reactive({
+      shiny::req(input$data_count_file)
       df <- readxl::read_xlsx(input$data_count_file$datapath)
-      validate(
-        need("GeneID" %in% colnames(df), "Error: Expression file must contain 'GeneID' column"),
-        need(ncol(df) > 1, "Error: Expression file must contain sample columns")
+      shiny::validate(
+        shiny::need("GeneID" %in% base::colnames(df), "Error: Expression file must contain 'GeneID' column"),
+        shiny::need(base::ncol(df) > 1, "Error: Expression file must contain sample columns")
       )
       return(df)
     })
-
-    # 加载分组信息
-    group_data <- reactive({
-      req(input$group_file)
+    # Load grouping information
+    group_data <- shiny::reactive({
+      shiny::req(input$group_file)
       df <- readxl::read_xlsx(input$group_file$datapath)
-      validate(
-        need("Sample" %in% colnames(df), "Error: Group file must contain 'Sample' column"),
-        need("Group" %in% colnames(df), "Error: Group file must contain 'Group' column")
+      shiny::validate(
+        shiny::need("Sample" %in% base::colnames(df), "Error: Group file must contain 'Sample' column"),
+        shiny::need("Group" %in% base::colnames(df), "Error: Group file must contain 'Group' column")
       )
       return(df)
     })
-
-    # 获取分组数据的列名（用于PCA颜色和形状选择）
-    group_columns <- reactive({
-      req(group_data())
-      cols <- colnames(group_data())
-      # 排除Sample列
+    # Gets the column names of grouped data (used for PCA color and shape selection)
+    group_columns <- shiny::reactive({
+      shiny::req(group_data())
+      cols <- base::colnames(group_data())
+      # Exclude Sample column
       cols <- cols[cols != "Sample"]
       return(cols)
     })
-
-    # 获取当前分组变量的不同组别
-    selected_groups <- reactive({
-      req(group_data(), input$pca_colby)
+    # Get different groups of the current grouping variable.
+    selected_groups <- shiny::reactive({
+      shiny::req(group_data(), input$pca_colby)
       if (input$pca_colby != "none") {
-        groups <- unique(group_data()[[input$pca_colby]])
-        return(sort(as.character(groups)))  # 确保是字符型并排序
+        groups <- base::unique(group_data()[[input$pca_colby]])
+        return(base::sort(base::as.character(groups)))  # 确保是字符型并排序
       }
       return(NULL)
     })
-
-    # 观察分组数据变化，更新PCA设置选项
-    observeEvent(group_data(), {
+    # Observe the change of packet data and update PCA setting options.
+    shiny::observeEvent(group_data(), {
       cols <- group_columns()
-      if(length(cols) > 0) {
-        # 更新颜色选择
-        updateSelectInput(session, "pca_colby",
+      if(base::length(cols) > 0) {
+        # Update color selection
+        shiny::updateSelectInput(session, "pca_colby",
                           choices = c("None" = "none", cols),
                           selected = "Group")
-        # 更新形状选择
-        updateSelectInput(session, "pca_shapeby",
+        # Update shape selection
+        shiny::updateSelectInput(session, "pca_shapeby",
                           choices = c("None" = "none", cols),
                           selected = "none")
       }
     })
-
-    # 观察分组列选择变化
-    observeEvent(input$pca_colby, {
+    # Observe the change of grouping column selection
+    shiny::observeEvent(input$pca_colby, {
       if (input$pca_colby != "none" && !is.null(group_data())) {
-        # 清除之前可能存在的颜色输入
-        removeUI(
+        # Clear the color input that may exist before.
+        shiny::removeUI(
           selector = paste0("#", ns("group_colors_title")),
           immediate = TRUE
         )
       }
     })
-
-    # 生成动态颜色选择器
-    output$group_colors_ui <- renderUI({
+    # Generate dynamic color selector
+    output$group_colors_ui <- shiny::renderUI({
       groups <- selected_groups()
-
       if (is.null(groups) || input$pca_colby == "none") {
-        return(NULL)  # 如果没有选择分组或分组为"none"，不显示颜色选择器
+        return(NULL)  # If no grouping is selected or the grouping is "none", the color selector is not displayed.
       }
-
-      # 生成一组美观的默认颜色
+      # Generate a set of beautiful default colors
       default_colors <- c(
         "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
         "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
         "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F",
         "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA"
       )
-
-      # 为每个组创建颜色选择器
-      color_pickers <- lapply(seq_along(groups), function(i) {
+      # Create color selectors for each group.
+      color_pickers <- base::lapply(base::seq_along(groups), function(i) {
         group <- groups[i]
-        default_color <- default_colors[(i-1) %% length(default_colors) + 1]
-
-        # 为每个组创建唯一的ID
-        group_id <- gsub("[^A-Za-z0-9]", "_", group)
-
-        tagList(
+        default_color <- default_colors[(i-1) %% base::length(default_colors) + 1]
+        # Create a unique ID for each group.
+        group_id <- base::gsub("[^A-Za-z0-9]", "_", group)
+        shiny::tagList(
           colourpicker::colourInput(
             ns(paste0("color_", group_id)),
             label = paste("Color for:", group),
@@ -236,26 +237,23 @@ DEG_server <- function(id) {
           )
         )
       })
-
-      # 添加一个重置按钮
-      reset_button <- actionButton(
+      # Add a reset button
+      reset_button <- shiny::actionButton(
         ns("reset_colors"),
         "Reset Colors to Default",
-        icon = icon("refresh"),
+        icon = shiny::icon("refresh"),
         class = "btn-sm btn-outline-secondary"
       )
-
-      tagList(
-        h5("Customize Group Colors:", id = ns("group_colors_title")),
-        br(),
+      shiny::tagList(
+        shiny::h5("Customize Group Colors:", id = ns("group_colors_title")),
+        shiny::br(),
         color_pickers,
-        br(),
+        shiny::br(),
         reset_button
       )
     })
-
-    # 处理颜色重置按钮
-    observeEvent(input$reset_colors, {
+    # Handle color reset button
+    shiny::observeEvent(input$reset_colors, {
       groups <- selected_groups()
       if (!is.null(groups)) {
         default_colors <- c(
@@ -264,116 +262,98 @@ DEG_server <- function(id) {
           "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F",
           "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA"
         )
-
-        for (i in seq_along(groups)) {
+        for (i in base::seq_along(groups)) {
           group <- groups[i]
-          default_color <- default_colors[(i-1) %% length(default_colors) + 1]
-          group_id <- gsub("[^A-Za-z0-9]", "_", group)
+          default_color <- default_colors[(i-1) %% base::length(default_colors) + 1]
+          group_id <- base::gsub("[^A-Za-z0-9]", "_", group)
           colourpicker::updateColourInput(
             session,
-            paste0("color_", group_id),
+            base::paste0("color_", group_id),
             value = default_color
           )
         }
       }
     })
-
-    # 获取用户选择的颜色
-    get_group_colors <- reactive({
+    # Gets the color selected by the user.
+    get_group_colors <- shiny::reactive({
       groups <- selected_groups()
       if (is.null(groups) || input$pca_colby == "none") {
         return(NULL)
       }
-
-      colors <- character(0)
-
+      colors <- base::character(0)
       for (group in groups) {
-        group_id <- gsub("[^A-Za-z0-9]", "_", group)
-        color_input <- paste0("color_", group_id)
-
+        group_id <- base::gsub("[^A-Za-z0-9]", "_", group)
+        color_input <- base::paste0("color_", group_id)
         if (!is.null(input[[color_input]])) {
           colors <- c(colors, input[[color_input]])
         } else {
-          # 如果颜色未设置，使用默认颜色
+          # If the color is not set, the default color is used.
           default_colors <- c(
             "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
             "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5"
           )
-          default_color <- default_colors[(which(groups == group) - 1) %% length(default_colors) + 1]
+          default_color <- default_colors[(which(groups == group) - 1) %% base::length(default_colors) + 1]
           colors <- c(colors, default_color)
         }
       }
-
-      names(colors) <- groups
+      base::names(colors) <- groups
       return(colors)
     })
-
-    # 创建样本信息
-    sample_info <- reactive({
-      req(group_data())
+    # Create sample information
+    sample_info <- shiny::reactive({
+      shiny::req(group_data())
       col_data <- group_data() %>%
         tibble::column_to_rownames("Sample")
       return(col_data)
     })
-
-    # 运行分析
-    observeEvent(input$generate_plot, {
-      # 验证数据
-      validate(
-        need(!is.null(expression_data()), "Please upload expression data"),
-        need(!is.null(sample_info()), "Please upload group information"),
-        need(nrow(expression_data()) > 0, "Expression data is empty"),
-        need(nrow(sample_info()) > 0, "Group information is empty")
+    # Operational analysis
+    shiny::observeEvent(input$generate_plot, {
+      # Verification data
+      shiny::validate(
+        shiny::need(!is.null(expression_data()), "Please upload expression data"),
+        shiny::need(!is.null(sample_info()), "Please upload group information"),
+        shiny::need(nrow(expression_data()) > 0, "Expression data is empty"),
+        shiny::need(nrow(sample_info()) > 0, "Group information is empty")
       )
-
-      # 检查样本名称是否匹配
-      expr_samples <- colnames(expression_data())[-1]  # 排除GeneID列
-      group_samples <- rownames(sample_info())
-
-      validate(
-        need(all(expr_samples %in% group_samples),
-             paste("Error: Sample names in expression data do not match group data.\n",
-                   "Expression samples:", paste(expr_samples, collapse = ", "), "\n",
-                   "Group samples:", paste(group_samples, collapse = ", ")))
+      # Check whether the sample names match.
+      expr_samples <- base::colnames(expression_data())[-1]  # Exclude GeneID column
+      group_samples <- base::rownames(sample_info())
+      shiny::validate(
+        shiny::need(all(expr_samples %in% group_samples),
+                    base::paste("Error: Sample names in expression data do not match group data.\n",
+                   "Expression samples:", base::paste(expr_samples, collapse = ", "), "\n",
+                   "Group samples:", base::paste(group_samples, collapse = ", ")))
       )
-
       analysis_ready(TRUE)
     })
-
-    # 进行PCA分析
-    pca_result <- reactive({
-      req(analysis_ready(), expression_data(), sample_info())
-
-      # 提取表达矩阵
+    # Perform PCA analysis
+    pca_result <- shiny::reactive({
+      shiny::req(analysis_ready(), expression_data(), sample_info())
+      # Extract expression matrix
       expr_mat <- expression_data() %>%
         tibble::column_to_rownames("GeneID") %>%
-        as.matrix()
-
-      # 确保样本顺序一致
-      expr_mat <- expr_mat[, rownames(sample_info()), drop = FALSE]
-
-      # 运行PCA
+        base::as.matrix()
+      # Ensure that the sample order is consistent.
+      expr_mat <- expr_mat[, base::rownames(sample_info()), drop = FALSE]
+      # Run PCA
       pca <- PCAtools::pca(expr_mat, metadata = sample_info(), removeVar = 0.1)
       return(pca)
     })
-
-    # 绘制PCA图
-    pca_plot_obj <- reactive({
-      req(pca_result())
-
-      # 获取颜色和形状设置
+    # Draw PCA diagram
+    pca_plot_obj <- shiny::reactive({
+      shiny::req(pca_result())
+      # Get color and shape settings
       colby <- input$pca_colby
       shapeby <- input$pca_shapeby
       show_labels <- input$pca_show_labels
       encircle <- input$pca_encircle
       show_ellipse <- input$pca_show_ellipse
       ellipse_alpha <- input$pca_ellipse_alpha
-      point_size <- as.numeric(input$pca_pointsize)
+      point_size <- base::as.numeric(input$pca_pointsize)
       base_color <- input$pca_base_color
       legend_size <- input$pca_legend_size
-
-      # 基础PCA图设置
-      pca_args <- list(
+      # Basic PCA diagram setting
+      pca_args <- base::list(
         pca_result(),
         x = "PC1",
         y = "PC2",
@@ -384,36 +364,31 @@ DEG_server <- function(id) {
         title = "PCA Plot",
         subtitle = "Principal Component Analysis"
       )
-
-      # 设置颜色
+      # Set color
       if (colby != "none") {
         pca_args$colby <- colby
-
-        # 获取用户定义的颜色
+        # Gets the user-defined color.
         group_colors <- get_group_colors()
-        if (length(group_colors) > 0) {
+        if (base::length(group_colors) > 0) {
           pca_args$colkey <- group_colors
         }
       } else {
         pca_args$colby <- NULL
         pca_args$colkey <- base_color
       }
-
-      # 设置形状
+      # Set the shape
       if (shapeby != "none") {
         pca_args$shape <- shapeby
       } else {
         pca_args$shape <- NULL
       }
-
-      # 设置样本标签
+      # Set sample label
       if (show_labels) {
-        pca_args$lab <- rownames(pca_result()$metadata)
+        pca_args$lab <- base::rownames(pca_result()$metadata)
       } else {
         pca_args$lab <- NULL
       }
-
-      # 设置椭圆
+      # Set ellipse
       if (encircle && colby != "none" && show_ellipse) {
         pca_args$encircle <- TRUE
         pca_args$encircleFill <- TRUE
@@ -422,137 +397,111 @@ DEG_server <- function(id) {
       } else {
         pca_args$encircle <- FALSE
       }
-
-      # 绘制图形
-      pca_plot <- do.call(PCAtools::biplot, pca_args)
-
+      # draw a graph
+      pca_plot <- base::do.call(PCAtools::biplot, pca_args)
       return(pca_plot)
     })
-
-    # 准备PCA数据表格 (显示pca_result$rotated)
-    pca_rotated_data <- reactive({
-      req(pca_result())
-
-      # 获取旋转后的坐标
-      rotated_data <- as.data.frame(pca_result()$rotated)
-      rotated_data <- rotated_data[, 1:min(10, ncol(rotated_data))]  # 只显示前10个主成分
-
-      # 添加样本名
-      rotated_data <- cbind(
-        Sample = rownames(rotated_data),
+    # Prepare PCA data table (show pca_result$rotated)
+    pca_rotated_data <- shiny::reactive({
+      shiny::req(pca_result())
+      # Get the rotated coordinates.
+      rotated_data <- base::as.data.frame(pca_result()$rotated)
+      rotated_data <- rotated_data[, 1:base::min(10, base::ncol(rotated_data))]  # Only the top 10 principal components are displayed.
+      # Add sample name
+      rotated_data <- base::cbind(
+        Sample = base::rownames(rotated_data),
         rotated_data
       )
-
-      # 添加分组信息
+      # Add grouping information
       if (!is.null(sample_info())) {
-        rotated_data <- cbind(
+        rotated_data <- base::cbind(
           rotated_data,
           sample_info()
         )
       }
-
       return(rotated_data)
     })
-
-    # 进行差异表达分析
-    deseq_results <- eventReactive(input$generate_plot, {
-      req(expression_data(), sample_info())
-
-      withProgress(message = 'Running DESeq2 analysis...', value = 0.3, {
-        # 准备计数矩阵
+    # Perform differential expression analysis.
+    deseq_results <- shiny::eventReactive(input$generate_plot, {
+      shiny::req(expression_data(), sample_info())
+      shiny::withProgress(message = 'Running DESeq2 analysis...', value = 0.3, {
+        # Prepare counting matrix
         count_mat <- expression_data() %>%
           tibble::column_to_rownames("GeneID") %>%
-          mutate(across(everything(), ceiling)) %>%
-          as.matrix()
-
-        # 确保样本顺序一致
-        count_mat <- count_mat[, rownames(sample_info()), drop = FALSE]
-
-        # 创建DESeq2对象
-        incProgress(0.2, detail = "Creating DESeq2 object...")
-        dds <- DESeqDataSetFromMatrix(
+          dplyr::mutate(dplyr::across(dplyr::everything(), ceiling)) %>%
+          base::as.matrix()
+        # Ensure that the sample order is consistent.
+        count_mat <- count_mat[, base::rownames(sample_info()), drop = FALSE]
+        # Create a DESeq2 object
+        shiny::incProgress(0.2, detail = "Creating DESeq2 object...")
+        dds <- DESeq2::DESeqDataSetFromMatrix(
           countData = count_mat,
           colData = sample_info(),
           design = ~ Group
         )
-
-        # 运行DESeq2
-        incProgress(0.3, detail = "Running DESeq2...")
-        dds <- DESeq(dds)
-
-        # 获取结果
-        incProgress(0.2, detail = "Extracting results...")
-        res <- results(dds, contrast = c("Group", "B73", "Y12"))
-
-        # 整理结果
+        # run DESeq2
+        shiny::incProgress(0.3, detail = "Running DESeq2...")
+        dds <- DESeq2::DESeq(dds)
+        # Get results
+        shiny::incProgress(0.2, detail = "Extracting results...")
+        res <- DESeq2::results(dds, contrast = c("Group", "B73", "Y12"))
+        # Collate results
         res_tbl <- res %>%
-          as.data.frame() %>%
+          base::as.data.frame() %>%
           tibble::rownames_to_column("GeneID") %>%
-          mutate(
-            regular = case_when(
+          dplyr::mutate(
+            regular = dplyr::case_when(
               padj < 0.05 & log2FoldChange > 1 ~ "up",
               padj < 0.05 & log2FoldChange < -1 ~ "down",
               TRUE ~ "not sig"
             ),
-            significant = ifelse(padj < 0.05 & abs(log2FoldChange) > 1, "yes", "no"),
-            Regulation = case_when(
+            significant = base::ifelse(padj < 0.05 & base::abs(log2FoldChange) > 1, "yes", "no"),
+            Regulation = dplyr::case_when(
               regular == "up" ~ "Up-regulated",
               regular == "down" ~ "Down-regulated",
               TRUE ~ "Not significant"
             )
           ) %>%
-          arrange(padj, desc(abs(log2FoldChange)))
-
+          dplyr::arrange(padj, dplyr::desc(base::abs(log2FoldChange)))
         return(res_tbl)
       })
     })
-
-    # 获取DEG统计信息
-    deg_stats <- reactive({
-      req(deseq_results())
-
+    # Get DEG statistics
+    deg_stats <- shiny::reactive({
+      shiny::req(deseq_results())
       res_tbl <- deseq_results()
-
-      stats <- list(
-        total_genes = nrow(res_tbl),
-        up_regulated = sum(res_tbl$regular == "up", na.rm = TRUE),
-        down_regulated = sum(res_tbl$regular == "down", na.rm = TRUE),
-        significant = sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE),
-        percent_sig = round(sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE) / nrow(res_tbl) * 100, 2)
+      stats <- base::list(
+        total_genes = base::nrow(res_tbl),
+        up_regulated = base::sum(res_tbl$regular == "up", na.rm = TRUE),
+        down_regulated = base::sum(res_tbl$regular == "down", na.rm = TRUE),
+        significant = base::sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE),
+        percent_sig = base::round(base::sum(res_tbl$regular %in% c("up", "down"), na.rm = TRUE) / base::nrow(res_tbl) * 100, 2)
       )
-
       return(stats)
     })
-
-    # 获取top DEGs
-    top_degs <- reactive({
-      req(deseq_results())
-
+    # obtain top DEGs
+    top_degs <- shiny::reactive({
+      shiny::req(deseq_results())
       res_tbl <- deseq_results()
-
-      # 获取显著差异表达的基因
+      # Obtaining significantly differentially expressed genes
       sig_genes <- res_tbl %>%
-        filter(regular %in% c("up", "down")) %>%
-        arrange(padj, desc(abs(log2FoldChange))) %>%
-        head(20)  # 显示前20个
-
+        dplyr::filter(regular %in% c("up", "down")) %>%
+        dplyr::arrange(padj, dplyr::desc(base::abs(log2FoldChange))) %>%
+        utils::head(20)
       return(sig_genes)
     })
-
-    # 绘制火山图
-    voc_plot_obj <- reactive({
-      req(deseq_results())
+    # Draw a volcano map
+    voc_plot_obj <- shiny::reactive({
+      shiny::req(deseq_results())
       res_tbl <- deseq_results()
-
-      # 计算统计信息用于副标题
+      # Calculation statistics are used for subheadings
       stats <- deg_stats()
-
-      # 创建火山图
-      p <- ggplot(res_tbl, aes(x = log2FoldChange, y = -log10(padj))) +
-        geom_point(aes(color = regular),
-                   size = input$volcano_point_size,
-                   alpha = input$volcano_alpha) +
-        scale_color_manual(
+      # Create a volcano map
+      p <- ggplot2::ggplot(res_tbl, ggplot2::aes(x = log2FoldChange, y = -log10(padj))) +
+        ggplot2::geom_point(ggplot2::aes(color = regular),
+                            size = input$volcano_point_size,
+                            alpha = input$volcano_alpha) +
+        ggplot2::scale_color_manual(
           values = c(
             "up" = input$color_up,
             "down" = input$color_down,
@@ -560,59 +509,54 @@ DEG_server <- function(id) {
           ),
           name = "Expression"
         ) +
-        geom_hline(
+        ggplot2::geom_hline(
           yintercept = -log10(0.05),
           linetype = "dashed",
           color = "black",
           alpha = 0.5
         ) +
-        geom_vline(
+        ggplot2::geom_vline(
           xintercept = c(-1, 1),
           linetype = "dashed",
           color = "black",
           alpha = 0.5
         ) +
-        labs(
+        ggplot2::labs(
           title = "Volcano Plot",
           subtitle = paste(
             "Up-regulated:", stats$up_regulated,
             "| Down-regulated:", stats$down_regulated,
             "| Total significant:", stats$significant,
-            paste0("(", stats$percent_sig, "%)")
+            base::paste0("(", stats$percent_sig, "%)")
           ),
           x = "log2(Fold Change)",
           y = "-log10(Adjusted p-value)"
         ) +
-        theme_minimal() +
-        theme(
-          plot.title = element_text(size = 16, face = "bold"),
-          plot.subtitle = element_text(size = 12, color = "gray50"),
-          axis.title = element_text(size = 12),
+        ggplot2::theme_minimal() +
+        ggplot2::theme(
+          plot.title = ggplot2::element_text(size = 16, face = "bold"),
+          plot.subtitle = ggplot2::element_text(size = 12, color = "gray50"),
+          axis.title = ggplot2::element_text(size = 12),
           legend.position = "right",
-          panel.grid = if(input$volcano_show_grid) element_line(color = "gray90") else element_blank(),
-          panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+          panel.grid = if(input$volcano_show_grid) ggplot2::element_line(color = "gray90") else ggplot2::element_blank(),
+          panel.border = ggplot2::element_rect(fill = NA, color = "black", linewidth = 0.5)
         ) +
-        coord_cartesian(ylim = c(0, max(-log10(res_tbl$padj[is.finite(-log10(res_tbl$padj))]), na.rm = TRUE) * 1.1))
-
+        ggplot2::coord_cartesian(ylim = c(0, base::max(-log10(res_tbl$padj[base::is.finite(-log10(res_tbl$padj))]), na.rm = TRUE) * 1.1))
       return(p)
     })
-
-    # 渲染PCA图
-    output$pca_plot <- renderPlot({
-      req(pca_plot_obj())
+    # Rendering PCA diagram
+    output$pca_plot <- shiny::renderPlot({
+      shiny::req(pca_plot_obj())
       pca_plot_obj()
     })
-
-    # 渲染火山图
-    output$voc_plot <- renderPlot({
-      req(voc_plot_obj())
+    # Render a volcano map
+    output$voc_plot <- shiny::renderPlot({
+      shiny::req(voc_plot_obj())
       voc_plot_obj()
     })
-
-    # 渲染PCA数据表格 (显示pca_result$rotated)
+    # Render PCA data table (show pca_result$rotated)
     output$pca_data_table <- DT::renderDT({
-      req(pca_rotated_data())
-
+      shiny::req(pca_rotated_data())
       DT::datatable(
         pca_rotated_data(),
         extensions = c('Buttons', 'Scroller'),
@@ -628,18 +572,15 @@ DEG_server <- function(id) {
         class = 'display compact'
       )
     })
-
-    # 渲染DEG结果表格 (显示res_tbl)
+    # Render DEG result table (display res_tbl)
     output$deg_table <- DT::renderDT({
-      req(deseq_results())
-
+      shiny::req(deseq_results())
       res_tbl <- deseq_results() %>%
-        select(GeneID, baseMean, log2FoldChange, lfcSE, stat, pvalue, padj, Regulation) %>%
-        mutate(
-          across(where(is.numeric), ~ round(., 4)),
-          padj = format(padj, scientific = TRUE, digits = 3)
+        dplyr::select(GeneID, baseMean, log2FoldChange, lfcSE, stat, pvalue, padj, Regulation) %>%
+        dplyr::mutate(
+          dplyr::across(dplyr::where(is.numeric), ~ base::round(., 4)),
+          padj = base::format(padj, scientific = TRUE, digits = 3)
         )
-
       DT::datatable(
         res_tbl,
         extensions = c('Buttons', 'Scroller'),
@@ -662,14 +603,11 @@ DEG_server <- function(id) {
           )
         )
     })
-
-    # 渲染DEG统计表格
-    output$deg_stats <- renderTable({
-      req(deg_stats())
-
+    # Render DEG statistics table
+    output$deg_stats <- shiny::renderTable({
+      shiny::req(deg_stats())
       stats <- deg_stats()
-
-      data.frame(
+      base::data.frame(
         Statistic = c("Total Genes", "Up-regulated", "Down-regulated",
                       "Total Significant", "Percentage Significant"),
         Value = c(
@@ -681,18 +619,15 @@ DEG_server <- function(id) {
         )
       )
     }, align = 'lr')
-
-    # 渲染Top DEGs表格
+    # Render Top DEGs table
     output$top_degs_table <- DT::renderDT({
-      req(top_degs())
-
+      shiny::req(top_degs())
       top_genes <- top_degs() %>%
-        select(GeneID, log2FoldChange, padj, Regulation) %>%
-        mutate(
-          log2FoldChange = round(log2FoldChange, 3),
-          padj = format(padj, scientific = TRUE, digits = 3)
+        dplyr::select(GeneID, log2FoldChange, padj, Regulation) %>%
+        dplyr::mutate(
+          log2FoldChange = base::round(log2FoldChange, 3),
+          padj = base::format(padj, scientific = TRUE, digits = 3)
         )
-
       DT::datatable(
         top_genes,
         extensions = c('Buttons', 'Scroller'),
@@ -713,74 +648,67 @@ DEG_server <- function(id) {
           )
         )
     })
-
-    # 下载PCA图
-    output$download_pca <- downloadHandler(
+    # Download PCA diagram
+    output$download_pca <- shiny::downloadHandler(
       filename = function() {
-        paste("PCA_plot_", Sys.Date(), ".pdf", sep = "")
+        base::paste("PCA_plot_", Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        req(pca_plot_obj())
-        pdf(file, width = input$download_width_pca, height = input$download_height_pca)
+        shiny::req(pca_plot_obj())
+        grDevices::pdf(file, width = input$download_width_pca, height = input$download_height_pca)
         print(pca_plot_obj())
-        dev.off()
+        grDevices::dev.off()
       }
     )
-
-    # 下载火山图
-    output$download_pdf <- downloadHandler(
+    # Download volcano map
+    output$download_pdf <- shiny::downloadHandler(
       filename = function() {
-        paste("volcano_plot_", Sys.Date(), ".pdf", sep = "")
+        base::paste("volcano_plot_", base::Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        req(voc_plot_obj())
-        pdf(file, width = input$download_width_voc, height = input$download_height_voc)
+        shiny::req(voc_plot_obj())
+        grDevices::pdf(file, width = input$download_width_voc, height = input$download_height_voc)
         print(voc_plot_obj())
-        dev.off()
+        grDevices::dev.off()
       }
     )
-
-    # 下载PCA数据 (pca_result$rotated)
-    output$download_pca_table <- downloadHandler(
+    output$download_pca_table <- shiny::downloadHandler(
       filename = function() {
-        paste("pca_rotated_data_", Sys.Date(), ".csv", sep = "")
+        base::paste("pca_rotated_data_", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(pca_rotated_data())
-        write.csv(pca_rotated_data(), file, row.names = FALSE)
+        shiny::req(pca_rotated_data())
+        utils::write.csv(pca_rotated_data(), file, row.names = FALSE)
       }
     )
-
-    # 下载PCA数据 (从侧边栏按钮)
-    output$download_pca_data <- downloadHandler(
+    # Download PCA data (from the sidebar button)
+    output$download_pca_data <- shiny::downloadHandler(
       filename = function() {
-        paste("pca_rotated_data_", Sys.Date(), ".csv", sep = "")
+        base::paste("pca_rotated_data_", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(pca_rotated_data())
-        write.csv(pca_rotated_data(), file, row.names = FALSE)
+        shiny::req(pca_rotated_data())
+        utils::write.csv(pca_rotated_data(), file, row.names = FALSE)
       }
     )
-
-    # 下载DEG数据 (res_tbl) - 从侧边栏按钮
-    output$download_deg_data <- downloadHandler(
+    # Download DEG data (res_tbl)-from the sidebar button
+    output$download_deg_data <- shiny::downloadHandler(
       filename = function() {
-        paste("deg_analysis_results_", Sys.Date(), ".csv", sep = "")
+        base::paste("deg_analysis_results_", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(deseq_results())
-        write.csv(deseq_results(), file, row.names = FALSE)
+        shiny::req(deseq_results())
+        utils::write.csv(deseq_results(), file, row.names = FALSE)
       }
     )
-
-    # 下载DEG数据 (res_tbl) - 从表格内按钮
-    output$download_degs <- downloadHandler(
+    # Download DEG data (res_tbl)-from the button in the table
+    output$download_degs <- shiny::downloadHandler(
       filename = function() {
-        paste("deg_results_", Sys.Date(), ".csv", sep = "")
+        base::paste("deg_results_", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(deseq_results())
-        write.csv(deseq_results(), file, row.names = FALSE)
+        shiny::req(deseq_results())
+        utils::write.csv(deseq_results(), file, row.names = FALSE)
       }
     )
   })

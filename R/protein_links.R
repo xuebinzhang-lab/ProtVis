@@ -1,10 +1,27 @@
-library(shiny)
-library(bslib)
-library(xml2)
-library(dplyr)
-library(Biostrings)
-
-# 改写的 blast_uniprot，使用 system2()，安全处理空结果
+#' BLAST UniProt Search Function
+#'
+#' Performs BLASTp search against SwissProt and TrEMBL databases to find
+#' matching UniProt entries for protein sequences.
+#'
+#' @param input Character vector of protein sequences, list of sequences,
+#'   or path to FASTA file
+#' @param db_swiss Character string path to SwissProt BLAST database
+#' @param db_trembl Character string path to TrEMBL BLAST database
+#' @param top_n Integer number of top hits to return (default: 1)
+#' @param tmp_fasta Character string temporary FASTA file name (default: "query_tmp.fasta")
+#' @param blastp_path Character string path to BLASTp executable
+#' @return A data frame containing BLAST results with columns: SeqID,
+#'   UniProtAcc, EntryName, Description, Identity, Database
+#' @export
+#' @examples
+#' \dontrun{
+#' result <- blast_uniprot(
+#'   input = "MAEGEITTFTALTEKFNLPPGNYKKPKLLYCSNGGHFLRILPDGTVDGTRDRSDQHIQLQLSAESIGEG",
+#'   db_swiss = "/path/to/uniprot_sprot",
+#'   db_trembl = "/path/to/uniprot_trembl",
+#'   blastp_path = "/path/to/blastp"
+#' )
+#' }
 blast_uniprot <- function(input,
                           db_swiss,
                           db_trembl,
@@ -15,7 +32,7 @@ blast_uniprot <- function(input,
   if (is.list(input)) input <- unlist(input)
 
   if (is.character(input) && length(input) == 1 && file.exists(input)) {
-    seqs <- readAAStringSet(input)
+    seqs <- Biostrings::readAAStringSet(input)
     seq_names <- names(seqs)
     seq_list <- as.character(seqs)
   } else if (is.character(input)) {
@@ -49,8 +66,8 @@ blast_uniprot <- function(input,
         return(list())
       }
 
-      doc <- read_xml(xml_out)
-      xml_find_all(doc, ".//Hit")
+      doc <- xml2::read_xml(xml_out)
+      xml2::xml_find_all(doc, ".//Hit")
     }
 
     hits <- run_blast(db_swiss)
@@ -73,12 +90,12 @@ blast_uniprot <- function(input,
       )
     } else {
       top_hit <- hits[[1]]
-      acc <- xml_text(xml_find_first(top_hit, ".//Hit_accession"))
-      entry <- xml_text(xml_find_first(top_hit, ".//Hit_id"))
-      desc <- xml_text(xml_find_first(top_hit, ".//Hit_def"))
+      acc <- xml2::xml_text(xml2::xml_find_first(top_hit, ".//Hit_accession"))
+      entry <- xml2::xml_text(xml2::xml_find_first(top_hit, ".//Hit_id"))
+      desc <- xml2::xml_text(xml2::xml_find_first(top_hit, ".//Hit_def"))
 
-      hsp_identity <- as.numeric(xml_text(xml_find_first(top_hit, ".//Hsp_identity")))
-      hsp_align_len <- as.numeric(xml_text(xml_find_first(top_hit, ".//Hsp_align-len")))
+      hsp_identity <- as.numeric(xml2::xml_text(xml2::xml_find_first(top_hit, ".//Hsp_identity")))
+      hsp_align_len <- as.numeric(xml2::xml_text(xml2::xml_find_first(top_hit, ".//Hsp_align-len")))
       identity <- if (!is.na(hsp_identity) & !is.na(hsp_align_len)) round(hsp_identity / hsp_align_len * 100, 2) else NA
 
       df <- data.frame(
@@ -95,9 +112,20 @@ blast_uniprot <- function(input,
     results[[seq_name]] <- df
   }
 
-  bind_rows(results)
+  dplyr::bind_rows(results)
 }
 
+#' Get UniProt Entry from Gene ID
+#'
+#' Queries UniProt REST API to retrieve primary accession number for a given gene ID.
+#'
+#' @param gene_id Character string containing the gene identifier to search
+#' @return Character string of the primary UniProt accession, or NA if not found
+#' @export
+#' @examples
+#' \dontrun{
+#' accession <- get_uniprot_entry("TP53")
+#' }
 get_uniprot_entry <- function(gene_id) {
   url <- paste0("https://rest.uniprot.org/uniprotkb/search?query=", gene_id, "&format=json")
   res <- httr::GET(url)
@@ -117,56 +145,72 @@ get_uniprot_entry <- function(gene_id) {
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing a text input and a dynamic links panel
 #' @export
+#' @examples
+#' \dontrun{
+#' ui <- protein_links_ui("protein_links")
+#' }
 protein_links_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    sidebarLayout(
-      sidebarPanel(
-        textInput(ns("protein_input"), "Enter Gene ID or Protein Sequence", value = ""),
-        textAreaInput(ns("seq_input"), "Enter protein sequence:", value = "", rows = 8),
-        textInput(ns("db_swiss"), "SwissProt database path:", value = "G:/blastdb/UniProt/uniprot_sprot"),
-        textInput(ns("db_trembl"), "TrEMBL database path:", value = "G:/blastdb/UniProt/uniprot_trembl"),
-        textInput(ns("blastp_path"), "BLASTp executable path:", value = "F:/NCBI/blast-2.17.0+/bin/blastp.exe"),
-        actionButton(ns("run_blast"), "Run BLASTp")
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::sidebarLayout(
+      shiny::sidebarPanel(
+        shiny::textInput(ns("protein_input"), "Enter Gene ID or Protein Sequence", value = ""),
+        shiny::textAreaInput(ns("seq_input"), "Enter protein sequence:", value = "", rows = 8),
+        shiny::textInput(ns("db_swiss"), "SwissProt database path:", value = "G:/blastdb/UniProt/uniprot_sprot"),
+        shiny::textInput(ns("db_trembl"), "TrEMBL database path:", value = "G:/blastdb/UniProt/uniprot_trembl"),
+        shiny::textInput(ns("blastp_path"), "BLASTp executable path:", value = "F:/NCBI/blast-2.17.0+/bin/blastp.exe"),
+        shiny::actionButton(ns("run_blast"), "Run BLASTp")
       ),
-      mainPanel(
-        # h4("BLASTp Result"),
-        # tableOutput(ns("blast_result")),
-        # br(),
-        uiOutput(ns("links_panel"))  # 保留原来动态生成链接的区域
+      shiny::mainPanel(
+        shiny::uiOutput(ns("links_panel"))
       )
     )
   )
 }
 
-
 #' Protein Links Server Module
 #'
-#' Detects whether the input is a UniProt ID (via pattern or database lookup)
-#' or a raw protein sequence, and generates links for UniProt, InterPro, PSIPRED,
-#' and Swiss-Model accordingly.
+#' Server-side logic that detects whether the input is a UniProt ID (via pattern or database lookup)
+#' or a raw protein sequence, and generates links for UniProt, InterPro, and Swiss-Model accordingly.
+#' If no UniProt ID is provided directly, it runs BLASTp against SwissProt/TrEMBL databases to find matches.
 #'
 #' @param id The namespace identifier for the module
-#' @return A Shiny server module
+#' @return A Shiny server module function
 #' @export
+#' @name protein_links_server
+#' @examples
+#' \dontrun{
+#' server <- function(input, output, session) {
+#'   protein_links_server("protein_links")
+#' }
+#' }
+
+utils::globalVariables(c("Description", "UniProtID"))
+
 protein_links_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    output$links_panel <- renderUI({
+    #' Render Links Panel
+    #'
+    #' Reactive output that generates protein database links based on user input.
+    #' Priority: 1) Direct UniProt ID input, 2) BLASTp search from sequence
+    output$links_panel <- shiny::renderUI({
       prot <- NULL
-      # 1️⃣ 如果用户输入了 UniProt ID，优先使用
+
+      # Priority 1: Use direct UniProt ID input if provided
       if (nzchar(input$protein_input)) {
-        req(input$protein_input)
+        shiny::req(input$protein_input)
         prot <- get_uniprot_entry(input$protein_input)
       }
-      # 2️⃣ 如果没有 UniProt ID 输入，但有序列输入并运行 BLASTp
+
+      # Priority 2: Run BLASTp search if sequence provided but no UniProt ID
       if (is.null(prot) && nzchar(input$seq_input)) {
 
-        blast_result <- eventReactive(input$run_blast, {
-          req(input$seq_input)
-          req(input$db_swiss)
-          req(input$db_trembl)
+        blast_result <- shiny::eventReactive(input$run_blast, {
+          shiny::req(input$seq_input)
+          shiny::req(input$db_swiss)
+          shiny::req(input$db_trembl)
 
           seq_list <- list(input$seq_input)
 
@@ -179,34 +223,29 @@ protein_links_server <- function(id) {
 
           result
         })
-        prot <- result %>%
+
+        prot <- blast_result() %>%
           dplyr::select(Description) %>%
           dplyr::mutate(UniProtID = stringr::str_extract(Description, "(?<=sp\\|)[A-Z0-9]+(?=\\|)")) %>%
           dplyr::pull(UniProtID)
       }
 
-      # 3️⃣ 如果仍然没有得到 UniProt ID，显示提示
+      # Priority 3: Display warning if no UniProt ID found
       if (is.null(prot) || is.na(prot) || prot == "") {
-        return(tags$p("No UniProt ID found. Please check your input.", style = "color:green"))
+        return(shiny::tags$p("No UniProt ID found. Please check your input.", style = "color:green"))
       }
 
-
-
-
-      # 生成链接
+      # Generate external database links
       uniprot_url    <- paste0("https://www.uniprot.org/uniprotkb/", prot)
       interpro_url   <- paste0("https://www.ebi.ac.uk/interpro/protein/UniProt/", prot)
       swissmodel_url <- paste0("https://www.swissmodel.expasy.org/repository/uniprot/", prot)
-      # psipred_url    <- "http://bioinf.cs.ucl.ac.uk/psipred/"
 
-      tagList(
-        h4("Quick Links"),
-        tags$a(href = uniprot_url, "UniProt", target = "_blank", class = "btn btn-primary m-1"),
-        tags$a(href = interpro_url, "InterPro", target = "_blank", class = "btn btn-info m-1"),
-        # tags$a(href = psipred_url, "PSIPRED", target = "_blank", class = "btn btn-success m-1"),
-        tags$a(href = swissmodel_url, "Swiss-Model", target = "_blank", class = "btn btn-warning m-1")
+      shiny::tagList(
+        shiny::h4("Quick Links"),
+        shiny::tags$a(href = uniprot_url, "UniProt", target = "_blank", class = "btn btn-primary m-1"),
+        shiny::tags$a(href = interpro_url, "InterPro", target = "_blank", class = "btn btn-info m-1"),
+        shiny::tags$a(href = swissmodel_url, "Swiss-Model", target = "_blank", class = "btn btn-warning m-1")
       )
     })
   })
 }
-

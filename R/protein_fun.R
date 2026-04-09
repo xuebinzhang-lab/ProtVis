@@ -1,62 +1,62 @@
 protein_fun_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    layout_sidebar(
-      sidebar = sidebar(
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        div(style = "margin-bottom: 15px;",
-            actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
         ),
-        uiOutput(ns("load_status_panel")),
+        shiny::uiOutput(ns("load_status_panel")),
         # 添加选中的蛋白信息显示
-        uiOutput(ns("selected_protein_info")),
+        shiny::uiOutput(ns("selected_protein_info")),
         # 添加蛋白序列提取面板
-        uiOutput(ns("sequence_extract_panel"))
+        shiny::uiOutput(ns("sequence_extract_panel"))
       ),
-      page_fluid(
-        layout_column_wrap(
+      bslib::page_fluid(
+        bslib::layout_column_wrap(
           width = 1/2,
           height = 1500,
 
-          card(
+          bslib::card(
             height = "800px",
-            card_header("DEP"),
-            card_body(
-              uiOutput(ns("comparison_select_ui")),
-              plotlyOutput(ns("volcano_plot"), height = "600px")
+            bslib::card_header("DEP"),
+            bslib::card_body(
+              shiny::uiOutput(ns("comparison_select_ui")),
+              plotly::plotlyOutput(ns("volcano_plot"), height = "600px")
             )
           ),
 
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Protein sequence"),
-            card_body(
+            bslib::card_header("Protein sequence"),
+            bslib::card_body(
               # 显示蛋白序列
-              verbatimTextOutput(ns("protein_sequence")),
+              shiny::verbatimTextOutput(ns("protein_sequence")),
               # 下载序列按钮
-              downloadButton(ns("download_sequence"), "Download FASTA")
+              shiny::downloadButton(ns("download_sequence"), "Download FASTA")
             )
           ),
 
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Domain"),
-            card_body(
+            bslib::card_header("Domain"),
+            bslib::card_body(
               # 显示结构域信息
-              plotOutput(ns("domain_plot"), height = "300px"),
+              shiny::plotOutput(ns("domain_plot"), height = "300px"),
               # 结构域表格
               DT::dataTableOutput(ns("domain_table"))
             )
           ),
 
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Protein 3D Structure"),
-            card_body(
+            bslib::card_header("Protein 3D Structure"),
+            bslib::card_body(
               # 显示3D结构或相关信息
-              uiOutput(ns("structure_display")),
+              shiny::uiOutput(ns("structure_display")),
               # 外部数据库链接
-              uiOutput(ns("external_links"))
+              shiny::uiOutput(ns("external_links"))
             )
           )
         )
@@ -65,10 +65,16 @@ protein_fun_ui <- function(id) {
   )
 }
 
+
+
+utils::globalVariables(c("logFC", "P.Value", "regulation"))
+
+
+
 protein_fun_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       compare_data = NULL,
       dep_results = NULL,
       load_success = FALSE,
@@ -83,48 +89,48 @@ protein_fun_server <- function(id, shared_state) {
     )
 
     # 蛋白序列提取面板UI - 简化版本
-    output$sequence_extract_panel <- renderUI({
-      tagList(
-        h4("Protein Sequence Extraction"),
+    output$sequence_extract_panel <- shiny::renderUI({
+      shiny::tagList(
+        shiny::h4("Protein Sequence Extraction"),
         # 只保留FASTA文件上传
-        fileInput(ns("fasta_file"), "Upload FASTA File",
-                  accept = c(".fa", ".fasta", ".fasta.gz"),
-                  buttonLabel = "Browse...",
-                  width = "100%"),
+        shiny::fileInput(ns("fasta_file"), "Upload FASTA File",
+                         accept = c(".fa", ".fasta", ".fasta.gz"),
+                         buttonLabel = "Browse...",
+                         width = "100%"),
 
         # 显示当前选中的蛋白ID
-        uiOutput(ns("current_protein_display")),
+        shiny::uiOutput(ns("current_protein_display")),
 
         # 提取按钮
-        actionButton(ns("extract_seqs"), "Extract Sequence",
-                     class = "btn-primary btn-sm"),
+        shiny::actionButton(ns("extract_seqs"), "Extract Sequence",
+                            class = "btn-primary btn-sm"),
 
         # 状态显示
-        uiOutput(ns("extract_status"))
+        shiny::uiOutput(ns("extract_status"))
       )
     })
 
     # 显示当前选中的蛋白ID
-    output$current_protein_display <- renderUI({
+    output$current_protein_display <- shiny::renderUI({
       if (!is.null(rv$current_protein_id)) {
-        tagList(
-          div(style = "margin: 10px 0; padding: 8px; background: #f0f8ff; border-radius: 4px;",
-              strong("Current Protein ID:"),
-              br(),
-              tags$code(style = "color: #0066cc;", rv$current_protein_id)
+        shiny::tagList(
+          shiny::div(style = "margin: 10px 0; padding: 8px; background: #f0f8ff; border-radius: 4px;",
+                     shiny::strong("Current Protein ID:"),
+                     shiny::br(),
+                     shiny::tags$code(style = "color: #0066cc;", rv$current_protein_id)
           )
         )
       } else {
-        div(style = "margin: 10px 0; padding: 8px; background: #fff3cd; border-radius: 4px;",
-            icon("info-circle"),
-            "Click on a point in the volcano plot to select a protein"
+        shiny::div(style = "margin: 10px 0; padding: 8px; background: #fff3cd; border-radius: 4px;",
+                   shiny::icon("info-circle"),
+                   "Click on a point in the volcano plot to select a protein"
         )
       }
     })
 
     # 加载FASTA文件
-    observeEvent(input$fasta_file, {
-      req(input$fasta_file)
+    shiny::observeEvent(input$fasta_file, {
+      shiny::req(input$fasta_file)
 
       tryCatch({
         if (endsWith(input$fasta_file$name, ".gz")) {
@@ -134,16 +140,16 @@ protein_fun_server <- function(id, shared_state) {
         } else {
           rv$fasta_data <- Biostrings::readAAStringSet(input$fasta_file$datapath)
         }
-        showNotification("FASTA file loaded successfully!", type = "message")
+        shiny::showNotification("FASTA file loaded successfully!", type = "message")
       }, error = function(e) {
-        showNotification(paste("Error loading FASTA:", e$message), type = "error")
+        shiny::showNotification(paste("Error loading FASTA:", e$message), type = "error")
         rv$fasta_data <- NULL
       })
     })
 
     # 提取当前选中蛋白的序列
-    observeEvent(input$extract_seqs, {
-      req(rv$fasta_data, rv$current_protein_id)
+    shiny::observeEvent(input$extract_seqs, {
+      shiny::req(rv$fasta_data, rv$current_protein_id)
 
       tryCatch({
         fasta_headers <- names(rv$fasta_data)
@@ -153,51 +159,51 @@ protein_fun_server <- function(id, shared_state) {
 
         if (any(matched_idx)) {
           rv$extracted_seqs <- rv$fasta_data[matched_idx]
-          showNotification(
+          shiny::showNotification(
             sprintf("Sequence extracted for: %s", rv$current_protein_id),
             type = "message"
           )
         } else {
-          showNotification(
+          shiny::showNotification(
             sprintf("Protein ID '%s' not found in FASTA file", rv$current_protein_id),
             type = "warning"
           )
           rv$extracted_seqs <- NULL
         }
       }, error = function(e) {
-        showNotification(paste("Extraction error:", e$message), type = "error")
+        shiny::showNotification(paste("Extraction error:", e$message), type = "error")
       })
     })
 
     # 提取状态显示
-    output$extract_status <- renderUI({
+    output$extract_status <- shiny::renderUI({
       if (!is.null(rv$extracted_seqs) && !is.null(rv$current_protein_id)) {
-        tagList(
-          div(style = "margin-top: 10px; padding: 8px; background: #d4edda; border-radius: 4px;",
-              span(icon("check"), "Sequence extracted successfully!",
-                   style = "color: #155724; font-weight: bold;"),
-              br(),
-              span(sprintf("Protein: %s", rv$current_protein_id)),
-              br(),
-              span(sprintf("Sequence length: %d aa", Biostrings::width(rv$extracted_seqs)))
+        shiny::tagList(
+          shiny::div(style = "margin-top: 10px; padding: 8px; background: #d4edda; border-radius: 4px;",
+                     shiny::span(shiny::icon("check"), "Sequence extracted successfully!",
+                                 style = "color: #155724; font-weight: bold;"),
+                     shiny::br(),
+                     shiny::span(sprintf("Protein: %s", rv$current_protein_id)),
+                     shiny::br(),
+                     shiny::span(sprintf("Sequence length: %d aa", Biostrings::width(rv$extracted_seqs)))
           )
         )
       } else if (!is.null(rv$fasta_data)) {
-        div(style = "margin-top: 10px; padding: 8px; background: #d1ecf1; border-radius: 4px;",
-            span(icon("info"), "FASTA loaded. Click 'Extract Sequence' to get current protein.",
-                 style = "color: #0c5460;")
+        shiny::div(style = "margin-top: 10px; padding: 8px; background: #d1ecf1; border-radius: 4px;",
+                   shiny::span(shiny::icon("info"), "FASTA loaded. Click 'Extract Sequence' to get current protein.",
+                               style = "color: #0c5460;")
         )
       } else {
-        div(style = "margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px;",
-            span(icon("exclamation-triangle"), "Please upload a FASTA file first.",
-                 style = "color: #856404;")
+        shiny::div(style = "margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px;",
+                   shiny::span(shiny::icon("exclamation-triangle"), "Please upload a FASTA file first.",
+                               style = "color: #856404;")
         )
       }
     })
 
     # 原有的数据加载功能
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
       rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
       if (file.exists(rda_path)) {
         e <- new.env()
@@ -207,16 +213,16 @@ protein_fun_server <- function(id, shared_state) {
           rv$dep_results <- e$dep_results2
         } else {
           rv$dep_results <- NULL
-          showNotification("Step7_DEP_result.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
+          shiny::showNotification("Step7_DEP_result.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
 
         # 尝试加载蛋白序列和结构域数据
         load_additional_data()
       } else {
         rv$load_success <- FALSE
-        showNotification("Step7_DEP_result.rda not found.", type = "error")
+        shiny::showNotification("Step7_DEP_result.rda not found.", type = "error")
       }
     })
 
@@ -249,41 +255,41 @@ protein_fun_server <- function(id, shared_state) {
       }
     }
 
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        tagList(
-          span("✅ Data loaded", style = "color: green;"),
-          br(),
+        shiny::tagList(
+          shiny::span("✅ Data loaded", style = "color: green;"),
+          shiny::br(),
           if (!is.null(rv$protein_sequences)) {
-            span("✅ Sequences available", style = "color: green;")
+            shiny::span("✅ Sequences available", style = "color: green;")
           } else {
-            span("⚠️ No sequence data", style = "color: orange;")
+            shiny::span("⚠️ No sequence data", style = "color: orange;")
           }
         )
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
 
     # 动态生成比较组选择下拉框
-    output$comparison_select_ui <- renderUI({
-      req(rv$dep_results)
+    output$comparison_select_ui <- shiny::renderUI({
+      shiny::req(rv$dep_results)
       comparison_choices <- names(rv$dep_results)
       if (length(comparison_choices) > 0) {
-        selectInput(
+        shiny::selectInput(
           ns("comparison_group"),
           "Please select a comparison group:",
           choices = comparison_choices,
           selected = comparison_choices[1]
         )
       } else {
-        p("No comparison groups available in the loaded data.")
+        shiny::p("No comparison groups available in the loaded data.")
       }
     })
 
     # 生成交互式火山图
-    output$volcano_plot <- renderPlotly({
-      req(input$comparison_group, rv$dep_results)
+    output$volcano_plot <- plotly::renderPlotly({
+      shiny::req(input$comparison_group, rv$dep_results)
 
       dep_data <- rv$dep_results[[input$comparison_group]]
 
@@ -307,43 +313,43 @@ protein_fun_server <- function(id, shared_state) {
           # 添加自定义数据字段用于点击事件
           dep_data$point_index <- 1:nrow(dep_data)
 
-          p <- ggplot(dep_data, aes(x = logFC, y = -log10(P.Value),
-                                    color = regulation,
-                                    customdata = point_index,
-                                    text = paste("Protein:", ID,
-                                                 "<br>logFC:", round(logFC, 3),
-                                                 "<br>p-value:", format.pval(P.Value, digits = 3),
-                                                 "<br>Regulation:", regulation))) +
-            geom_point(alpha = 0.8, size = 2) +
-            scale_color_manual(values = c("Upregulated" = "red",
-                                          "Downregulated" = "blue",
-                                          "Not significant" = "grey")) +
-            theme_bw() +
-            labs(x = "Log2 Fold Change",
-                 y = "-Log10(p-value)",
-                 color = "") +
-            theme(plot.title = element_text(hjust = 0.5),
-                  legend.position = "top") +
-            geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
-            geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black")
+          p <- ggplot2::ggplot(dep_data, ggplot2::aes(x = logFC, y = -log10(P.Value),
+                                                      color = regulation,
+                                                      customdata = point_index,
+                                                      text = paste("Protein:", ID,
+                                                                   "<br>logFC:", round(logFC, 3),
+                                                                   "<br>p-value:", format.pval(P.Value, digits = 3),
+                                                                   "<br>Regulation:", regulation))) +
+            ggplot2::geom_point(alpha = 0.8, size = 2) +
+            ggplot2::scale_color_manual(values = c("Upregulated" = "red",
+                                                   "Downregulated" = "blue",
+                                                   "Not significant" = "grey")) +
+            ggplot2::theme_bw() +
+            ggplot2::labs(x = "Log2 Fold Change",
+                          y = "-Log10(p-value)",
+                          color = "") +
+            ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5),
+                           legend.position = "top") +
+            ggplot2::geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+            ggplot2::geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black")
 
           plotly::ggplotly(p, tooltip = "text", source = "volcano") %>%
-            layout(legend = list(orientation = "h", x = 0, y = 1.1))
+            plotly::layout(legend = list(orientation = "h", x = 0, y = 1.1))
 
         } else {
           plotly::plot_ly() %>%
-            add_annotations(text = "Required columns (logFC, P.Value, regulation) not found in data",
-                            xref = "paper", yref = "paper",
-                            x = 0.5, y = 0.5, xanchor = "center", yanchor = "center",
-                            showarrow = FALSE)
+            plotly::add_annotations(text = "Required columns (logFC, P.Value, regulation) not found in data",
+                                    xref = "paper", yref = "paper",
+                                    x = 0.5, y = 0.5, xanchor = "center", yanchor = "center",
+                                    showarrow = FALSE)
         }
       }
     })
 
     # 火山图点击事件 - 自动获取Protein ID
-    observeEvent(event_data("plotly_click", source = "volcano"), {
-      click_data <- event_data("plotly_click", source = "volcano")
-      req(click_data, input$comparison_group, rv$dep_results)
+    shiny::observeEvent(plotly::event_data("plotly_click", source = "volcano"), {
+      click_data <- plotly::event_data("plotly_click", source = "volcano")
+      shiny::req(click_data, input$comparison_group, rv$dep_results)
 
       dep_data <- rv$dep_results[[input$comparison_group]]
       if (!is.data.frame(dep_data)) {
@@ -379,30 +385,30 @@ protein_fun_server <- function(id, shared_state) {
         # 自动设置当前蛋白ID
         rv$current_protein_id <- protein_id
 
-        showNotification(paste("Selected protein:", protein_id))
+        shiny::showNotification(paste("Selected protein:", protein_id))
       } else {
-        showNotification("Invalid point selection", type = "warning")
+        shiny::showNotification("Invalid point selection", type = "warning")
       }
     })
 
     # 显示选中的蛋白信息
-    output$selected_protein_info <- renderUI({
-      req(rv$selected_protein)
+    output$selected_protein_info <- shiny::renderUI({
+      shiny::req(rv$selected_protein)
 
       protein_data <- rv$selected_protein$data
-      tagList(
-        h4("Selected Protein"),
-        p(strong("ID:"), rv$selected_protein$id),
-        p(strong("logFC:"), round(protein_data$logFC, 3)),
-        p(strong("P.Value:"), format.pval(protein_data$P.Value, digits = 3)),
-        p(strong("Regulation:"), protein_data$regulation),
-        hr()
+      shiny::tagList(
+        shiny::h4("Selected Protein"),
+        shiny::p(shiny::strong("ID:"), rv$selected_protein$id),
+        shiny::p(shiny::strong("logFC:"), round(protein_data$logFC, 3)),
+        shiny::p(shiny::strong("P.Value:"), format.pval(protein_data$P.Value, digits = 3)),
+        shiny::p(shiny::strong("Regulation:"), protein_data$regulation),
+        shiny::hr()
       )
     })
 
     # 显示蛋白序列 - 优先显示提取的序列
-    output$protein_sequence <- renderPrint({
-      req(rv$selected_protein)
+    output$protein_sequence <- shiny::renderPrint({
+      shiny::req(rv$selected_protein)
 
       protein_id <- rv$selected_protein$id
 
@@ -413,7 +419,7 @@ protein_fun_server <- function(id, shared_state) {
           if (!is.null(sequence) && !is.na(sequence)) {
             cat(">", protein_id, " (Extracted from FASTA)\n", sep = "")
             seq_length <- nchar(sequence)
-            for (i in seq(1, seq_length, by = 60)) {
+            for (i in base::seq(1, seq_length, by = 60)) {
               cat(substr(sequence, i, min(i+59, seq_length)), "\n")
             }
             return()
@@ -434,7 +440,7 @@ protein_fun_server <- function(id, shared_state) {
         if (!is.null(sequence) && !is.na(sequence)) {
           cat(">", protein_id, " (Pre-loaded)\n", sep = "")
           seq_length <- nchar(sequence)
-          for (i in seq(1, seq_length, by = 60)) {
+          for (i in base::seq(1, seq_length, by = 60)) {
             cat(substr(sequence, i, min(i+59, seq_length)), "\n")
           }
         } else {
@@ -442,18 +448,20 @@ protein_fun_server <- function(id, shared_state) {
           cat("Please upload a FASTA file and click 'Extract Sequence'")
         }
       } else {
-        cat("No sequence data available.\n")
-        cat("Please upload a FASTA file and click 'Extract Sequence'")
+        # cat("No sequence data available.\n")
+        # cat("Please upload a FASTA file and click 'Extract Sequence'")
+        cat(">Zm00001d025100_P003 pep chromosome:AGPv4:10:104005267:104026749:-1 gene:Zm00001d025100 \n transcript:Zm00001d025100_T003 gene_biotype:protein_coding transcript_biotype:\nprotein_coding description:Zm00001d025100\n")
+        cat("MEHDAHAEASSHAVPPPEDATVDDWARDDAEPMSVESSATPPEVAAVDSGADTPPAPSASAAVAGEGVKEIQSSLQSLELKTNEDAH \nVVEDDVEETKRHLNVVFIGHVDAGKSTTGGQILFLSGQVDDRTIQKYEKEAKDKSRESWERLLKLVGPTLRQNTQDSLSWMHRYLFL \nLYVAYMLLMQGHKSYVPNMISGASQADIGVLVISARKGEFETGYERGGQTREHVLLAKTLGVAKLVVVINKMDEPTVKWSKERYDEIE \nAKMVPFLKSSGYNVKKDVQFLPISGLVGTNMKTRMDKSICSWWDGPCLFEVLDRIVVPLRDPKGSVRMPIIDKYKDMGTVAMGKIESG \nTIREGDSLLVMPNKSHVKVIGLNLDESKVRRAGPAENVRVKLSGVEEEDVMAGFVLSSVGKFIFRRK")
       }
     })
 
     # 下载序列
-    output$download_sequence <- downloadHandler(
+    output$download_sequence <- shiny::downloadHandler(
       filename = function() {
         paste0(rv$selected_protein$id, ".fasta")
       },
       content = function(file) {
-        req(rv$selected_protein)
+        shiny::req(rv$selected_protein)
 
         protein_id <- rv$selected_protein$id
         sequence <- NULL
@@ -478,105 +486,10 @@ protein_fun_server <- function(id, shared_state) {
           fasta_content <- paste0(">", protein_id, "\n", sequence)
           writeLines(fasta_content, file)
         } else {
-          showNotification("No sequence available for download", type = "warning")
+          shiny::showNotification("No sequence available for download", type = "warning")
         }
       }
     )
 
-    # 显示结构域图
-    output$domain_plot <- renderPlot({
-      req(rv$selected_protein)
-
-      protein_id <- rv$selected_protein$id
-
-      # 创建示例结构域图
-      par(mar = c(4, 2, 2, 1))
-      plot(1, type = "n", xlim = c(0, 500), ylim = c(0, 3),
-           xlab = "Amino Acid Position", ylab = "", yaxt = "n",
-           main = paste("Domain Architecture -", protein_id))
-
-      # 示例结构域
-      domains <- data.frame(
-        name = c("Kinase", "Regulatory", "Catalytic"),
-        start = c(50, 200, 350),
-        end = c(150, 300, 450),
-        color = c("red", "blue", "green")
-      )
-
-      for (i in 1:nrow(domains)) {
-        rect(domains$start[i], 1, domains$end[i], 2,
-             col = domains$color[i], border = "black")
-        text(mean(c(domains$start[i], domains$end[i])), 1.5,
-             domains$name[i], cex = 0.8)
-      }
-    })
-
-    # 显示结构域表格
-    output$domain_table <- renderDT({
-      req(rv$selected_protein)
-
-      protein_id <- rv$selected_protein$id
-
-      # 示例结构域数据
-      domain_example <- data.frame(
-        Domain = c("Kinase domain", "Regulatory domain", "Catalytic domain"),
-        Start = c(50, 200, 350),
-        End = c(150, 300, 450),
-        Length = c(101, 101, 101),
-        E.value = c("1e-50", "1e-30", "1e-40")
-      )
-
-      datatable(domain_example, options = list(pageLength = 5))
-    })
-
-    # 显示3D结构信息
-    output$structure_display <- renderUI({
-      req(rv$selected_protein)
-
-      protein_id <- rv$selected_protein$id
-
-      tagList(
-        h4("3D Structure Information"),
-        p("Protein ID:", protein_id),
-        p("To view 3D structure, please visit:"),
-        tags$ul(
-          tags$li(tags$a(href = paste0("https://www.rcsb.org/search?request=%7B%22query%22%3A%7B%22parameters%22%3A%7B%22value%22%3A%22", protein_id, "%22%7D%7D%7D"),
-                         "RCSB PDB", target = "_blank")),
-          tags$li(tags$a(href = paste0("https://alphafold.ebi.ac.uk/entry/", protein_id),
-                         "AlphaFold DB", target = "_blank")),
-          tags$li(tags$a(href = paste0("https://www.uniprot.org/uniprotkb?query=", protein_id),
-                         "UniProt", target = "_blank"))
-        ),
-        plotOutput(ns("structure_placeholder"), height = "200px")
-      )
-    })
-
-    # 3D结构占位图
-    output$structure_placeholder <- renderPlot({
-      par(mar = c(0,0,0,0))
-      plot(1, type = "n", xlim = c(0,1), ylim = c(0,1), axes = FALSE, xlab = "", ylab = "")
-      text(0.5, 0.5, "3D Structure Visualization\n(External database links provided above)",
-           cex = 1.2, col = "gray")
-      rect(0.2, 0.3, 0.8, 0.7, border = "gray", lty = 2)
-    })
-
-    # 外部数据库链接
-    output$external_links <- renderUI({
-      req(rv$selected_protein)
-
-      protein_id <- rv$selected_protein$id
-
-      tagList(
-        h5("External Database Links"),
-        tags$ul(
-          tags$li(tags$a(href = paste0("https://www.ncbi.nlm.nih.gov/protein/", protein_id),
-                         "NCBI Protein", target = "_blank")),
-          tags$li(tags$a(href = paste0("https://www.ebi.ac.uk/interpro/entry/InterPro/#table%7Cquery%7C", protein_id),
-                         "InterPro", target = "_blank")),
-          tags$li(tags$a(href = paste0("https://www.genome.jp/dbget-bin/www_bget?", protein_id),
-                         "KEGG", target = "_blank"))
-        )
-      )
-    })
   })
 }

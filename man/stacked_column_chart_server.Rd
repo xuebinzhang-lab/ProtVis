@@ -3,13 +3,20 @@
 \name{stacked_column_chart_server}
 \alias{stacked_column_chart_server}
 \title{Stacked Bar Chart Server Module}
-\usage{
-stacked_column_chart_server(id)
-}
 \arguments{
-\item{id}{A unique identifier for the module.}
+\item{id}{A unique identifier for the Shiny namespace.}
+}
+\value{
+A Shiny server module function.
 }
 \description{
-This server function processes data, generates the stacked bar chart, and handles dynamic plot updates,
-custom labels, and download functionality.
+Server-side logic for the stacked bar chart module. Processes uploaded CSV data,
+generates customizable stacked bar charts using ggplot2, and handles plot downloads.
+}
+\examples{
+\dontrun{
+server <- function(input, output, session) {
+  stacked_column_chart_server("stacked_chart")
+}
+}
 }

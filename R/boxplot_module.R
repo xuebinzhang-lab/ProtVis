@@ -7,45 +7,41 @@
 #'
 #' @param id Module namespace ID
 #' @return UI elements for the Boxplot module
+#' @name boxplot_module_ui
 #' @export
 boxplot_module_ui <- function(id) {
   ns <- NS(id)
 
-  layout_sidebar(
-    sidebar = accordion(
+  bslib::layout_sidebar(
+    sidebar = bslib::accordion(
       id = ns("settings_panel"),
       open = NULL,
-      accordion_panel(
+      bslib::accordion_panel(
         title = "Boxplot Parameters",
-        fileInput(ns("file"), "Upload Excel file", accept = c(".xlsx")),
-
-        uiOutput(ns("group_select_ui")),
-
-        textInput(ns("x_label"), "X-axis label", value = "Group"),
-        textInput(ns("y_label"), "Y-axis label", value = "Value"),
-
-        hr(),
-        h4("Colors & Style"),
-        uiOutput(ns("color_ui")),
-        numericInput(ns("box_width"), "Box width", value = 0.4, min = 0.1, max = 1, step = 0.05),
-        numericInput(ns("point_size"), "Point size", value = 1, min = 0.1, max = 5, step = 0.1),
+        shiny::fileInput(ns("file"), "Upload Excel file", accept = c(".xlsx")),
+        shiny::uiOutput(ns("group_select_ui")),
+        shiny::textInput(ns("x_label"), "X-axis label", value = "Group"),
+        shiny::textInput(ns("y_label"), "Y-axis label", value = "Value"),
+        shiny::hr(),
+        shiny::h4("Colors & Style"),
+        shiny::uiOutput(ns("color_ui")),
+        shiny::numericInput(ns("box_width"), "Box width", value = 0.4, min = 0.1, max = 1, step = 0.05),
+        shiny::numericInput(ns("point_size"), "Point size", value = 1, min = 0.1, max = 5, step = 0.1),
         colourpicker::colourInput(ns("line_color"), "Box line color", value = "black"),
-
         hr(),
         h4("Theme"),
-        selectInput(ns("theme"), "Choose Theme",
+        shiny::selectInput(ns("theme"), "Choose Theme",
                     choices = c("minimal", "classic", "light", "bw", "dark", "grey"),
                     selected = "grey"),
-
-        hr(),
-        h4("Download PDF"),
-        numericInput(ns("plot_height"), "Height (inch)", value = 6),
-        numericInput(ns("plot_width"), "Width (inch)", value = 8),
-        downloadButton(ns("download_plot"), "Download Plot (PDF)")
+        shiny::hr(),
+        shiny::h4("Download PDF"),
+        shiny::numericInput(ns("plot_height"), "Height (inch)", value = 6),
+        shiny::numericInput(ns("plot_width"), "Width (inch)", value = 8),
+        shiny::downloadButton(ns("download_plot"), "Download Plot (PDF)")
       )
     ),
-    mainPanel(
-      plotOutput(ns("boxplot"), height = "600px")
+    shiny::mainPanel(
+      shiny::plotOutput(ns("boxplot"), height = "600px")
     )
   )
 }
@@ -60,76 +56,78 @@ boxplot_module_ui <- function(id) {
 #' @param id Module namespace ID
 #' @return A list containing reactive plot object
 #' @export
+#' @name boxplot_module_server
+
 boxplot_module_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Reactive: Read Excel file
-    df <- reactive({
-      req(input$file)
+    df <- shiny::reactive({
+      shiny::req(input$file)
       openxlsx::read.xlsx(input$file$datapath)
     })
 
     # Reactive UI: Group selection and comparisons
-    output$group_select_ui <- renderUI({
-      req(df())
-      cols <- names(df())
-      tagList(
-        checkboxGroupInput(ns("selected_groups"), "Select groups", choices = cols, selected = cols),
-        selectizeInput(ns("comparisons"), "Select comparisons",
+    output$group_select_ui <- shiny::renderUI({
+      shiny::req(df())
+      cols <- base::names(df())
+      shiny::tagList(
+        shiny::checkboxGroupInput(ns("selected_groups"), "Select groups", choices = cols, selected = cols),
+        shiny::selectizeInput(ns("comparisons"), "Select comparisons",
                        choices = cols, multiple = TRUE, selected = cols[1:2],
                        options = list(plugins = list("remove_button")))
       )
     })
 
     # Reactive: Convert data to long format
-    long_df <- reactive({
+    long_df <- shiny::reactive({
       req(df(), input$selected_groups)
       df() %>%
         dplyr::select(dplyr::all_of(input$selected_groups)) %>%
-        pivot_longer(cols = everything(), names_to = "Group", values_to = "Value")
+        tidyr::pivot_longer(cols = everything(), names_to = "Group", values_to = "Value")
     })
 
     # Reactive UI: Dynamic color selectors, auto-arranged in rows/columns
-    output$color_ui <- renderUI({
-      req(input$selected_groups)
+    output$color_ui <- shiny::renderUI({
+      shiny::req(input$selected_groups)
       groups <- input$selected_groups
-      n <- length(groups)
+      n <- base::length(groups)
       ncol <- 3
-      nrow <- ceiling(n / ncol)
-      rows <- lapply(1:nrow, function(r) {
-        cols_ui <- lapply(1:ncol, function(c) {
+      nrow <- base::ceiling(n / ncol)
+      rows <- base::lapply(1:nrow, function(r) {
+        cols_ui <- base::lapply(1:ncol, function(c) {
           idx <- (r - 1) * ncol + c
           if (idx <= n) {
             column(12/ncol, colourpicker::colourInput(ns(paste0("col_", groups[idx])), groups[idx],
-                                        value = RColorBrewer::brewer.pal(8, "Set2")[(idx-1) %% 8 + 1]))
+                                                      value = RColorBrewer::brewer.pal(8, "Set2")[(idx-1) %% 8 + 1]))
           } else NULL
         })
-        do.call(fluidRow, cols_ui)
+        base::do.call(fluidRow, cols_ui)
       })
-      do.call(tagList, rows)
+      base::do.call(tagList, rows)
     })
 
     # Reactive: Get color mapping for groups
-    group_colors <- reactive({
-      req(input$selected_groups)
-      sapply(input$selected_groups, function(g) input[[paste0("col_", g)]], USE.NAMES = TRUE)
+    group_colors <- shiny::reactive({
+      shiny::req(input$selected_groups)
+      base::sapply(input$selected_groups, function(g) input[[paste0("col_", g)]], USE.NAMES = TRUE)
     })
 
     # Reactive: Generate boxplot with multi-group comparisons
-    plot_box <- reactive({
-      req(long_df(), group_colors(), input$comparisons)
-      comparisons <- combn(input$comparisons, 2, simplify = FALSE)  # All pairwise combinations
+    plot_box <- shiny::reactive({
+      shiny::req(long_df(), group_colors(), input$comparisons)
+      comparisons <- utils::combn(input$comparisons, 2, simplify = FALSE)  # All pairwise combinations
 
-      p <- ggplot(long_df(), aes(x = Group, y = Value, fill = Group)) +
-        geom_boxplot(
+      p <- ggplot2::ggplot(long_df(), ggplot2::aes(x = Group, y = Value, fill = Group)) +
+        ggplot2::geom_boxplot(
           width = input$box_width,
           size = 1,
           outlier.size = input$point_size,
           color = input$line_color
         ) +
-        geom_jitter(width = input$box_width/4, alpha = 0.5, size = input$point_size, color = "black") +
-        scale_fill_manual(values = group_colors()) +
+        ggplot2::geom_jitter(width = input$box_width/4, alpha = 0.5, size = input$point_size, color = "black") +
+        ggplot2::scale_fill_manual(values = group_colors()) +
         ggpubr::stat_compare_means(
           method = "t.test",
           comparisons = comparisons,
@@ -137,32 +135,32 @@ boxplot_module_server <- function(id) {
           vjust = -0.3,
           size = 3
         ) +
-        labs(x = input$x_label, y = input$y_label) +
-        theme(plot.margin = margin(1,1,1,1,"cm"))
+        ggplot2::labs(x = input$x_label, y = input$y_label) +
+        ggplot2::theme(plot.margin = ggplot2::margin(1,1,1,1,"cm"))
 
       # Apply selected theme
-      p <- switch(input$theme,
-                  minimal = p + theme_minimal(base_size = 14),
-                  classic = p + theme_classic(base_size = 14),
-                  light = p + theme_light(base_size = 14),
-                  bw = p + theme_bw(base_size = 14),
-                  dark = p + theme_dark(base_size = 14),
-                  grey = p + theme_grey(base_size = 14))
+      p <- base::switch(input$theme,
+                  minimal = p + ggplot2::theme_minimal(base_size = 14),
+                  classic = p + ggplot2::theme_classic(base_size = 14),
+                  light = p + ggplot2::theme_light(base_size = 14),
+                  bw = p + ggplot2::theme_bw(base_size = 14),
+                  dark = p + ggplot2::theme_dark(base_size = 14),
+                  grey = p + ggplot2::theme_grey(base_size = 14))
       p
     })
 
     # Render plot
-    output$boxplot <- renderPlot({
+    output$boxplot <- shiny::renderPlot({
       plot_box()
     })
 
     # Download handler for PDF
-    output$download_plot <- downloadHandler(
-      filename = function() { paste0("boxplot_", Sys.Date(), ".pdf") },
+    output$download_plot <- shiny::downloadHandler(
+      filename = function() { base::paste0("boxplot_", base::Sys.Date(), ".pdf") },
       content = function(file) {
         ggplot2::ggsave(file, plot = plot_box(),
-                        width = max(8, input$plot_width),
-                        height = max(6, input$plot_height),
+                        width = base::max(8, input$plot_width),
+                        height = base::max(6, input$plot_height),
                         device = "pdf")
       }
     )

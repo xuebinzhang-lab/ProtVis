@@ -2,7 +2,13 @@
 % Please edit documentation in R/correct_noise.R
 \name{correct_noise_ui}
 \alias{correct_noise_ui}
-\title{UI for Noise Correction Module}
+\title{UI for Noise Correction Module
+Creates the user interface for the noise correction module which includes:
+- Data loading controls
+- Column renaming options
+- Noise correction options
+- Preview tabs for different processing steps
+- Export functionality}
 \usage{
 correct_noise_ui(id)
 }
@@ -13,6 +19,7 @@ correct_noise_ui(id)
 A Shiny UI layout with sidebar controls and main display area
 }
 \description{
+UI for Noise Correction Module
 Creates the user interface for the noise correction module which includes:
 - Data loading controls
 - Column renaming options

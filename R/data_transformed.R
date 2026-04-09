@@ -5,48 +5,82 @@
 #' - Transformation method selection
 #' - Data preview tabs
 #' - Export functionality
-#'
 #' @param id Character string module ID for namespacing
-#'
 #' @return A Shiny UI layout with sidebar controls and main display area
-#'
 #' @importFrom shiny NS tagList actionButton uiOutput div
 #' @importFrom bslib layout_sidebar sidebar accordion card card_header card_body navset_tab nav_panel
 #' @importFrom shinyjs useShinyjs
 #' @importFrom DT dataTableOutput
 #' @importFrom shiny selectInput
+#' @name data_transformed_ui
+#' @export
 #'
+
 data_transformed_ui <- function(id) {
   ns <- NS(id)
-  tagList(
+  shiny::tagList(
     shinyjs::useShinyjs(),
-    layout_sidebar(
-      sidebar = sidebar(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
-        uiOutput(ns("load_status_panel")),
-        accordion(
-          selectInput(
-            inputId = ns("data_transformed"),
-            label = "Data transformed",
-            choices = c("None", "log10", "log2", "Standardization", "Z-Score",
-                        "scale", "center", "scale-center"),
-            selected = "log2"
-          )
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
         ),
-        actionButton(ns("export_remove_noise_data"), "export data", class = "btn btn-light fw-bold"),
-        uiOutput(ns("export_remove_noise_data_status_panel"))
+        shiny::uiOutput(ns("load_status_panel")),
+        shiny::hr(),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::actionButton(ns("run_normalization"), "Run Normalization", class = "btn btn-primary")
+        ),
+        shiny::hr(),
+        shiny::div(style = "margin-top: 15px;",
+            colourpicker::colourInput(ns("original_boxplot_color"), "Original Data Boxplot Color", value = "#1f77b4")
+        ),
+        shiny::div(style = "margin-top: 15px;",
+            colourpicker::colourInput(ns("normalized_boxplot_color"), "Normalized Data Boxplot Color", value = "#ff7f0e")
+        ),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::numericInput(ns("plot_width"), "Download Plot Width (inches)", value = 7, min = 0, max = 200)
+        ),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::numericInput(ns("plot_height"), "Download Plot Height (inches)", value = 10, min = 0, max = 200)
+        ),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::downloadButton(ns("download_original_plot"), "Download Original Plot (PDF)")
+        ),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::downloadButton(ns("download_normalized_plot"), "Download Normalized Plot (PDF)")
+        )
       ),
-      div(
-        card(
-          card_header("Preview the data processing process"),
-          card_body(
-            fill = TRUE,
-            navset_tab(
-              id = ns("Sample Info"),
-              nav_panel("Sample Info", DT::dataTableOutput(ns("tbl_sample_info"))),
-              nav_panel("Expression Matrix", DT::dataTableOutput(ns("tbl_expression_matrix"))),
-              nav_panel("Data transformed", DT::dataTableOutput(ns("table_data_transformed")))
+      bslib::page_fluid(
+        bslib::layout_column_wrap(
+          width = 1/2,
+          height = 600,
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Original Data"),
+            bslib::card_body(
+              DT::DTOutput(ns("originalData"))
+            )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Original Data visualize"),
+            bslib::card_body(
+              shiny::plotOutput(ns("originalPlot"))
+            )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Normalized Data"),
+            bslib::card_body(
+              DT::DTOutput(ns("dataNormalization"))
+            )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Normalized Data Visualization"),
+            bslib::card_body(
+              shiny::plotOutput(ns("dataNormalizationPlot"))
             )
           )
         )
@@ -56,77 +90,69 @@ data_transformed_ui <- function(id) {
 }
 
 #' Server Logic for Data Transformation Module
-#'
 #' Handles the server-side processing for data transformation including:
 #' - Loading input data
 #' - Applying selected transformations (log10, log2, scaling, etc.)
 #' - Data previews
 #' - Export functionality
-#'
 #' @param id Character string module ID for namespacing
 #' @param shared_state Reactive values list for sharing data between modules
-#'
 #' @return Server logic for the data transformation module
-#'
 #' @importFrom shiny moduleServer reactive reactiveValues observeEvent req showNotification
 #' @importFrom DT renderDT datatable
 #' @importFrom tibble column_to_rownames
+#' @name data_transformed_server
+#' @export
 #'
-data_transformed_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
-    ns <- session$ns
 
-    rv <- reactiveValues(
+
+data_transformed_server <- function(id, shared_state) {
+  shiny::moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    rv <- shiny::reactiveValues(
       correct_noise_result = NULL,
       sample_info = NULL,
       load_success = FALSE,
       transformed = NULL
     )
-
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step3_correct_noise.rda")
-      if (file.exists(rda_path)) {
-        e <- new.env()
-        load(rda_path, envir = e)
-        if (exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
-        if (exists("correct_noise_result", envir = e)) {
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
+      rda_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
+      if (base::file.exists(rda_path)) {
+        e <- base::new.env()
+        base::load(rda_path, envir = e)
+        if (base::exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
+        if (base::exists("correct_noise_result", envir = e)) {
           rv$correct_noise_result <- e$correct_noise_result
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        showNotification("❌ Step3_correct_noise.rda not found.", type = "error")
+        shiny::showNotification("❌ Step3_correct_noise.rda not found.", type = "error")
       }
     })
-
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
+        shiny::span("✅ Data loaded", style = "color: green;")
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
     output$tbl_sample_info <- DT::renderDT({
-      req(rv$sample_info)
+      shiny::req(rv$sample_info)
       DT::datatable(rv$sample_info, options = list(scrollX = TRUE))
     })
-
     output$tbl_expression_matrix <- DT::renderDT({
-      req(rv$correct_noise_result)
+      shiny::req(rv$correct_noise_result)
       DT::datatable(rv$correct_noise_result, options = list(scrollX = TRUE))
     })
-
-    observe({
-      req(input$data_transformed, rv$correct_noise_result)
+    shiny::observe({
+      shiny::req(input$data_transformed, rv$correct_noise_result)
       df <- rv$correct_noise_result
-
-      # 确保ID列是行名
+      # Ensure ID column is the row name
       df_mat <- df %>% tibble::column_to_rownames("ID")
-
-      rv$transformed <- switch(input$data_transformed,
+      rv$transformed <- base::switch(input$data_transformed,
                                "None" = df_mat,
                                "log10" = log10(df_mat + 1e-8),
                                "log2" = log2(df_mat + 1e-8),
@@ -138,31 +164,22 @@ data_transformed_server <- function(id, shared_state) {
                                df_mat
       )
     })
-
-    observeEvent(input$export_remove_noise_data, {
-      req(shared_state$workdir)
-      save_path <- file.path(shared_state$workdir, "Step4_data_transformed.rda")
-
+    shiny::observeEvent(input$export_remove_noise_data, {
+      shiny::req(shared_state$workdir)
+      save_path <- base::file.path(shared_state$workdir, "Step4_data_transformed.rda")
       sample_info <- rv$sample_info
       correct_noise_result <- rv$correct_noise_result
       transformed <- rv$transformed
-
-      save(sample_info, correct_noise_result, transformed, file = save_path)
-
-      showNotification(paste0("✅ Exported to: ", save_path), type = "message")
-
-      output$export_remove_noise_data_status_panel <- renderUI({
-        span(paste0("✅ Data exported to: ", basename(save_path)), style = "color: green;")
+      base::save(sample_info, correct_noise_result, transformed, file = save_path)
+      shiny::showNotification(paste0("✅ Exported to: ", save_path), type = "message")
+      output$export_remove_noise_data_status_panel <- shiny::renderUI({
+        shiny::span(paste0("✅ Data exported to: ", base::basename(save_path)), style = "color: green;")
       })
     })
-
     output$table_data_transformed <- DT::renderDT({
-      req(rv$transformed)
+      shiny::req(rv$transformed)
       DT::datatable(rv$transformed, options = list(scrollX = TRUE))
     })
-
-    return(rv)
+    base::return(rv)
   })
 }
-
-

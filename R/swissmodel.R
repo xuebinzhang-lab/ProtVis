@@ -1,35 +1,43 @@
 #' Swiss-Model UI Function
 #'
-#' This function creates the user interface for the Swiss-Model protein structure prediction app. It includes input fields for protein sequences and API tokens, as well as a series of display panels for model results.
+#' Creates the user interface for the Swiss-Model protein structure prediction module.
+#' Includes input fields for protein sequences and API tokens, as well as display panels
+#' for model results including project information, PDB data, quality metrics, and 3D visualization.
 #'
 #' @param id The namespace ID for the Shiny module.
 #' @return A `tagList` containing the UI elements for the Swiss-Model workflow.
+#' @import shiny
+#' @import bslib
 #' @noRd
+#' @examples
+#' \dontrun{
+#' ui <- swissmodel_ui("swiss_model")
+#' }
 swissmodel_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
+  ns <- shiny::NS(id)
+  shiny::tagList(
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 350,
         style = "margin-bottom: 15px;",
 
         # Protein sequence input
-        textAreaInput(ns("sequence"), "Protein sequence",
-                      value = "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKVADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHASLDKFLASVSTVLTSKYR",
-                      rows = 10),
+        shiny::textAreaInput(ns("sequence"), "Protein sequence",
+                             value = "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKVADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHASLDKFLASVSTVLTSKYR",
+                             rows = 10),
         # API token input
-        textInput(ns("api_token"), "API Token",
-                  value = "",
-                  placeholder = "Enter your API token"),
+        shiny::textInput(ns("api_token"), "API Token",
+                         value = "",
+                         placeholder = "Enter your API token"),
         # External link for getting API token (with smaller text)
-        tags$small(
-          p("How to get an API token? ",
-            tags$a(href = "https://github.com/anhuikylin/", "Click here to get the token", target = "_blank"))
+        shiny::tags$small(
+          shiny::p("How to get an API token? ",
+                   shiny::tags$a(href = "https://github.com/anhuikylin/", "Click here to get the token", target = "_blank"))
         ),
         # Action button to run the model
-        actionButton(ns("run_model"), "Run Model"),
+        shiny::actionButton(ns("run_model"), "Run Model"),
         # Display project info after the action button
-        uiOutput(ns("project_info_view_url"))
+        shiny::uiOutput(ns("project_info_view_url"))
       ),
       # Main display panel
       bslib::card(
@@ -39,42 +47,42 @@ swissmodel_ui <- function(id) {
           full_screen = TRUE,
           bslib::nav_panel(
             "Project Information File",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              verbatimTextOutput(ns("project_info_file"))
+              shiny::verbatimTextOutput(ns("project_info_file"))
             )
           ),
           bslib::nav_panel(
             "PDB Information",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              verbatimTextOutput(ns("pdb_information"))
+              shiny::verbatimTextOutput(ns("pdb_information"))
             )
           ),
           bslib::nav_panel(
             "Model Quality",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               DT::dataTableOutput(ns("model_quality"))
             )
           ),
           bslib::nav_panel(
             "Ramachandran Plot",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              plotOutput(ns("Ramachandran_plot"), height = "100%")  # 用 plotOutput 来渲染 Ramachandran 图
+              shiny::plotOutput(ns("Ramachandran_plot"), height = "100%")
             )
           ),
           bslib::nav_panel(
             "Residue Composition",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              plotOutput(ns("residue_composition"), height = "100%")  # 用 plotOutput 来渲染残基组成图
+              shiny::plotOutput(ns("residue_composition"), height = "100%")
             )
           ),
           bslib::nav_panel(
             "PDB Plot",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               r3dmol::r3dmolOutput(ns("pdb_plot"), height = "100%")
             )
@@ -87,20 +95,34 @@ swissmodel_ui <- function(id) {
 
 #' Swiss-Model Server Function
 #'
-#' This function defines the server-side logic for handling user inputs, running the Swiss-Model prediction workflow, and rendering the results. It handles the protein sequence input, API token, error handling, and displaying the model results.
+#' Defines the server-side logic for handling user inputs, running the Swiss-Model
+#' prediction workflow, and rendering the results. Handles protein sequence input,
+#' API token validation, error handling, and displaying model results including
+#' quality metrics, Ramachandran plots, and 3D structure visualization.
 #'
 #' @param id The namespace ID for the Shiny module.
 #' @return A `moduleServer` call which binds server-side logic to the UI components.
+#' @import shiny
+#' @import bio3d
+#' @import utils
 #' @noRd
+#' @examples
+#' \dontrun{
+#' server <- function(input, output, session) {
+#'   swissmodel_server("swiss_model")
+#' }
+#' }
 swissmodel_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    observeEvent(input$run_model, {
+    shiny::observeEvent(input$run_model, {
       sequence <- input$sequence
       api_token <- input$api_token
-      if (nchar(sequence) == 0) {
-        showModal(modalDialog(
+
+      # Validate protein sequence input
+      if (base::nchar(sequence) == 0) {
+        shiny::showModal(shiny::modalDialog(
           title = "Error",
           "Please enter a protein sequence.",
           easyClose = TRUE,
@@ -108,8 +130,10 @@ swissmodel_server <- function(id) {
         ))
         return()
       }
-      if (nchar(api_token) == 0) {
-        showModal(modalDialog(
+
+      # Validate API token input
+      if (base::nchar(api_token) == 0) {
+        shiny::showModal(shiny::modalDialog(
           title = "Error",
           "Please enter a valid API token.",
           easyClose = TRUE,
@@ -117,54 +141,74 @@ swissmodel_server <- function(id) {
         ))
         return()
       }
+
+      # Set API token and run workflow
       swissmodel::set_swissmodel_token(api_token)
-      result <- tryCatch({
+
+      result <- base::tryCatch({
         swissmodel::run_automodel_workflow(sequence)
       }, error = function(e) {
-        showModal(modalDialog(
+        shiny::showModal(shiny::modalDialog(
           title = "Error",
-          paste("Model running failed:", e$message),
+          base::paste("Model running failed:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
         return(NULL)
       })
-      if (is.null(result)) return()
+
+      if (base::is.null(result)) return()
+
+      # Process results
       pdb_file <- result$downloaded_files[[1]]
       pdb <- bio3d::read.pdb(pdb_file)
-      output$project_info_view_url <- renderUI({
+
+      # Render project info URL
+      output$project_info_view_url <- shiny::renderUI({
         project_info <- jsonlite::fromJSON(result$project_info_file)
         view_url <- project_info$view_url[1]
-        output_text <- paste(
-          paste(tags$a(href = view_url, "Swiss-Model Results Url",target = "_blank")),
+        output_text <- base::paste(
+          base::paste(shiny::tags$a(href = view_url, "Swiss-Model Results Url", target = "_blank")),
           sep = "\n\n"
         )
-        HTML(output_text)
+        shiny::HTML(output_text)
       })
-      output$project_info_file <- renderText({
+
+      # Render project info file content
+      output$project_info_file <- shiny::renderText({
         project_info <- jsonlite::fromJSON(result$project_info_file)
-        project_info_text <- capture.output(print(project_info))
+        project_info_text <- utils::capture.output(base::print(project_info))
         view_url <- project_info$view_url[1]
 
-        paste(
-          paste(project_info_text, collapse = "\n"),
+        base::paste(
+          base::paste(project_info_text, collapse = "\n"),
           sep = "\n\n"
         )
       })
-      output$pdb_information <- renderText({
-        print(swissmodel::pdb_info(pdb))
-        paste(utils::capture.output(print(swissmodel::pdb_info(pdb))), collapse = "\n")
+
+      # Render PDB information
+      output$pdb_information <- shiny::renderText({
+        base::print(swissmodel::pdb_info(pdb))
+        base::paste(utils::capture.output(base::print(swissmodel::pdb_info(pdb))), collapse = "\n")
       })
-      output$model_quality <- renderDT({
+
+      # Render model quality table
+      output$model_quality <- DT::renderDT({
         model_quality <- swissmodel::analyze_model_quality(pdb)
-        data.frame(Value = unlist(model_quality))
+        base::data.frame(Value = base::unlist(model_quality))
       })
-      output$Ramachandran_plot <- renderPlot({
+
+      # Render Ramachandran plot
+      output$Ramachandran_plot <- shiny::renderPlot({
         swissmodel::plot_ramachandran(pdb)
       })
-      output$residue_composition <- renderPlot({
+
+      # Render residue composition plot
+      output$residue_composition <- shiny::renderPlot({
         swissmodel::plot_residue_composition(pdb)
       })
+
+      # Render 3D PDB structure
       output$pdb_plot <- r3dmol::renderR3dmol({
         swissmodel::plot_pdb(pdb)
       })

@@ -7,11 +7,24 @@
 venn_ui(id)
 }
 \arguments{
-\item{id}{A unique identifier for the Shiny namespace, venn plot}
+\item{id}{A unique identifier for the Shiny namespace.}
+}
+\value{
+A Shiny UI nav_panel containing the Venn diagram interface.
 }
 \description{
-venn plot UI Module
+Venn diagram visualization UI with file upload, color customization,
+  and plot download capabilities.
 }
 \details{
-venn plot UI Module
+Venn Diagram UI Module
+
+Creates a user interface for generating Venn diagrams from uploaded CSV data.
+Supports both traditional Venn diagrams (up to 4 sets) and UpSet-style diagrams
+(5+ sets), with customizable colors and download functionality.
+}
+\examples{
+\dontrun{
+ui <- venn_ui("venn_diagram")
+}
 }

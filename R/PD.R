@@ -1,6 +1,6 @@
 PD_ui <- function(id) {
   ns <- NS(id)
-  nav_panel(
+  bslib::nav_panel(
     title = 'PD',
     icon = bs_icon("play-circle"),
     layout_sidebar(

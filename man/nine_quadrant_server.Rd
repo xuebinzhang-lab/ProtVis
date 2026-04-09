@@ -5,9 +5,6 @@
 \title{Implements the server-side logic for the Nine-Quadrant Plot module.
 This includes reading uploaded files, dynamically generating UI for numeric column selection,
 classifying points into quadrants, customizing colors, rendering the plot, and providing PDF download.}
-\usage{
-nine_quadrant_server(id)
-}
 \arguments{
 \item{id}{A character string specifying the namespace of the module.}
 }

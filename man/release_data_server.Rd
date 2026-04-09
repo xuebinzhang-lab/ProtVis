@@ -18,3 +18,10 @@ None (server-side module)
 Server-side logic for the release data module.
 Handles loading .rda files and exporting their contents to the selected format.
 }
+\examples{
+\dontrun{
+server <- function(input, output, session) {
+  release_data_server("release_data", shared_state)
+}
+}
+}

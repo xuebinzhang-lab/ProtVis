@@ -3,9 +3,6 @@
 \name{background_make_server}
 \alias{background_make_server}
 \title{Background Maker Module Server}
-\usage{
-background_make_server(id)
-}
 \arguments{
 \item{id}{Character string specifying the namespace id for the module}
 }

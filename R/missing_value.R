@@ -87,12 +87,12 @@ missing_value_ui <- function(id) {
             fill = TRUE,
             navset_tab(
               id = ns("Sample Info"),
-              nav_panel("Sample Info", DT::dataTableOutput(ns("tbl_sample_info"))),
-              nav_panel("Expression Matrix", DT::dataTableOutput(ns("tbl_expression_matrix"))),
-              nav_panel("Step 1: 0→NA",DT::dataTableOutput(ns("table_zero_to_na"))),
-              nav_panel("Step 2: >50% NA in group",DT::dataTableOutput(ns("table_group_na"))),
-              nav_panel("Step 3: Impute mean",DT::dataTableOutput(ns("table_imputed"))),
-              nav_panel("Data transformed",DT::dataTableOutput(ns("table_data_transformed")))
+              bslib::nav_panel("Sample Info", DT::dataTableOutput(ns("tbl_sample_info"))),
+              bslib::nav_panel("Expression Matrix", DT::dataTableOutput(ns("tbl_expression_matrix"))),
+              bslib::nav_panel("Step 1: 0→NA",DT::dataTableOutput(ns("table_zero_to_na"))),
+              bslib::nav_panel("Step 2: >50% NA in group",DT::dataTableOutput(ns("table_group_na"))),
+              bslib::nav_panel("Step 3: Impute mean",DT::dataTableOutput(ns("table_imputed"))),
+              bslib::nav_panel("Data transformed",DT::dataTableOutput(ns("table_data_transformed")))
             )
           )
         )
@@ -110,6 +110,8 @@ missing_value_ui <- function(id) {
 #' @param shared_state A reactive values list for sharing state between modules
 #' @return A reactiveValues object containing processed data
 #' @noRd
+#' @name missing_value_server
+#' @export
 missing_value_server <- function(id, shared_state) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns

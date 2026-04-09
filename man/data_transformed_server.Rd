@@ -2,7 +2,12 @@
 % Please edit documentation in R/data_transformed.R
 \name{data_transformed_server}
 \alias{data_transformed_server}
-\title{Server Logic for Data Transformation Module}
+\title{Server Logic for Data Transformation Module
+Handles the server-side processing for data transformation including:
+- Loading input data
+- Applying selected transformations (log10, log2, scaling, etc.)
+- Data previews
+- Export functionality}
 \usage{
 data_transformed_server(id, shared_state)
 }
@@ -15,6 +20,7 @@ data_transformed_server(id, shared_state)
 Server logic for the data transformation module
 }
 \description{
+Server Logic for Data Transformation Module
 Handles the server-side processing for data transformation including:
 - Loading input data
 - Applying selected transformations (log10, log2, scaling, etc.)

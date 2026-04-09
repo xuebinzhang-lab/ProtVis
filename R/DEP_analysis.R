@@ -5,19 +5,20 @@
 #'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing all UI elements for the DEP analysis module
+#' @name DEP_analysis_ui
 #' @export
 DEP_analysis_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    layout_sidebar(
-      sidebar = sidebar(
+  shiny::tagList(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 350,
         # Data loading panel
-        div(style = "margin-bottom: 15px;",
-            actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
         ),
-        uiOutput(ns("load_status_panel")),
-        hr(),
+        shiny::uiOutput(ns("load_status_panel")),
+        shiny::hr(),
         tags$small("CompareGroup requires two columns (Group1 & Group2) with different content.",
                    style = "color: #6c757d"),
         # Input mode toggle switch
@@ -29,143 +30,136 @@ DEP_analysis_ui <- function(id) {
           offLabel = "Paste",
           width = "100%"
         ),
-
         # Conditional panel: File upload mode
-        conditionalPanel(
-          condition = paste0("input['", ns("input_mode"), "'] == true"),
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == true"),
           tags$small('Upload CompareGroup', style = "color: #6c757d"),
-          fileInput(
+          shiny::fileInput(
             inputId = ns('compare_file'),
             label = NULL,
             multiple = FALSE,
             accept = c('.csv','.xlsx')
           )
         ),
-
         # Conditional panel: Manual input mode
-        conditionalPanel(
-          condition = paste0("input['", ns("input_mode"), "'] == false"),
-          div(
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == false"),
+          shiny::div(
             tags$small("Edit CompareGroup", style = "color: #6c757d"),
             rhandsontable::rHandsontableOutput(ns("hot_compare")),
-            br(),
+            shiny::br(),
             tags$small("Paste CompareGroup", style = "color: #6c757d"),
-            textAreaInput(
+            shiny::textAreaInput(
               inputId = ns("paste_data"),
               label = NULL,
               placeholder = "Copy and paste Excel data here.",
               rows = 5
             ),
-            actionButton(ns("apply_paste"), "Apply paste data",
+            shiny::actionButton(ns("apply_paste"), "Apply paste data",
                          class = "btn btn-light fw-bold")
           )
         )
       ),
-
       # Main display panel (right side)
-      card(
+      bslib::card(
         height = "600px",
-        card_header("Data Preview"),
-        navset_card_tab(
+        bslib::card_header("Data Preview"),
+        bslib::navset_card_tab(
           full_screen = TRUE,
-          nav_panel(
+          bslib::nav_panel(
             "Sample Info",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               DT::dataTableOutput(ns("sample_info"))
             )
           ),
-          nav_panel(
+          bslib::nav_panel(
             "Normalized Data",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               DT::dataTableOutput(ns("normalized_data"))
             )
           ),
-          nav_panel(
+          bslib::nav_panel(
             "Group Comparison",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               DT::dataTableOutput(ns("group_comparison"), height = "100%")
             )
           ),
-          nav_panel(
+          bslib::nav_panel(
             "DEP result",
-            uiOutput(ns("dynamic_dep_tabs"))
+            shiny::uiOutput(ns("dynamic_dep_tabs"))
           )
         )
       )
     )
   )
 }
+
 #' DEP Analysis Server Module
-#'
 #' Server-side logic for the Differential Expression Protein (DEP) analysis module.
 #' Handles data loading, comparison group specification, differential expression analysis,
 #' and visualization of results.
-#'
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactive list containing shared state variables across modules
 #' @return A reactive list containing comparison data, normalized matrix, sample info, and DEP results
+#' @name DEP_analysis_server
 #' @export
 
+utils::globalVariables(c("logFC", "P.Value", "regulation",
+                         "logFC","Cluster","Var2","Var1"))
 
 DEP_analysis_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     # helper: replace %||% behaviour
     coalesce_input <- function(x, default) {
-      if (is.null(x) || length(x) == 0) default else x
+      if (base::is.null(x) || base::length(x) == 0) default else x
     }
-
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       sample_info = NULL,
       load_success = FALSE,
       normalized_matrix = NULL,
       compare_data = NULL,
-      dep_results = list()  # Store DEP results
+      dep_results = base::list()  # Store DEP results
     )
-
     # --- Template for compare_data ---
-    template_df <- reactive({
-      data.frame(
+    template_df <- shiny::reactive({
+      base::data.frame(
         Group1 = c(NA, NA, NA),
         Group2 = c(NA, NA, NA),
         stringsAsFactors = FALSE
       )
     })
-
     # --- Data loading ---
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step6_data_normalization.rda")
-      if (file.exists(rda_path)) {
-        e <- new.env()
-        load(rda_path, envir = e)
-        if (exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
-        if (exists("normalized_data", envir = e)) {
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
+      rda_path <- base::file.path(shared_state$workdir, "Step6_data_normalization.rda")
+      if (base::file.exists(rda_path)) {
+        e <- base::new.env()
+        base::load(rda_path, envir = e)
+        if (base::exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
+        if (base::exists("normalized_data", envir = e)) {
           rv$normalized_matrix <- e$normalized_data
         } else {
           rv$normalized_matrix <- NULL
-          showNotification("Step6_data_normalization.rda does not contain normalized data.", type = "warning")
+          shiny::showNotification("Step6_data_normalization.rda does not contain normalized data.", type = "warning")
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
-        showNotification("Step6_data_normalization.rda not found.", type = "error")
+        shiny::showNotification("Step6_data_normalization.rda not found.", type = "error")
       }
     })
-
     # --- Load status ---
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
+        shiny::span("✅ Data loaded", style = "color: green;")
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
     # --- Editable hot table ---
     output$hot_compare <- rhandsontable::renderRHandsontable({
       df <- if(!is.null(rv$compare_data)) rv$compare_data else template_df()
@@ -174,204 +168,184 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     # --- File upload ---
-    observeEvent(input$compare_file, {
-      req(input$compare_file)
+    shiny::observeEvent(input$compare_file, {
+      shiny::req(input$compare_file)
       ext <- tools::file_ext(input$compare_file$name)
       df <- tryCatch({
         if(ext == "csv") {
-          read.csv(input$compare_file$datapath)
+          utils::read.csv(input$compare_file$datapath)
         } else if(ext %in% c("xls", "xlsx")) {
           readxl::read_excel(input$compare_file$datapath)
         }
       }, error = function(e) {
-        showNotification(paste("Failed to read file:", e$message), type = "error")
+        shiny::showNotification(paste("Failed to read file:", e$message), type = "error")
         NULL
       })
       if(!is.null(df)) {
         rv$compare_data <- df
-        showNotification("Comparison group file loaded!", type = "message")
+        shiny::showNotification("Comparison group file loaded!", type = "message")
       }
     })
-
     # --- Paste data ---
-    observeEvent(input$apply_paste, {
-      req(input$paste_data)
+    shiny::observeEvent(input$apply_paste, {
+      shiny::req(input$paste_data)
       tryCatch({
-        df <- read.table(text = input$paste_data, sep = "\t", header = TRUE)
+        df <- utils::read.table(text = input$paste_data, sep = "\t", header = TRUE)
         rv$compare_data <- df
-        showNotification("Pasted data applied!", type = "message")
+        shiny::showNotification("Pasted data applied!", type = "message")
       }, error = function(e) {
-        showNotification("Invalid paste data format.", type = "error")
+        shiny::showNotification("Invalid paste data format.", type = "error")
       })
     })
-
     # --- Sync hot table changes ---
-    observeEvent(input$hot_compare, {
+    shiny::observeEvent(input$hot_compare, {
       rv$compare_data <- rhandsontable::hot_to_r(input$hot_compare)
     })
-
     # --- Dynamic tabs for DEP results ---
-    output$dynamic_dep_tabs <- renderUI({
-      req(rv$compare_data)
+    output$dynamic_dep_tabs <- shiny::renderUI({
+      shiny::req(rv$compare_data)
       compare_data <- rv$compare_data[complete.cases(rv$compare_data), ]
       if(nrow(compare_data) == 0) return(tags$p("No valid comparison groups found."))
-
-      tabs <- lapply(1:nrow(compare_data), function(i) {
+      tabs <- base::lapply(1:base::nrow(compare_data), function(i) {
         group1 <- compare_data[i, "Group1"]
         group2 <- compare_data[i, "Group2"]
         tab_name <- paste(group1, "vs", group2)
-
-        nav_panel(
+        bslib::nav_panel(
           tab_name,
-          layout_column_wrap(
+          bslib::layout_column_wrap(
             width = 1/2,
             height = 600,
-
             # DEP table
-            card(
+            bslib::card(
               height = "800px",
-              card_header(paste("DEP table -", tab_name)),
-              card_body(DT::dataTableOutput(ns(paste0("dep_table_", i))))
+              bslib::card_header(base::paste("DEP table -", tab_name)),
+              bslib::card_body(DT::dataTableOutput(ns(paste0("dep_table_", i))))
             ),
-
             # Volcano plot
-            card(
+            bslib::card(
               height = "800px",
-              card_header(paste("Volcano plot -", tab_name)),
-              card_body(
-                layout_sidebar(
-                  sidebar = sidebar(
-                    id = ns(paste0("volcano_sidebar_", i)),
+              bslib::card_header(paste("Volcano plot -", tab_name)),
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("volcano_sidebar_", i)),
                     position = "left",
                     open = TRUE,
                     width = 250,
-                    accordion(
-                      accordion_panel(
+                    bslib::accordion(
+                      bslib::accordion_panel(
                         title = "Parameter",
-                        icon = correlation_icon,
-                        numericInput(ns(paste0("volcano_logfc_", i)), "logFC threshold", value = 0.27, min = 0, max = 5, step = 0.1),
-                        numericInput(ns(paste0("volcano_pval_", i)), "P-value threshold", value = 0.05, min = 0, max = 1, step = 0.01),
+                        icon = shiny::icon("correlation"),
+                        shiny::numericInput(ns(paste0("volcano_logfc_", i)), "logFC threshold", value = 0.27, min = 0, max = 5, step = 0.1),
+                        shiny::numericInput(ns(paste0("volcano_pval_", i)), "P-value threshold", value = 0.05, min = 0, max = 1, step = 0.01),
                         colourpicker::colourInput(ns(paste0("color_up_", i)), "Upregulated colour", value = "#d62728"),
                         colourpicker::colourInput(ns(paste0("color_down_", i)), "Downregulated colour", value = "#1f77b4"),
                         colourpicker::colourInput(ns(paste0("color_ns_", i)), "Not significant colour", value = "#7f7f7f")
                       ),
-                      accordion_panel(
+                      bslib::accordion_panel(
                         title = "Download",
                         icon = bs_icon("download"),
-                        numericInput(ns(paste0("go_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
-                        numericInput(ns(paste0("go_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
-                        downloadButton(ns(paste0("download_volcano_", i)), "Download Plot")
+                        shiny::numericInput(ns(base::paste0("go_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
+                        shiny::numericInput(ns(base::paste0("go_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
+                        shiny::downloadButton(ns(base::paste0("download_volcano_", i)), "Download Plot")
                       )
                     )
                   ),
-                  plotOutput(ns(paste0("volcano_plot_", i)))
+                  shiny::plotOutput(ns(base::paste0("volcano_plot_", i)))
                 )
               )
             ),
-
             # Heatmap
-            card(
+            bslib::card(
               height = "800px",
-              card_header(paste("Heatmap -", tab_name)),
-              card_body(plotOutput(ns(paste0("heatmap_", i))))
+              bslib::card_header(base::paste("Heatmap -", tab_name)),
+              bslib::card_body(shiny::plotOutput(ns(base::paste0("heatmap_", i))))
             ),
-
             # Bar of DEP (with sidebar)
-            card(
+            bslib::card(
               height = "800px",
-              card_header(paste("Bar of DEP -", tab_name)),
-              card_body(
-                layout_sidebar(
-                  sidebar = sidebar(
-                    id = ns(paste0("bar_sidebar_", i)),
+              bslib::card_header(paste("Bar of DEP -", tab_name)),
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("bar_sidebar_", i)),
                     position = "left",
                     open = TRUE,
                     width = 250,
-                    accordion(
-                      accordion_panel(
+                    bslib::accordion(
+                      bslib::accordion_panel(
                         title = "Parameter",
-                        icon = correlation_icon,
-                        colourpicker::colourInput(ns(paste0("bar_color_up_", i)), "Upregulated colour", value = "#d62728"),
-                        colourpicker::colourInput(ns(paste0("bar_color_down_", i)), "Downregulated colour", value = "#1f77b4")
+                        icon = shiny::icon("correlation"),
+                        colourpicker::colourInput(ns(base::paste0("bar_color_up_", i)), "Upregulated colour", value = "#d62728"),
+                        colourpicker::colourInput(ns(base::paste0("bar_color_down_", i)), "Downregulated colour", value = "#1f77b4")
                       ),
-                      accordion_panel(
+                      bslib::accordion_panel(
                         title = "Download",
                         icon = bs_icon("download"),
-                        numericInput(ns(paste0("bar_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
-                        numericInput(ns(paste0("bar_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
-                        downloadButton(ns(paste0("download_bar_", i)), "Download Plot")
+                        shiny::numericInput(ns(paste0("bar_width_", i)), "Plot width (inch)", value = 8, min = 4, max = 20),
+                        shiny::numericInput(ns(paste0("bar_height_", i)), "Plot height (inch)", value = 6, min = 4, max = 20),
+                        shiny::downloadButton(ns(paste0("download_bar_", i)), "Download Plot")
                       )
                     )
                   ),
-                  plotOutput(ns(paste0("bar_dep_", i)))
+                  shiny::plotOutput(ns(base::paste0("bar_dep_", i)))
                 )
               )
             )
           )
         )
       })
-
-      navset_card_tab(full_screen = TRUE, !!!tabs)
+      shiny::navset_card_tab(full_screen = TRUE, !!!tabs)
     })
-
     # --- DEP analysis and plots ---
-    observe({
-      req(rv$compare_data, rv$normalized_matrix, rv$sample_info)
-      compare_data <- rv$compare_data[complete.cases(rv$compare_data), ]
-
-      if(nrow(compare_data) > 0) {
-        lapply(1:nrow(compare_data), function(i) {
-          local({
+    shiny::observe({
+      shiny::req(rv$compare_data, rv$normalized_matrix, rv$sample_info)
+      compare_data <- rv$compare_data[stats::complete.cases(rv$compare_data), ]
+      if(base::nrow(compare_data) > 0) {
+        base::lapply(1:base::nrow(compare_data), function(i) {
+          base::local({
             i_local <- i
             group1 <- compare_data[i_local, "Group1"]
             group2 <- compare_data[i_local, "Group2"]
-
             samples_group1 <- rv$sample_info %>% dplyr::filter(group == group1) %>% dplyr::pull(sample_id)
             samples_group2 <- rv$sample_info %>% dplyr::filter(group == group2) %>% dplyr::pull(sample_id)
-            exp_matrix <- rv$normalized_matrix %>% as.data.frame() %>% dplyr::select(all_of(c(samples_group1, samples_group2)))
-
+            exp_matrix <- rv$normalized_matrix %>% as.data.frame() %>% dplyr::select(dplyr::all_of(c(samples_group1, samples_group2)))
             # limma
-            group_list <- rep(c(group1, group2), c(length(samples_group1), length(samples_group2))) %>% factor(levels = c(group1, group2))
-            design <- model.matrix(~factor(group_list)+0)
-            colnames(design) <- c(group1, group2)
+            group_list <- base::rep(c(group1, group2), c(base::length(samples_group1), base::length(samples_group2))) %>% factor(levels = c(group1, group2))
+            design <- stats::model.matrix(~factor(group_list)+0)
+            base::colnames(design) <- c(group1, group2)
             df.fit <- limma::lmFit(exp_matrix, design)
-            contrast <- limma::makeContrasts(contrasts = paste(group1, group2, sep = " - "), levels = design)
+            contrast <- limma::makeContrasts(contrasts = base::paste(group1, group2, sep = " - "), levels = design)
             fit <- limma::contrasts.fit(df.fit, contrast) %>% limma::eBayes()
             result <- limma::topTable(fit, n = Inf, adjust = "fdr")
-
             # Dynamic regulation based on user input logFC threshold
-            logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
-            pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-
+            logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+            pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
             new_result <- result %>%
-              dplyr::mutate(regulation = case_when(
+              dplyr::mutate(regulation = dplyr::case_when(
                 logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
                 logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
                 TRUE ~ "Not significant"
               )) %>%
               tibble::rownames_to_column("ID") %>%
               dplyr::mutate(FC = 2^logFC)
-
-            rv$dep_results[[paste0(group1, "_vs_", group2)]] <- new_result
-
+            rv$dep_results[[base::paste0(group1, "_vs_", group2)]] <- new_result
             # DEP table
-            output[[paste0("dep_table_", i_local)]] <- DT::renderDataTable({
-              DT::datatable(new_result, options = list(scrollX = TRUE, pageLength = 10,
+            output[[base::paste0("dep_table_", i_local)]] <- DT::renderDataTable({
+              DT::datatable(new_result, options = base::list(scrollX = TRUE, pageLength = 10,
                                                        dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
                             extensions = 'Buttons', rownames = FALSE)
             })
-
             # Volcano plot
-            output[[paste0("volcano_plot_", i_local)]] <- renderPlot({
-              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])
-              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
+            output[[base::paste0("volcano_plot_", i_local)]] <- shiny::renderPlot({
+              shiny::req(rv$dep_results[[base::paste0(group1, "_vs_", group2)]])
+              df <- rv$dep_results[[base::paste0(group1, "_vs_", group2)]]
 
-              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 0.5)
-              pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-              color_up <- coalesce_input(input[[paste0("color_up_", i_local)]], "#d62728")
-              color_down <- coalesce_input(input[[paste0("color_down_", i_local)]], "#1f77b4")
-              color_ns <- coalesce_input(input[[paste0("color_ns_", i_local)]], "#7f7f7f")
-
+              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)
+              pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              color_up <- coalesce_input(input[[base::paste0("color_up_", i_local)]], "#d62728")
+              color_down <- coalesce_input(input[[base::paste0("color_down_", i_local)]], "#1f77b4")
+              color_ns <- coalesce_input(input[[base::paste0("color_ns_", i_local)]], "#7f7f7f")
               df <- df %>% dplyr::mutate(
                 regulation = case_when(
                   logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
@@ -379,64 +353,61 @@ DEP_analysis_server <- function(id, shared_state) {
                   TRUE ~ "Not significant"
                 )
               )
-
-              ggplot(df, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
-                geom_point(alpha = 0.8, size = 3) +
-                scale_color_manual(values = c("Upregulated" = color_up,
+              ggplot2::ggplot(df, ggplot2::aes(x = logFC, y = -log10(P.Value), color = regulation)) +
+                ggplot2::geom_point(alpha = 0.8, size = 3) +
+                ggplot2::scale_color_manual(values = c("Upregulated" = color_up,
                                               "Downregulated" = color_down,
                                               "Not significant" = color_ns)) +
-                theme_bw() +
-                labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
-                theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
-                geom_hline(yintercept = -log10(pval_thresh), linetype = "dashed", color = "black") +
-                geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
+                ggplot2::theme_bw() +
+                ggplot2::labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+                ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5), legend.position = "top") +
+                ggplot2::geom_hline(yintercept = -base::log10(pval_thresh), linetype = "dashed", color = "black") +
+                ggplot2::geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
             })
-
             # Volcano download
-            output[[paste0("download_volcano_", i_local)]] <- downloadHandler(
+            output[[base::paste0("download_volcano_", i_local)]] <- shiny::downloadHandler(
               filename = function() {
-                paste0("Volcano_", group1, "_vs_", group2, ".pdf")
+                base::paste0("Volcano_", group1, "_vs_", group2, ".pdf")
               },
               content = function(file) {
-                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]
-                logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
-                pval_thresh <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-                color_up <- coalesce_input(input[[paste0("color_up_", i_local)]], "#d62728")
-                color_down <- coalesce_input(input[[paste0("color_down_", i_local)]], "#1f77b4")
-                color_ns <- coalesce_input(input[[paste0("color_ns_", i_local)]], "#7f7f7f")
+                df <- rv$dep_results[[base::paste0(group1, "_vs_", group2)]]
+                logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+                pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+                color_up <- coalesce_input(input[[base::paste0("color_up_", i_local)]], "#d62728")
+                color_down <- coalesce_input(input[[base::paste0("color_down_", i_local)]], "#1f77b4")
+                color_ns <- coalesce_input(input[[base::paste0("color_ns_", i_local)]], "#7f7f7f")
 
                 df <- df %>% dplyr::mutate(
-                  regulation = case_when(
+                  regulation = dplyr::case_when(
                     logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
                     logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
                     TRUE ~ "Not significant"
                   )
                 )
-
-                g <- ggplot(df, aes(x = logFC, y = -log10(P.Value), color = regulation)) +
-                  geom_point(alpha = 0.8, size = 3) +
-                  scale_color_manual(values = c("Upregulated" = color_up,
+                g <- ggplot2::ggplot(df, ggplot2::aes(x = logFC, y = -base::log10(P.Value), color = regulation)) +
+                  ggplot2::geom_point(alpha = 0.8, size = 3) +
+                  ggplot2::scale_color_manual(values = c("Upregulated" = color_up,
                                                 "Downregulated" = color_down,
                                                 "Not significant" = color_ns)) +
-                  theme_bw() +
-                  labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
-                  theme(plot.title = element_text(hjust = 0.5), legend.position = "top") +
-                  geom_hline(yintercept = -log10(pval_thresh), linetype = "dashed", color = "black") +
-                  geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
+                  ggplot2::theme_bw() +
+                  ggplot2::labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+                  ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5), legend.position = "top") +
+                  ggplot2::geom_hline(yintercept = -base::log10(pval_thresh), linetype = "dashed", color = "black") +
+                  ggplot2::geom_vline(xintercept = c(-logfc_thresh, logfc_thresh), linetype = "dashed", color = "black")
 
-                ggsave(file, g,
-                       width = coalesce_input(input[[paste0("go_width_", i_local)]], 8),
-                       height = coalesce_input(input[[paste0("go_height_", i_local)]], 6),
-                       units = "in"
-                )
+                ggplot2::ggsave(file, g,
+                       width = coalesce_input(input[[base::paste0("bar_width_", i_local)]], 8),
+                       height = coalesce_input(input[[base::paste0("bar_height_", i_local)]], 6))
               }
             )
 
             # Heatmap
-            output[[paste0("heatmap_", i_local)]] <- renderPlot({
-              sig_proteins <- new_result %>% dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>% dplyr::pull(ID)
-              if(length(sig_proteins) > 0) {
-                heatmap_data <- exp_matrix[rownames(exp_matrix) %in% sig_proteins, ]
+            output[[base::paste0("heatmap_", i_local)]] <- shiny::renderPlot({
+              sig_proteins <- new_result %>%
+                dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                dplyr::pull(ID)
+              if(base::length(sig_proteins) > 0) {
+                heatmap_data <- exp_matrix[base::rownames(exp_matrix) %in% sig_proteins, ]
                 pheatmap::pheatmap(heatmap_data, scale = "row",
                                    clustering_distance_rows = "euclidean",
                                    clustering_distance_cols = "euclidean",
@@ -444,119 +415,104 @@ DEP_analysis_server <- function(id, shared_state) {
                                    show_rownames = FALSE,
                                    main = paste("Heatmap:", group1, "vs", group2))
               } else {
-                ggplot() + annotate("text", x = 0.5, y = 0.5, label = "No significant proteins", size = 8) + theme_void()
+                ggplot2::ggplot() +
+                  ggplot2::annotate("text", x = 0.5, y = 0.5, label = "No significant proteins", size = 8) +
+                  ggplot2::theme_void()
               }
             })
             # Bar
-            output[[paste0("bar_dep_", i_local)]] <- renderPlot({
-              req(rv$dep_results[[paste0(group1, "_vs_", group2)]])  # 确保数据存在
-              df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]  # 获取当前组别的结果
-
-              # 获取用户设置的logFC和P-value阈值
-              logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
-              pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-
-              # 调试信息：打印logFC和P-value的阈值
-              print(paste("logFC threshold:", logfc_thresh))
-              print(paste("P-value threshold:", pval_thresh))
-
-              # 更新regulation列
+            output[[base::paste0("bar_dep_", i_local)]] <- shiny::renderPlot({
+              shiny::req(rv$dep_results[[base::paste0(group1, "_vs_", group2)]])  # Make sure the data exists
+              df <- rv$dep_results[[base::paste0(group1, "_vs_", group2)]]  # Get the results of the current group
+              # Get the user-set logFC and P-value thresholds.
+              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+              pval_thresh  <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              print(base::paste("logFC threshold:", logfc_thresh))
+              print(base::paste("P-value threshold:", pval_thresh))
+              # Update the rules and regulations column
               df <- df %>% dplyr::mutate(
-                regulation = case_when(
-                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",  # 上调
-                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",  # 下调
-                  TRUE ~ "Not significant"  # 不显著
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
                 )
               )
-
-              # 调试信息：检查更新后的regulation列
-              print(table(df$regulation))
-
-              # 计算Upregulated和Downregulated的数量
+              # Debugging information: Check the updated regulation column.
+              print(base::table(df$regulation))
+              # Calculate the number of Upregulated and Downregulated.
               dep_counts <- df %>%
-                filter(regulation %in% c("Upregulated", "Downregulated")) %>%
-                count(regulation)  # 统计每个类别的数量
-
-              # 如果没有Upregulated或Downregulated的条目，显示调试信息
-              if (nrow(dep_counts) == 0) {
+                dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                dplyr::count(regulation)  # Count the number of each category.
+              # If there is no entry for Upregulated or Downregulated, display debugging information.
+              if (base::nrow(dep_counts) == 0) {
                 print("No Upregulated or Downregulated proteins found.")
               }
-
-              # 绘制条形图
-              ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
-                geom_bar(stat = "identity") +
-                scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
-                labs(title = paste("Number of DEPs:", group1, "vs", group2),
+              # Draw a bar chart
+              ggplot2::ggplot(dep_counts, ggplot2::aes(x = regulation, y = n, fill = regulation)) +
+                ggplot2::geom_bar(stat = "identity") +
+                ggplot2::scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
+                ggplot2::labs(title = base::paste("Number of DEPs:", group1, "vs", group2),
                      x = "Regulation", y = "Count") +
-                theme_bw() +
-                theme(legend.position = "none")  # 隐藏图例
+                ggplot2::theme_bw() +
+                ggplot2::theme(legend.position = "none")
             })
-
             # Bar download
-            output[[paste0("download_bar_", i_local)]] <- downloadHandler(
+            output[[base::paste0("download_bar_", i_local)]] <- shiny::downloadHandler(
               filename = function() {
-                paste0("Bar_DEP_", group1, "_vs_", group2, ".pdf")
+                base::paste0("Bar_DEP_", group1, "_vs_", group2, ".pdf")
               },
               content = function(file) {
-                df <- rv$dep_results[[paste0(group1, "_vs_", group2)]]  # 获取当前组别的结果
-
-                # 获取用户设置的logFC和P-value阈值
-                logfc_thresh <- coalesce_input(input[[paste0("volcano_logfc_", i_local)]], 1.0)
-                pval_thresh  <- coalesce_input(input[[paste0("volcano_pval_", i_local)]], 0.05)
-
-                # 更新regulation列
+                df <- rv$dep_results[[base::paste0(group1, "_vs_", group2)]]
+                # Retrieve the logFC and P-value thresholds set by the user
+                logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+                pval_thresh  <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+                # update regulation column
                 df <- df %>% dplyr::mutate(
-                  regulation = case_when(
+                  regulation = dplyr::case_when(
                     logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
                     logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
                     TRUE ~ "Not significant"
                   )
                 )
-
-                # 计算Upregulated和Downregulated的数量
+                # Calculate the number of Upregulated and Downregulated.
                 dep_counts <- df %>%
-                  filter(regulation %in% c("Upregulated", "Downregulated")) %>%
-                  count(regulation)
-
-                # 绘制条形图
-                g <- ggplot(dep_counts, aes(x = regulation, y = n, fill = regulation)) +
-                  geom_bar(stat = "identity") +
-                  scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
-                  labs(title = paste("Number of DEPs:", group1, "vs", group2),
+                  dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                  dplyr::count(regulation)
+                # Draw a bar chart
+                g <- ggplot2::ggplot(dep_counts, ggplot2::aes(x = regulation, y = n, fill = regulation)) +
+                  ggplot2::geom_bar(stat = "identity") +
+                  ggplot2::scale_fill_manual(values = c("Upregulated" = "#d62728", "Downregulated" = "#1f77b4")) +
+                  ggplot2::labs(title = paste("Number of DEPs:", group1, "vs", group2),
                        x = "Regulation", y = "Count") +
-                  theme_bw() +
-                  theme(legend.position = "none")
-
-                ggsave(file, g, width = coalesce_input(input[[paste0("bar_width_", i_local)]], 8),
-                       height = coalesce_input(input[[paste0("bar_height_", i_local)]], 6))
+                  ggplot2::theme_bw() +
+                  ggplot2::theme(legend.position = "none")
+                ggplot2::ggsave(file, g, width = coalesce_input(input[[base::paste0("bar_width_", i_local)]], 8),
+                       height = coalesce_input(input[[base::paste0("bar_height_", i_local)]], 6))
               }
             )
 
-          }) # end local
-        }) # end lapply
+          })
+        })
       }
     })
 
     # --- Preview tables ---
     output$sample_info <- DT::renderDataTable({
-      req(rv$sample_info)
-      DT::datatable(rv$sample_info, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
+      shiny::req(rv$sample_info)
+      DT::datatable(rv$sample_info, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
-
     output$normalized_data <- DT::renderDataTable({
-      req(rv$normalized_matrix)
-      DT::datatable(rv$normalized_matrix, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
+      shiny::req(rv$normalized_matrix)
+      DT::datatable(rv$normalized_matrix, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
-
     output$group_comparison <- DT::renderDataTable({
-      req(rv$compare_data)
-      DT::datatable(rv$compare_data, options = list(scrollX = TRUE, dom = 't'), rownames = FALSE)
+      shiny::req(rv$compare_data)
+      DT::datatable(rv$compare_data, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
-
     # --- Return state ---
     return(
-      reactive({
-        list(
+      shiny::reactive({
+        base::list(
           compare_data = rv$compare_data,
           normalized_matrix = rv$normalized_matrix,
           sample_info = rv$sample_info,
@@ -566,8 +522,3 @@ DEP_analysis_server <- function(id, shared_state) {
     )
   })
 }
-
-
-
-
-

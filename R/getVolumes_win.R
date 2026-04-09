@@ -12,56 +12,56 @@
 #' @export
 
 getVolumes_win <- function (exclude = NULL) {
-  osSystem <- Sys.info()["sysname"]
+  osSystem <- base::Sys.info()["sysname"]
   if (osSystem == "Darwin") {
     volumes <- fs::dir_ls("/Volumes")
-    names(volumes) <- basename(volumes)
+    base::names(volumes) <- base::basename(volumes)
   }
   else if (osSystem == "Linux") {
     volumes <- c(Computer = "/")
     if (isTRUE(fs::dir_exists("/media"))) {
       media <- fs::dir_ls("/media")
-      names(media) <- basename(media)
+      base::names(media) <- base::basename(media)
       volumes <- c(volumes, media)
     }
   }
   else if (osSystem == "Windows") {
-    wmic <- paste0(Sys.getenv("SystemRoot"), "\\System32\\Wbem\\WMIC.exe")
+    wmic <- base::paste0(Sys.getenv("SystemRoot"), "\\System32\\Wbem\\WMIC.exe")
     if (!file.exists(wmic)) {
-      volumes_info <- system2("powershell", "$dvr=[System.IO.DriveInfo]::GetDrives();Write-Output $dvr.length $dvr.name $dvr.VolumeLabel;",
+      volumes_info <- base::system2("powershell", "$dvr=[System.IO.DriveInfo]::GetDrives();Write-Output $dvr.length $dvr.name $dvr.VolumeLabel;",
                               stdout = TRUE)
-      num = as.integer(volumes_info[1])
+      num = base::as.integer(volumes_info[1])
       if (num == 0)
         return(NULL)
-      mat <- matrix(volumes_info[-1], nrow = num, ncol = 2)
-      mat[, 1] <- gsub(":\\\\$", ":/", mat[, 1])
+      mat <- base::matrix(volumes_info[-1], nrow = num, ncol = 2)
+      mat[, 1] <- base::gsub(":\\\\$", ":/", mat[, 1])
       sel <- mat[, 2] == ""
       mat[sel, 2] <- mat[sel, 1]
       volumes <- mat[, 1]
       volNames <- mat[, 2]
-      volNames <- paste0(volNames, " (", gsub(":/$", ":", volumes), ")")
+      volNames <- base::paste0(volNames, " (", base::gsub(":/$", ":", volumes), ")")
     }
     else {
-      volumes <- system(paste(wmic, "logicaldisk get Caption"),
+      volumes <- base::system(base::paste(wmic, "logicaldisk get Caption"),
                         intern = TRUE, ignore.stderr = TRUE)
-      volumes <- sub(" *\\r$", "", volumes)
-      keep <- !tolower(volumes) %in% c("caption", "")
+      volumes <- base::sub(" *\\r$", "", volumes)
+      keep <- !base::tolower(volumes) %in% c("caption", "")
       volumes <- volumes[keep]
-      volNames <- system(paste(wmic, "/FAILFAST:1000 logicaldisk get VolumeName"),
+      volNames <- base::system(base::paste(wmic, "/FAILFAST:1000 logicaldisk get VolumeName"),
                          intern = TRUE, ignore.stderr = TRUE)
-      volNames <- str_remove(volNames," *\\r$") #> fix bugs for Chinese character.
+      volNames <- stringr::str_remove(volNames," *\\r$") #> fix bugs for Chinese character.
       volNames <- volNames[keep]
-      volNames <- paste0(volNames, ifelse(volNames == "",
+      volNames <- base::paste0(volNames, ifelse(volNames == "",
                                           "", " "))
-      volNames <- paste0(volNames, "(", volumes, ")")
+      volNames <- base::paste0(volNames, "(", volumes, ")")
     }
     names(volumes) <- volNames
-    volumes <- gsub(":$", ":/", volumes)
+    volumes <- base::gsub(":$", ":/", volumes)
   }
   else {
     stop("unsupported OS")
   }
-  if (!is.null(exclude)) {
+  if (!base::is.null(exclude)) {
     volumes <- volumes[!names(volumes) %in% exclude]
   }
   volumes

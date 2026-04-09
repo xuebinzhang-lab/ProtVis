@@ -2,10 +2,10 @@
 % Please edit documentation in R/DEP_analysis.R
 \name{DEP_analysis_server}
 \alias{DEP_analysis_server}
-\title{DEP Analysis Server Module}
-\usage{
-DEP_analysis_server(id, shared_state)
-}
+\title{DEP Analysis Server Module
+Server-side logic for the Differential Expression Protein (DEP) analysis module.
+Handles data loading, comparison group specification, differential expression analysis,
+and visualization of results.}
 \arguments{
 \item{id}{The namespace identifier for the module}
 
@@ -15,6 +15,7 @@ DEP_analysis_server(id, shared_state)
 A reactive list containing comparison data, normalized matrix, sample info, and DEP results
 }
 \description{
+DEP Analysis Server Module
 Server-side logic for the Differential Expression Protein (DEP) analysis module.
 Handles data loading, comparison group specification, differential expression analysis,
 and visualization of results.

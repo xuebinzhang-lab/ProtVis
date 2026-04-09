@@ -3,9 +3,6 @@
 \name{enrichment_analysis_server}
 \alias{enrichment_analysis_server}
 \title{Enrichment Analysis Module Server}
-\usage{
-enrichment_analysis_server(id, shared_state)
-}
 \arguments{
 \item{id}{The namespace identifier for the module}
 

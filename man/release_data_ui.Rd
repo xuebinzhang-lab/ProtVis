@@ -16,3 +16,8 @@ A tagList containing the UI elements
 Creates the user interface for the release data module.
 This module allows users to load .rda files and export their contents to xlsx or csv format.
 }
+\examples{
+\dontrun{
+ui <- release_data_ui("release_data")
+}
+}

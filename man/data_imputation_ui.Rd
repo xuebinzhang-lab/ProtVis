@@ -2,7 +2,10 @@
 % Please edit documentation in R/data_imputation.R
 \name{data_imputation_ui}
 \alias{data_imputation_ui}
-\title{Data Imputation UI Module}
+\title{Data Imputation UI Module
+This function creates the UI for the data imputation module.
+It includes controls for loading data, visualizing missing values,
+selecting imputation methods, and viewing imputed results.}
 \usage{
 data_imputation_ui(id)
 }
@@ -13,6 +16,7 @@ data_imputation_ui(id)
 A Shiny UI element containing sidebar controls and main panel tabs.
 }
 \description{
+Data Imputation UI Module
 This function creates the UI for the data imputation module.
 It includes controls for loading data, visualizing missing values,
 selecting imputation methods, and viewing imputed results.

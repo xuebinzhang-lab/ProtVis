@@ -2,13 +2,28 @@
 % Please edit documentation in R/protein_structure.R
 \name{protein_structure_server}
 \alias{protein_structure_server}
-\title{protein_structure Server Module}
+\title{Protein Structure Analysis Server Module}
 \usage{
 protein_structure_server(id)
 }
 \arguments{
-\item{id}{Standard shiny server arguments}
+\item{id}{Standard shiny server identifier}
+}
+\value{
+A Shiny server module function
 }
 \description{
-Server logic for protein_structure
+Server logic for protein_structure module
+}
+\details{
+Server-side logic for protein secondary structure analysis. Performs
+Normal Mode Analysis (NMA) on uploaded PDB files and generates fluctuation
+plots with secondary structure elements highlighted.
+}
+\examples{
+\dontrun{
+server <- function(input, output, session) {
+  protein_structure_server("structure_analysis")
+}
+}
 }

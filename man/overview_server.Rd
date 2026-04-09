@@ -3,9 +3,6 @@
 \name{overview_server}
 \alias{overview_server}
 \title{Overview Server Module}
-\usage{
-overview_server(id, shared_state)
-}
 \arguments{
 \item{id}{Character string specifying the namespace id}
 

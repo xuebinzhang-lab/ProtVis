@@ -51,11 +51,11 @@ project_init_ui <- function(id) {
       card_body(
         navset_tab(
           id = ns("preview_tabs"),
-          nav_panel("Sample Info",
+          bslib::nav_panel("Sample Info",
                     htmlOutput(ns("file_check_init")),
                     DT::dataTableOutput(ns("tbl_sample_info"))
           ),
-          nav_panel("Expression Matrix",
+          bslib::nav_panel("Expression Matrix",
                     htmlOutput(ns("matrix_check")),
                     DT::dataTableOutput(ns("tbl_expression_matrix"))
           )
@@ -71,7 +71,6 @@ project_init_ui <- function(id) {
 #' @param id Module ID
 #' @param shared_state A reactiveValues object for sharing state (workdir, sample info, etc.)
 #' @import shinyFiles
-#' @import DT
 #' @importFrom fs path_home
 #' @importFrom shiny showNotification
 #' @export

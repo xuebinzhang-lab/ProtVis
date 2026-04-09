@@ -2,50 +2,50 @@
 #' @import shiny bslib data.table pathview clusterProfiler dplyr
 #' @noRd
 pathview_ui <- function(id) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
 
-  my_theme <- bs_theme(
+  my_theme <- bslib::bs_theme(
     version = 5,
     bg = "#FFFFFF",
     fg = "#000000",
     primary = "#0d6efd",
     secondary = "#6c757d",
     success = "#198754",
-    base_font = font_google("Roboto")
+    base_font = bslib::font_google("Roboto")
   )
 
-  fluidPage(
+  shiny::fluidPage(
     theme = my_theme,
-    titlePanel("Pathway Visualization"),
+    shiny::titlePanel("Pathway Visualization"),
 
-    layout_sidebar(
-      sidebar = sidebar(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        fileInput(ns("file"), "Upload pathview.csv (2 columns: KO, logFC)", accept = ".csv"),
-        fileInput(ns("pathway"), "Upload pathway_file.csv (3 columns: pathway, ko, Description)", accept = ".csv"),
-        selectInput(
+        shiny::fileInput(ns("file"), "Upload pathview.csv (2 columns: KO, logFC)", accept = ".csv"),
+        shiny::fileInput(ns("pathway"), "Upload pathway_file.csv (3 columns: pathway, ko, Description)", accept = ".csv"),
+        shiny::selectInput(
           ns("tax_group"),
           "Select Taxonomic Group",
           choices = c("Plant", "Animals", "Bacteria", "Fungi", "Eukaryotes", "Hsa"),
           selected = "Plant"
         ),
-        actionButton(ns("enrich"), "Run KEGG Enrichment", class = "btn-primary"),
-        uiOutput(ns("pathway_select")),
-        actionButton(ns("run"), "Draw Selected Pathway", class = "btn-success"),
+        shiny::actionButton(ns("enrich"), "Run KEGG Enrichment", class = "btn-primary"),
+        shiny::uiOutput(ns("pathway_select")),
+        shiny::actionButton(ns("run"), "Draw Selected Pathway", class = "btn-success"),
         class = "bg-light"
       ),
 
-      card(
-        card_header("Working Directory:"),
-        verbatimTextOutput(ns("wd_text")),
-        card_header("Pathway Plot Preview"),
-        card_body(
-          imageOutput(ns("plot_ui"), height = "auto"),
+      bslib::card(
+        bslib::card_header("Working Directory:"),
+        shiny::verbatimTextOutput(ns("wd_text")),
+        bslib::card_header("Pathway Plot Preview"),
+        bslib::card_body(
+          shiny::imageOutput(ns("plot_ui"), height = "auto"),
           class = "p-0"
         ),
-        card_header("KO-logFC Table Preview"),
-        card_body(
-          tableOutput(ns("preview")),
+        bslib::card_header("KO-logFC Table Preview"),
+        bslib::card_body(
+          shiny::tableOutput(ns("preview")),
           class = "p-3"
         ),
         full_screen = TRUE
@@ -57,8 +57,13 @@ pathview_ui <- function(id) {
 
 #' Pathview Pathway Visualization Module Server
 #' @noRd
+
+utils::globalVariables(c("ko", "KO", "pathway", "Description"))
+
+
+
 pathview_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # ----- create bods fallback -----
@@ -95,21 +100,21 @@ pathview_server <- function(id) {
       )
     }
 
-    output$wd_text <- renderText(getwd())
-    geneList_react <- reactiveVal()
-    desc_df <- reactiveVal()
+    output$wd_text <- shiny::renderText(getwd())
+    geneList_react <- shiny::reactiveVal()
+    desc_df <- shiny::reactiveVal()
 
     # ---------- Enrichment ----------
-    observeEvent(input$enrich, {
-      req(input$file, input$pathway)
+    shiny::observeEvent(input$enrich, {
+      shiny::req(input$file, input$pathway)
 
       # Read KO-logFC
-      gene_df <- fread(input$file$datapath)
+      gene_df <- data.table::fread(input$file$datapath)
       colnames(gene_df)[1:2] <- c("KO", "logFC")
       gene_df$KO <- toupper(sub(".*:", "", gene_df$KO))
 
       # Read pathway_file.csv
-      pf <- fread(input$pathway$datapath)
+      pf <- data.table::fread(input$pathway$datapath)
       colnames(pf)[1:3] <- c("pathway","ko","Description")
       pf$pathway <- sub("path:","",pf$pathway)
       pf$ko <- sub("ko:","",pf$ko)
@@ -134,7 +139,7 @@ pathview_server <- function(id) {
       gene_df <- gene_df[valid_idx, ]
 
       if (nrow(gene_df) == 0) {
-        showNotification("No valid KO IDs (Kxxxxx) found for selected group!", type = "error")
+        shiny::showNotification("No valid KO IDs (Kxxxxx) found for selected group!", type = "error")
         return()
       }
 
@@ -147,7 +152,7 @@ pathview_server <- function(id) {
       desc_df(desc)
 
       # Run enrichment
-      eg <- enricher(
+      eg <- clusterProfiler::enricher(
         gene = names(geneList),
         TERM2GENE = term2gene,
         pvalueCutoff = 0.05
@@ -162,26 +167,26 @@ pathview_server <- function(id) {
           all.x = TRUE
         )
 
-        output$pathway_select <- renderUI({
-          selectInput(
+        output$pathway_select <- shiny::renderUI({
+          shiny::selectInput(
             ns("selected_pathway"),
             "Select KEGG Pathway",
-            choices = setNames(result$ID, result$Description),
+            choices = stats::setNames(result$ID, result$Description),
             multiple = FALSE
           )
         })
       } else {
-        showNotification("No significant enriched pathways found", type = "error")
+        shiny::showNotification("No significant enriched pathways found", type = "error")
       }
 
-      output$preview <- renderTable({
-        head(data.frame(KO = names(geneList), logFC = geneList))
+      output$preview <- shiny::renderTable({
+        utils::head(data.frame(KO = names(geneList), logFC = geneList))
       })
     })
 
     # ---------- Pathview PNG Drawing ----------
-    observeEvent(input$run, {
-      req(geneList_react(), input$selected_pathway)
+    shiny::observeEvent(input$run, {
+      shiny::req(geneList_react(), input$selected_pathway)
 
       pid <- sub("^(map|ko)", "", input$selected_pathway)
       geneList <- geneList_react()
@@ -192,12 +197,12 @@ pathview_server <- function(id) {
       geneList <- geneList[valid_idx]
 
       if (length(geneList) == 0) {
-        showNotification("No valid KO IDs (Kxxxxx) found!", type = "error")
+        shiny::showNotification("No valid KO IDs (Kxxxxx) found!", type = "error")
         return()
       }
 
       tryCatch({
-        pathview(
+        pathview::pathview(
           gene.data = geneList,
           pathway.id = pid,
           species = "ko",
@@ -211,17 +216,17 @@ pathview_server <- function(id) {
         png_file <- normalizePath(file.path(getwd(), paste0("ko", pid, ".KOmap.png")))
 
         if (!file.exists(png_file)) {
-          showNotification("No PNG file generated. Check KO IDs or network.", type = "error")
+          shiny::showNotification("No PNG file generated. Check KO IDs or network.", type = "error")
           return()
         }
 
-        output$plot_ui <- renderImage({
+        output$plot_ui <- shiny::renderImage({
           list(src = png_file, contentType = "image/png",
                width = "100%", alt = paste("Pathway:", pid))
         }, deleteFile = FALSE)
 
       }, error = function(e) {
-        showNotification(
+        shiny::showNotification(
           paste("Pathview error:", e$message),
           type = "error"
         )

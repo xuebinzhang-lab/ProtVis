@@ -16,3 +16,8 @@ A Shiny UI tagList containing a text input and a dynamic links panel
 Creates a user interface for entering a UniProt ID or protein sequence
 and displays quick links to popular protein analysis tools (UniProt, InterPro, PSIPRED, Swiss-Model).
 }
+\examples{
+\dontrun{
+ui <- protein_links_ui("protein_links")
+}
+}

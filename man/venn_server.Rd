@@ -4,11 +4,26 @@
 \alias{venn_server}
 \title{venn_server}
 \arguments{
-\item{id}{Standard shiny server arguments}
+\item{id}{Standard shiny server identifier.}
+}
+\value{
+A Shiny server module function.
 }
 \description{
-Server logic for venn plot
+Server logic for generating Venn diagrams with automatic
+  detection of set count to choose appropriate visualization method.
 }
 \details{
-venn plot Server Module
+Venn Diagram Server Module
+
+Server-side logic for the Venn diagram module. Handles CSV file processing,
+dynamic color selection, Venn diagram generation (using ggvenn for ≤4 sets
+or venn package for 5+ sets), and PDF download functionality.
+}
+\examples{
+\dontrun{
+server <- function(input, output, session) {
+  venn_server("venn_diagram")
+}
+}
 }

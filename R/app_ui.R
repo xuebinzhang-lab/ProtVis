@@ -1,4 +1,3 @@
-options(shiny.maxRequestSize = 500*1024^2)
 #' Add External Resources to the Shiny Application
 #'
 #' This internal function adds external resources such as CSS, JS,
@@ -7,7 +6,10 @@ options(shiny.maxRequestSize = 500*1024^2)
 #'
 #' @import shiny
 #' @importFrom golem add_resource_path activate_js favicon bundle_resources
+#' @name golem_add_external_resources
 #' @noRd
+#' @export
+#'
 golem_add_external_resources <- function() {
   golem::add_resource_path(
     "www",
@@ -34,18 +36,21 @@ golem_add_external_resources <- function() {
 #' @importFrom bslib nav_panel nav_menu page_navbar bs_theme
 #' @importFrom bsicons bs_icon
 #' @noRd
+#' @name app_ui
+#' @export
+#'
 app_ui <- function(request) {
   tagList(
     golem_add_external_resources(),
 
-    page_navbar(
+    bslib::page_navbar(
       title = "ProtVis",
       theme = bs_theme(bootswatch = "lumen"),
 
       #### Homepage ####
-      nav_panel(
+      bslib::nav_panel(
         "Homepage",
-        icon = bs_icon("bank"),
+        icon = bsicons::bs_icon("bank"),
         div(
           style = "margin: 0 auto; width: 60%; padding-top: 30px;",
           h2("Welcome to ProtVis", align = "center"),
@@ -61,10 +66,13 @@ app_ui <- function(request) {
           h4("Features"),
           tags$ul(
             tags$li("Flexible project initialization and metadata management"),
-            tags$li("Support for multi-source proteomics data (MaxQuant, PD, Skyline, etc.)"),
-            tags$li("Built-in data cleaning: contaminant filtering, missing value imputation, normalization"),
+            tags$li("Support for multi-source proteomics data
+                    (MaxQuant, PD, Skyline, etc.)"),
+            tags$li("Built-in data cleaning: contaminant filtering,
+                    missing value imputation, normalization"),
             tags$li("Interactive dimensionality reduction (PCA, UMAP)"),
-            tags$li("Comprehensive differential expression analysis using limma"),
+            tags$li("Comprehensive differential
+                    expression analysis using limma"),
             tags$li("Functional enrichment analysis (GO, KEGG, Reactome)"),
             tags$li("Publication-ready visualizations")
           ),
@@ -84,86 +92,107 @@ app_ui <- function(request) {
           br(),
 
           h4("Get Started"),
-          p("Use the tabs above to begin your analysis. You can start by uploading your sample metadata and selecting the data source under 'Data Input'.")
+          p("Use the tabs above to begin your analysis.
+            You can start by uploading your sample metadata and
+            selecting the data source under 'Data Input'.")
         )
       ),
       #### Project Initialization ####
-      nav_panel(
+      bslib::nav_panel(
         "Project init",
         icon = gear_icon,
-        nav_panel("Project init", project_init_ui("project_init"))
+        bslib::nav_panel("Project init", project_init_ui("project_init"))
       ),
 
       #### Data Input ####
       nav_panel(
         "Data input",
-        icon = bs_icon("usb-drive"),
+        icon = bsicons::bs_icon("usb-drive"),
         data_input_ui("data_input")
       ),
 
       #### Pre-processing ####
-      nav_menu(
+      bslib::nav_menu(
         "Pre-processing",
-        icon = bs_icon("wrench"),
-        nav_panel("Correct Noise", correct_noise_ui("correct_noise")),
-        nav_panel("Data Transformed", data_transformed_ui("data_transformed")),
-        nav_panel("Data Imputation", data_imputation_ui("data_imputation")),
-        nav_panel("Data Normalization", data_normalization_ui("data_normalization"))
+        icon = bsicons::bs_icon("wrench"),
+        bslib::nav_panel("Correct Noise", correct_noise_ui("correct_noise")),
+        bslib::nav_panel("Data Transformed", data_transformed_ui("data_transformed")),
+        bslib::nav_panel("Data Imputation", data_imputation_ui("data_imputation")),
+        bslib::nav_panel(
+          "Data Normalization",
+          data_normalization_ui("data_normalization")
+        )
       ),
 
 
       #### Downstream Analysis ####
-      nav_menu(
+      bslib::nav_menu(
         "Downstream analysis",
-        icon = bs_icon("tools"),
-        nav_panel("Overview", overview_ui("overview")),
-        nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
-        nav_panel("Enrichment analysis", enrichment_analysis_ui("enrichment_analysis")),
-        nav_panel("GSEA analysis", gsea_ui("gsea")),
-        nav_panel("Pathview", pathview_ui("pathview")),
-        nav_panel("Protein function", protein_fun_ui("protein_fun"))
+        icon = bsicons::bs_icon("tools"),
+        bslib::nav_panel("Overview", overview_ui("overview")),
+        bslib::nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
+        bslib::nav_panel(
+          "Enrichment analysis",
+          enrichment_analysis_ui("enrichment_analysis")
+        ),
+        bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
+        bslib::nav_panel("Pathview", pathview_ui("pathview")),
+        bslib::nav_panel(
+          "Protein function",
+          protein_fun_ui("protein_fun")
+        )
       ),
 
       #### Multi-omics Data ####
       nav_menu(
         "Multi-omics data",
-        icon = bs_icon("database-gear"),
-        nav_panel("Expression Profile", Expression_profile_ui("Expression_profile")),
-        nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
-        nav_panel("Venn", venn_ui("venn"))
+        icon = bsicons::bs_icon("database-gear"),
+        bslib::nav_panel(
+          "Expression Profile",
+          Expression_profile_ui("Expression_profile")
+        ),
+        bslib::nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
+        bslib::nav_panel("Venn", venn_ui("venn"))
       ),
       #### PTM ####
-      nav_menu(
+      bslib::nav_menu(
         "PTM",
-        icon = bs_icon("database-gear"),
-        nav_panel("PTM", PTM_ui("PTM"))
+        icon = bsicons::bs_icon("database-gear"),
+        bslib::nav_panel("PTM", PTM_ui("PTM"))
       ),
       #### Release data ####
-      nav_panel(
+      bslib::nav_panel(
         "Release data",
-        icon = bs_icon("folder2-open"),
+        icon = bsicons::bs_icon("folder2-open"),
         release_data_ui("release_data1")
       ),
       #### Release data ####
-      nav_menu(
+      bslib::nav_menu(
         "Toolkits",
         icon = toolbox,
-        nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
-        nav_panel("Background Make", background_make_ui("background_make")),
-        nav_panel("Protein Links", protein_links_ui("prot_links")),
-        nav_panel("Protein Structure", protein_structure_ui("protein_structure")),
-        nav_panel("Boxplot", boxplot_module_ui("box1")),
-        nav_panel("swissmodel", swissmodel_ui("swissmodel")),
-        nav_panel("Stacked Column Diagram", stacked_column_chart_ui("stacked_column_chart")),
-        nav_panel("DEG Analyse", DEG_ui("DEG"))
+        bslib::nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
+        bslib::nav_panel("Background Make", background_make_ui("background_make")),
+        bslib::nav_panel("Protein Links", protein_links_ui("prot_links")),
+        bslib::nav_panel(
+          "Protein Structure",
+          protein_structure_ui("protein_structure")
         ),
+        bslib::nav_panel("Boxplot", boxplot_module_ui("box1")),
+        bslib::nav_panel("swissmodel", swissmodel_ui("swissmodel")),
+        bslib::nav_panel(
+          "Stacked Column Diagram",
+          stacked_column_chart_ui("stacked_column_chart")
+        ),
+        bslib::nav_panel("DEG Analyse", DEG_ui("DEG"))
+      ),
       #### Help ####
-      nav_panel(
+      bslib::nav_panel(
         "Help",
-        icon = bs_icon("exclamation-circle")
+        icon = bsicons::bs_icon("exclamation-circle")
         # Embed markdown documents or FAQs here
       )
-      # Footer or bottom tools not added yet; could add flexible_tools here if needed
+      # Footer or bottom tools not added yet;
+      # could add flexible_tools here if needed
     )
   )
 }

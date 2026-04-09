@@ -8,9 +8,10 @@
 #' @import bslib
 #' @export
 #'
+
 mv_summary_ui <- function(id) {
   ns <- NS(id)
-  nav_panel(
+  bslib::nav_panel(
     # title = 'Multivariate Summary',
     title = 'Data normalization',
     icon = bs_icon("play-circle"),
@@ -190,12 +191,11 @@ mv_summary_ui <- function(id) {
 #' @import tidyr
 #' @import ggplot2
 #' @import grDevices
-#' @import dplyr
-#' @import tidyverse
 #' @import stats
 #' @export
 #'
 utils::globalVariables(c("value","Sample","Group"))
+
 
 mv_summary_server <- function(id) {
   moduleServer(id, function(input, output, session) {
@@ -219,24 +219,24 @@ mv_summary_server <- function(id) {
         req(group())
         # 数据整理
         boxplot <- data() %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
+          tidyr::pivot_longer(cols = everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
           dplyr::mutate(value = log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
         # 画图
-        ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),         # 去除主网格线
+            panel.grid.minor = ggplot2::element_blank(),         # 去除次网格线
+            plot.title = ggplot2::element_text(color = "black"), # 标题字体颜色
+            axis.title = ggplot2::element_text(color = "black"), # 坐标轴标题颜色
+            axis.text = ggplot2::element_text(color = "black"),  # 坐标轴刻度文字颜色
+            legend.text = ggplot2::element_text(color = "black"),# 图例文字颜色
+            legend.title = ggplot2::element_text(color = "black")# 图例标题颜色
           )
       })
     })
@@ -252,24 +252,24 @@ mv_summary_server <- function(id) {
           preprocessCore::normalize.quantiles() %>%
           as.data.frame() %>%
           setNames(colnames(data())) %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
+          tidyr::pivot_longer(cols = everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
           dplyr::mutate(value = log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
         # 画图
-        ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),         # 去除主网格线
+            panel.grid.minor = ggplot2::element_blank(),         # 去除次网格线
+            plot.title = ggplot2::element_text(color = "black"), # 标题字体颜色
+            axis.title = ggplot2::element_text(color = "black"), # 坐标轴标题颜色
+            axis.text = ggplot2::element_text(color = "black"),  # 坐标轴刻度文字颜色
+            legend.text = ggplot2::element_text(color = "black"),# 图例文字颜色
+            legend.title = ggplot2::element_text(color = "black")# 图例标题颜色
           )
       })
     })
@@ -284,24 +284,24 @@ mv_summary_server <- function(id) {
         req(group())  # 确保分组信息已加载
         # before
         boxplot <- data() %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
+          tidyr::pivot_longer(cols = everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
           dplyr::mutate(value = log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
         # 画图
-        p1 <- ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        p1 <- ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),         # 去除主网格线
+            panel.grid.minor = ggplot2::element_blank(),         # 去除次网格线
+            plot.title = ggplot2::element_text(color = "black"), # 标题字体颜色
+            axis.title = ggplot2::element_text(color = "black"), # 坐标轴标题颜色
+            axis.text = ggplot2::element_text(color = "black"),  # 坐标轴刻度文字颜色
+            legend.text = ggplot2::element_text(color = "black"),# 图例文字颜色
+            legend.title = ggplot2::element_text(color = "black")# 图例标题颜色
           )
         # after
         boxplot <- data() %>%
@@ -309,22 +309,22 @@ mv_summary_server <- function(id) {
           preprocessCore::normalize.quantiles() %>%
           as.data.frame() %>%
           setNames(colnames(data())) %>%
-          pivot_longer(cols = everything(), names_to = "Sample", values_to = "value") %>%
+          tidyr::pivot_longer(cols = everything(), names_to = "Sample", values_to = "value") %>%
           dplyr::mutate(value = log10(value)) %>%
           dplyr::left_join(group(), by = "Sample")
         # 绘制箱线图
-        p2 <- ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            plot.title = element_text(color = "black"),
-            axis.title = element_text(color = "black"),
-            axis.text = element_text(color = "black"),
-            legend.text = element_text(color = "black"),
-            legend.title = element_text(color = "black")
+        p2 <- ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.title = ggplot2::element_text(color = "black"),
+            axis.title = ggplot2::element_text(color = "black"),
+            axis.text = ggplot2::element_text(color = "black"),
+            legend.text = ggplot2::element_text(color = "black"),
+            legend.title = ggplot2::element_text(color = "black")
           )
         print(p1)  # 打印图形到pdf
         print(p2)
@@ -345,13 +345,13 @@ mv_summary_server <- function(id) {
         pca_data <- t(expr)
         pca <- PCAtools::pca(expr, metadata = class)
         PCAtools::biplot(pca,
-               x = "PC1",
-               y = "PC2",
-               colby = "Group",
-               legendPosition = "right",
-               lab = NULL,
-               encircle = TRUE,
-               encircleFill = TRUE
+                         x = "PC1",
+                         y = "PC2",
+                         colby = "Group",
+                         legendPosition = "right",
+                         lab = NULL,
+                         encircle = TRUE,
+                         encircleFill = TRUE
         )
       })
       # 显示上传的表格
@@ -390,7 +390,7 @@ mv_summary_server <- function(id) {
     observeEvent(input$calculate, {
       req(data())
       method <- input$method
-      correlation_matrix <- cor(data(), method = method, use = "complete.obs")
+      correlation_matrix <- stats::cor(data(), method = method, use = "complete.obs")
 
       # 显示上传的表格
       output$correlation_dataTable <- DT::renderDT({
@@ -402,7 +402,7 @@ mv_summary_server <- function(id) {
         req(input$calculate)  # 只有点击"Calculate"后才会渲染图形
         corrplot::corrplot(corr=correlation_matrix,order = "AOE",type="upper",tl.pos = "d")
         corrplot::corrplot(corr = correlation_matrix,add=TRUE, type="lower", method="number",
-                 order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
+                           order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
       })
     })
 
@@ -421,7 +421,7 @@ mv_summary_server <- function(id) {
         #          tl.srt = 45, mar = c(0, 0, 1, 0))
         corrplot::corrplot(cor(data(),method = input$method),order = "AOE",type="upper",tl.pos = "d")
         corrplot::corrplot(cor(data(),method = input$method),add=TRUE, type="lower", method="number",
-                 order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
+                           order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
         dev.off()
       }
     )
@@ -434,7 +434,7 @@ mv_summary_server <- function(id) {
       content = function(file) {
         req(input$calculate)  # 确保只有在计算后下载表格
         # 将相关性矩阵写入CSV文件
-        write.csv(cor(data(), method = input$method, use = "complete.obs"), file, row.names = TRUE)
+        write.csv(stats::cor(data(), method = input$method, use = "complete.obs"), file, row.names = TRUE)
       }
     )
     # heatmap ---------------------------------------------------------------------
@@ -452,13 +452,10 @@ mv_summary_server <- function(id) {
         ComplexHeatmap::Heatmap(
           data_normalized,
           col = circlize::colorRamp2(c(-2,0,2),c("green","white","red"))
-          )
+        )
       })
     })
 
 
   })
 }
-
-
-

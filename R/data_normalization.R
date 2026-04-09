@@ -5,10 +5,12 @@
 #'
 #' @param data A numeric matrix or data frame containing the data to be normalized
 #' @return A matrix with the same dimensions as input where each column has been median-centered
+#' @name sample_subtract
+#' @export
 #'
 sample_subtract <- function(data) {
   # Median subtraction (ignoring NA)
-  data_median_subtracted <- apply(data, 2, function(x) x - median(x, na.rm = TRUE))
+  data_median_subtracted <- base::apply(data, 2, function(x) x - stats::median(x, na.rm = TRUE))
   return(data_median_subtracted)
 }
 
@@ -21,76 +23,75 @@ sample_subtract <- function(data) {
 #'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing the module interface
+#' @name data_normalization_ui
+#' @export
 #'
 
 data_normalization_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    layout_sidebar(
-      sidebar = sidebar(
+  shiny::tagList(
+    shinyjs::useShinyjs(),
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
         width = 300,
-        div(style = "margin-bottom: 15px;",
-            actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
         ),
-        uiOutput(ns("load_status_panel")),
-        hr(),
-        div(style = "margin-top: 15px;",
-            actionButton(ns("run_normalization"), "Run Normalization", class = "btn btn-primary")
+        shiny::uiOutput(ns("load_status_panel")),
+        shiny::hr(),
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::actionButton(ns("run_normalization"), "Run Normalization", class = "btn btn-primary")
         ),
-        hr(),
-        div(style = "margin-top: 15px;",
+        shiny::hr(),
+        shiny::div(style = "margin-top: 15px;",
             colourpicker::colourInput(ns("original_boxplot_color"), "Original Data Boxplot Color", value = "#1f77b4")
         ),
-        div(style = "margin-top: 15px;",
+        shiny::div(style = "margin-top: 15px;",
             colourpicker::colourInput(ns("normalized_boxplot_color"), "Normalized Data Boxplot Color", value = "#ff7f0e")
         ),
-        div(style = "margin-top: 15px;",
-            numericInput(ns("plot_width"), "Download Plot Width (inches)", value = 7, min = 0, max = 200)
+        shiny::div(style = "margin-top: 15px;",
+            shiny::numericInput(ns("plot_width"), "Download Plot Width (inches)", value = 7, min = 0, max = 200)
         ),
-        div(style = "margin-top: 15px;",
-            numericInput(ns("plot_height"), "Download Plot Height (inches)", value = 10, min = 0, max = 200)
+        shiny::div(style = "margin-top: 15px;",
+            shiny::numericInput(ns("plot_height"), "Download Plot Height (inches)", value = 10, min = 0, max = 200)
         ),
-        div(style = "margin-top: 15px;",
-            downloadButton(ns("download_original_plot"), "Download Original Plot (PDF)")
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::downloadButton(ns("download_original_plot"), "Download Original Plot (PDF)")
         ),
-        div(style = "margin-top: 15px;",
-            downloadButton(ns("download_normalized_plot"), "Download Normalized Plot (PDF)")
+        shiny::div(style = "margin-top: 15px;",
+                   shiny::downloadButton(ns("download_normalized_plot"), "Download Normalized Plot (PDF)")
         )
       ),
-      page_fluid(
-        layout_column_wrap(
+      bslib::page_fluid(
+        bslib::layout_column_wrap(
           width = 1/2,
           height = 600,
-
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Original Data"),
-            card_body(
+            bslib::card_header("Original Data"),
+            bslib::card_body(
               DT::DTOutput(ns("originalData"))
             )
           ),
-
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Original Data visualize"),
-            card_body(
+            bslib::card_header("Original Data visualize"),
+            bslib::card_body(
               plotOutput(ns("originalPlot"))
             )
           ),
-
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Normalized Data"),
-            card_body(
+            bslib::card_header("Normalized Data"),
+            bslib::card_body(
               DT::DTOutput(ns("dataNormalization"))
             )
           ),
-
-          card(
+          bslib::card(
             height = "800px",
-            card_header("Normalized Data Visualization"),
-            card_body(
-              plotOutput(ns("dataNormalizationPlot"))
+            bslib::card_header("Normalized Data Visualization"),
+            bslib::card_body(
+              shiny::plotOutput(ns("dataNormalizationPlot"))
             )
           )
         )
@@ -112,119 +113,116 @@ data_normalization_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactiveValues object containing shared state between modules
 #' @return A module server function
+#' @name data_normalization_server
 #' @export
-#'
+
 data_normalization_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       sample_info = NULL,
       expression_matrix = NULL,
       load_success = FALSE,
       normalized_matrix = NULL
     )
-    observeEvent(input$load_data, {
-      req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step5_data_imputation.rda")
-      if (file.exists(rda_path)) {
-        e <- new.env()
-        load(rda_path, envir = e)
-        if (exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
-        if (exists("imputed_df", envir = e)) {
+    shiny::observeEvent(input$load_data, {
+      shiny::req(shared_state$workdir)
+      rda_path <- base::file.path(shared_state$workdir, "Step5_data_imputation.rda")
+      if (base::file.exists(rda_path)) {
+        e <- base::new.env()
+        base::load(rda_path, envir = e)
+        if (base::exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
+        if (base::exists("imputed_df", envir = e)) {
           rv$expression_matrix <- e$imputed_df
         } else {
           rv$expression_matrix <- NULL
-          showNotification("Step5_data_imputation.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
+          shiny::showNotification("Step5_data_imputation.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
         }
         rv$load_success <- TRUE
-        showNotification("✅ Data loaded successfully.", type = "message")
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        showNotification("Step5_data_imputation.rda not found.", type = "error")
+        shiny::showNotification("Step5_data_imputation.rda not found.", type = "error")
       }
     })
 
     output$load_status_panel <- renderUI({
       if (rv$load_success) {
-        span("✅ Data loaded", style = "color: green;")
+        shiny::span("✅ Data loaded", style = "color: green;")
       } else {
-        span("❌ Data not loaded", style = "color: red;")
+        shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
     output$originalData <- DT::renderDT({
-      req(rv$expression_matrix)
+      shiny::req(rv$expression_matrix)
       DT::datatable(rv$expression_matrix, options = list(scrollX = TRUE))
     })
-    output$originalPlot <- renderPlot({
-      req(rv$sample_info)
-      req(rv$expression_matrix)
-
+    output$originalPlot <- shiny::renderPlot({
+      shiny::req(rv$sample_info)
+      shiny::req(rv$expression_matrix)
       sample_info <- rv$sample_info
       expression_matrix <- rv$expression_matrix
-
       expmat_before <- expression_matrix
       expmat_before.long <-
         expmat_before %>%
         tibble::rownames_to_column("ID") %>%
-        pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
-        left_join(sample_info)
-      unique_groups <- unique(sample_info$group)
-      n_groups <- length(unique_groups)
+        tidyr::pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
+        dplyr::left_join(sample_info)
+      unique_groups <- base::unique(sample_info$group)
+      n_groups <- base::length(unique_groups)
       colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-      ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
-        xlab("") +
-        ylab("Relative intensity") +
-        geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
-        coord_flip() +
-        scale_fill_manual(values = colors) +
-        theme_bw()
+      ggplot2::ggplot(data = expmat_before.long, mapping = ggplot2::aes(x = sample_id, y = intensity, fill = group)) +
+        ggplot2::xlab("") +
+        ggplot2::ylab("Relative intensity") +
+        ggplot2::geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
+        ggplot2::coord_flip() +
+        ggplot2::scale_fill_manual(values = colors) +
+        ggplot2::theme_bw()
     })
-    observeEvent(input$run_normalization, {
-      req(rv$expression_matrix)
-      req(rv$sample_info)
+    shiny::observeEvent(input$run_normalization, {
+      shiny::req(rv$expression_matrix)
+      shiny::req(rv$sample_info)
       sample_info <- rv$sample_info
       normalized_data <- sample_subtract(rv$expression_matrix)
-      rv$normalized_matrix <- as.data.frame(normalized_data)
-      save(sample_info, normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
-      showNotification("Normalization completed", type = "message")
+      rv$normalized_matrix <- base::as.data.frame(normalized_data)
+      base::save(sample_info, normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
+      shiny::showNotification("Normalization completed", type = "message")
     })
-
     output$dataNormalization <- DT::renderDT({
-      req(rv$normalized_matrix)
+      shiny::req(rv$normalized_matrix)
       DT::datatable(rv$normalized_matrix, options = list(scrollX = TRUE))
     })
-    output$dataNormalizationPlot <- renderPlot({
-      req(rv$sample_info)
-      req(rv$normalized_matrix)
+    output$dataNormalizationPlot <- shiny::renderPlot({
+      shiny::req(rv$sample_info)
+      shiny::req(rv$normalized_matrix)
       sample_info <- rv$sample_info
       normalized_matrix <- rv$normalized_matrix
       expmat_before <- normalized_matrix
       expmat_before.long <-
         expmat_before %>%
         tibble::rownames_to_column("ID") %>%
-        pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
-        left_join(sample_info)
-      unique_groups <- unique(sample_info$group)
-      n_groups <- length(unique_groups)
+        tidyr::pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
+        dplyr::left_join(sample_info)
+      unique_groups <- base::unique(sample_info$group)
+      n_groups <- base::length(unique_groups)
       colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-      ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
-        xlab("") +
-        ylab("Relative intensity") +
-        geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
-        coord_flip() +
-        scale_fill_manual(values = colors) +
-        theme_bw()
+      ggplot2::ggplot(data = expmat_before.long, mapping = ggplot2::aes(x = sample_id, y = intensity, fill = group)) +
+        ggplot2::xlab("") +
+        ggplot2::ylab("Relative intensity") +
+        ggplot2::geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
+        ggplot2::coord_flip() +
+        ggplot2::scale_fill_manual(values = colors) +
+        ggplot2::theme_bw()
     })
-    output$download_original_plot <- downloadHandler(
+    output$download_original_plot <- shiny::downloadHandler(
       filename = function() {
         paste("original_data_boxplot", ".pdf", sep = "")
       },
       content = function(file) {
-        pdf(file, width = input$plot_width, height = input$plot_height)
+        grDevices::pdf(file, width = input$plot_width, height = input$plot_height)
         print({
-          req(rv$sample_info)
-          req(rv$expression_matrix)
+          shiny::req(rv$sample_info)
+          shiny::req(rv$expression_matrix)
 
           sample_info <- rv$sample_info
           expression_matrix <- rv$expression_matrix
@@ -233,51 +231,51 @@ data_normalization_server <- function(id, shared_state) {
           expmat_before.long <-
             expmat_before %>%
             tibble::rownames_to_column("ID") %>%
-            pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
-            left_join(sample_info)
-          unique_groups <- unique(sample_info$group)
-          n_groups <- length(unique_groups)
+            tidyr::pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
+            dplyr::left_join(sample_info)
+          unique_groups <- base::unique(sample_info$group)
+          n_groups <- base::length(unique_groups)
           colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-          ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
-            xlab("") +
-            ylab("Relative intensity") +
-            geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
-            coord_flip() +
-            scale_fill_manual(values = colors) +
-            theme_bw()
+          ggplot2::ggplot(data = expmat_before.long, mapping = ggplot2::aes(x = sample_id, y = intensity, fill = group)) +
+            ggplot2::xlab("") +
+            ggplot2::ylab("Relative intensity") +
+            ggplot2::geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
+            ggplot2::coord_flip() +
+            ggplot2::scale_fill_manual(values = colors) +
+            ggplot2::theme_bw()
         })
-        dev.off()
+        grDevices::dev.off()
       }
     )
-    output$download_normalized_plot <- downloadHandler(
+    output$download_normalized_plot <- shiny::downloadHandler(
       filename = function() {
         paste("normalized_data_boxplot", ".pdf", sep = "")
       },
       content = function(file) {
-        pdf(file, width = input$plot_width, height = input$plot_height)
+        grDevices::pdf(file, width = input$plot_width, height = input$plot_height)
         print({
-          req(rv$sample_info)
-          req(rv$normalized_matrix)
+          shiny::req(rv$sample_info)
+          shiny::req(rv$normalized_matrix)
           sample_info <- rv$sample_info
           normalized_matrix <- rv$normalized_matrix
           expmat_before <- normalized_matrix
           expmat_before.long <-
             expmat_before %>%
             tibble::rownames_to_column("ID") %>%
-            pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
-            left_join(sample_info)
-          unique_groups <- unique(sample_info$group)
-          n_groups <- length(unique_groups)
+            tidyr::pivot_longer(!ID, names_to = "sample_id", values_to = "intensity") %>%
+            dplyr::left_join(sample_info)
+          unique_groups <- base::unique(sample_info$group)
+          n_groups <- base::length(unique_groups)
           colors <- RColorBrewer::brewer.pal(n_groups, "Set3")
-          ggplot(data = expmat_before.long, mapping = aes(x = sample_id, y = intensity, fill = group)) +
-            xlab("") +
-            ylab("Relative intensity") +
-            geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
-            coord_flip() +
-            scale_fill_manual(values = colors) +
-            theme_bw()
+          ggplot2::ggplot(data = expmat_before.long, mapping = ggplot2::aes(x = sample_id, y = intensity, fill = group)) +
+            ggplot2::xlab("") +
+            ggplot2::ylab("Relative intensity") +
+            ggplot2::geom_boxplot(outlier.size = 0.1, linewidth = 0.5, staplewidth = 0.5, fatten = 0.5) +
+            ggplot2::coord_flip() +
+            ggplot2::scale_fill_manual(values = colors) +
+            ggplot2::theme_bw()
         })
-        dev.off()
+        grDevices::dev.off()
       }
     )
   })

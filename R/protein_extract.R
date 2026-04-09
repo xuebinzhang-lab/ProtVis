@@ -7,16 +7,16 @@
 #' @return A Shiny UI tagList containing all UI elements
 #' @export
 protein_extract_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
+  ns <- shiny::NS(id)
+  shiny::tagList(
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 350,
         # File upload section
-        div(style = "margin-bottom: 15px;",
-            fileInput(ns("fasta_file"), "Upload FASTA File",
-                      accept = c(".fa", ".fasta", ".fasta.gz"),
-                      buttonLabel = "Browse...")
+        shiny::div(style = "margin-bottom: 15px;",
+                   shiny::fileInput(ns("fasta_file"), "Upload FASTA File",
+                                    accept = c(".fa", ".fasta", ".fasta.gz"),
+                                    buttonLabel = "Browse...")
         ),
         # Input mode toggle
         shinyWidgets::radioGroupButtons(
@@ -27,34 +27,34 @@ protein_extract_ui <- function(id) {
           status = "primary"
         ),
         # Conditional panel for manual input
-        conditionalPanel(
+        shiny::conditionalPanel(
           condition = paste0("input['", ns("input_mode"), "'] == 'manual'"),
-          div(
+          shiny::div(
             style = "margin-top: 10px;",
-            h5("Enter Protein IDs (one per line)"),
-            textAreaInput(ns("protein_ids"),
-                          label = NULL,
-                          rows = 5,
-                          placeholder = "Paste protein IDs here\nExample:\nP12345\nQ6GZX4")
+            shiny::h5("Enter Protein IDs (one per line)"),
+            shiny::textAreaInput(ns("protein_ids"),
+                                 label = NULL,
+                                 rows = 5,
+                                 placeholder = "Paste protein IDs here\nExample:\nP12345\nQ6GZX4")
           )
         ),
         # Conditional panel for file upload
-        conditionalPanel(
+        shiny::conditionalPanel(
           condition = paste0("input['", ns("input_mode"), "'] == 'file'"),
-          div(
+          shiny::div(
             style = "margin-top: 10px;",
-            fileInput(ns("id_file"), "Upload Protein IDs",
-                      accept = c(".txt", ".csv", ".tsv"),
-                      buttonLabel = "Browse...")
+            shiny::fileInput(ns("id_file"), "Upload Protein IDs",
+                             accept = c(".txt", ".csv", ".tsv"),
+                             buttonLabel = "Browse...")
           )
         ),
         # Action buttons
-        div(style = "margin-top: 20px;",
-            actionButton(ns("extract"), "Extract Proteins",
-                         class = "btn btn-light fw-bold mb-3"),
-            br(style = "line-height: 30px;"),
-            downloadButton(ns("download_results"), "Download Results",
-                           class = "btn btn-light fw-bold")
+        shiny::div(style = "margin-top: 20px;",
+                   shiny::actionButton(ns("extract"), "Extract Proteins",
+                                       class = "btn btn-light fw-bold mb-3"),
+                   shiny::br(style = "line-height: 30px;"),
+                   shiny::downloadButton(ns("download_results"), "Download Results",
+                                         class = "btn btn-light fw-bold")
         )
       ),
       # Main display panel
@@ -65,31 +65,31 @@ protein_extract_ui <- function(id) {
           full_screen = TRUE,
           bslib::nav_panel(
             "Matched Sequences",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              verbatimTextOutput(ns("matched_summary"))
+              shiny::verbatimTextOutput(ns("matched_summary"))
             )
           ),
           bslib::nav_panel(
             "Sequence Table",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
               DT::dataTableOutput(ns("sequence_table"))
             )
           ),
           bslib::nav_panel(
             "FASTA Viewer",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              textAreaInput(ns("fasta_viewer"), label = NULL, value = "",
-                            rows = 20, width = "100%")
+              shiny::textAreaInput(ns("fasta_viewer"), label = NULL, value = "",
+                                   rows = 20, width = "100%")
             )
           ),
           bslib::nav_panel(
             "Unmatched IDs",
-            div(
+            shiny::div(
               style = "height: 500px; overflow: auto;",
-              verbatimTextOutput(ns("unmatched_ids"))
+              shiny::verbatimTextOutput(ns("unmatched_ids"))
             )
           )
         )
@@ -106,12 +106,16 @@ protein_extract_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @return A reactive list containing matched sequences and summary statistics
 #' @export
+#' @name protein_extract_server
+
+
+
 protein_extract_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Reactive values storage
-    rv <- reactiveValues(
+    rv <- shiny::reactiveValues(
       fasta_data = NULL,
       protein_ids = NULL,
       matched_seqs = NULL,
@@ -119,8 +123,8 @@ protein_extract_server <- function(id) {
     )
 
     # Load FASTA file
-    observeEvent(input$fasta_file, {
-      req(input$fasta_file)
+    shiny::observeEvent(input$fasta_file, {
+      shiny::req(input$fasta_file)
 
       tryCatch({
         # Handle gzipped files
@@ -132,40 +136,40 @@ protein_extract_server <- function(id) {
           rv$fasta_data <- Biostrings::readAAStringSet(input$fasta_file$datapath)
         }
 
-        showNotification("FASTA file loaded successfully!", type = "message")
+        shiny::showNotification("FASTA file loaded successfully!", type = "message")
       }, error = function(e) {
-        showNotification(paste("Error loading FASTA file:", e$message), type = "error")
+        shiny::showNotification(paste("Error loading FASTA file:", e$message), type = "error")
         rv$fasta_data <- NULL
       })
     })
 
     # Get protein IDs based on input method
-    observe({
+    shiny::observe({
       if (input$input_mode == "manual") {
-        req(input$protein_ids)
+        shiny::req(input$protein_ids)
         ids <- strsplit(input$protein_ids, "\n")[[1]]
         rv$protein_ids <- stringr::str_trim(ids[ids != ""])
       } else {
-        req(input$id_file)
+        shiny::req(input$id_file)
         tryCatch({
           ext <- tools::file_ext(input$id_file$name)
           if (ext %in% c("csv", "tsv")) {
             sep <- ifelse(ext == "csv", ",", "\t")
-            df <- read.delim(input$id_file$datapath, sep = sep, header = FALSE)
+            df <- utils::read.delim(input$id_file$datapath, sep = sep, header = FALSE)
             rv$protein_ids <- stringr::str_trim(unlist(df))
           } else {
             rv$protein_ids <- stringr::str_trim(readLines(input$id_file$datapath))
           }
         }, error = function(e) {
-          showNotification(paste("Error reading ID file:", e$message), type = "error")
+          shiny::showNotification(paste("Error reading ID file:", e$message), type = "error")
           rv$protein_ids <- NULL
         })
       }
     })
 
     # Extract protein sequences
-    observeEvent(input$extract, {
-      req(rv$fasta_data, rv$protein_ids)
+    shiny::observeEvent(input$extract, {
+      shiny::req(rv$fasta_data, rv$protein_ids)
 
       tryCatch({
         # Extract protein IDs from FASTA headers (assuming headers contain IDs)
@@ -180,24 +184,24 @@ protein_extract_server <- function(id) {
 
         # Find unmatched IDs
         found_ids <- stringr::str_extract(fasta_headers[matched_idx], pattern)
-        rv$unmatched_ids <- setdiff(rv$protein_ids, found_ids)
+        rv$unmatched_ids <- base::setdiff(rv$protein_ids, found_ids)
 
-        showNotification(
+        shiny::showNotification(
           sprintf("Matched %d out of %d proteins",
                   length(rv$matched_seqs),
                   length(rv$protein_ids)),
           type = "message"
         )
       }, error = function(e) {
-        showNotification(paste("Error during extraction:", e$message), type = "error")
+        shiny::showNotification(paste("Error during extraction:", e$message), type = "error")
         rv$matched_seqs <- NULL
         rv$unmatched_ids <- NULL
       })
     })
 
     # Display matched sequence summary
-    output$matched_summary <- renderPrint({
-      req(rv$matched_seqs)
+    output$matched_summary <- shiny::renderPrint({
+      shiny::req(rv$matched_seqs)
       cat("=== Matched Protein Summary ===\n")
       cat(sprintf("Total proteins in FASTA: %d\n", length(rv$fasta_data)))
       cat(sprintf("Target proteins queried: %d\n", length(rv$protein_ids)))
@@ -205,12 +209,12 @@ protein_extract_server <- function(id) {
                   length(rv$matched_seqs),
                   length(rv$matched_seqs)/length(rv$protein_ids)*100))
       cat("\n=== First 10 Matched Proteins ===\n")
-      print(head(names(rv$matched_seqs), 10))
+      utils::print(utils::head(names(rv$matched_seqs), 10))
     })
 
     # Display sequence table
     output$sequence_table <- DT::renderDataTable({
-      req(rv$matched_seqs)
+      shiny::req(rv$matched_seqs)
 
       data.frame(
         Protein_ID = names(rv$matched_seqs),
@@ -231,35 +235,35 @@ protein_extract_server <- function(id) {
     })
 
     # Display unmatched IDs
-    output$unmatched_ids <- renderPrint({
-      req(rv$unmatched_ids)
+    output$unmatched_ids <- shiny::renderPrint({
+      shiny::req(rv$unmatched_ids)
       cat("=== Unmatched Protein IDs ===\n")
       cat(sprintf("Total unmatched: %d\n\n", length(rv$unmatched_ids)))
       if (length(rv$unmatched_ids) <= 20) {
         cat(rv$unmatched_ids, sep = "\n")
       } else {
-        cat(head(rv$unmatched_ids, 20), sep = "\n")
+        cat(utils::head(rv$unmatched_ids, 20), sep = "\n")
         cat(sprintf("\n... and %d more", length(rv$unmatched_ids) - 20))
       }
     })
 
     # FASTA Viewer 输出
-    observe({
-      req(rv$matched_seqs)
+    shiny::observe({
+      shiny::req(rv$matched_seqs)
       fasta_text <- paste0(
         paste0(">", names(rv$matched_seqs), "\n", as.character(rv$matched_seqs)),
         collapse = "\n"
       )
-      updateTextAreaInput(session, "fasta_viewer", value = fasta_text)
+      shiny::updateTextAreaInput(session, "fasta_viewer", value = fasta_text)
     })
 
     # Download handler
-    output$download_results <- downloadHandler(
+    output$download_results <- shiny::downloadHandler(
       filename = function() {
         paste0("protein_extract_results_", Sys.Date(), ".zip")
       },
       content = function(file) {
-        req(rv$matched_seqs)
+        shiny::req(rv$matched_seqs)
 
         # Create temp directory
         temp_dir <- tempdir()
@@ -281,12 +285,12 @@ protein_extract_server <- function(id) {
         writeLines(rv$unmatched_ids, unmatched_file)
 
         # Zip files
-        zip(file, files = c(fasta_file, summary_file, unmatched_file), extras = "-j")
+        utils::zip(file, files = c(fasta_file, summary_file, unmatched_file), extras = "-j")
       }
     )
 
     # Return reactive values
-    reactive({
+    shiny::reactive({
       list(
         matched_sequences = rv$matched_seqs,
         unmatched_ids = rv$unmatched_ids,

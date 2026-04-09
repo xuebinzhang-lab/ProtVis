@@ -2,7 +2,10 @@
 % Please edit documentation in R/MaxQuant.R
 \name{MaxQuant_ui}
 \alias{MaxQuant_ui}
-\title{MaxQuant User Interface Module}
+\title{MaxQuant User Interface Module
+This function creates the user interface for processing proteomics data
+from MaxQuant output files. It includes options for filtering, selecting
+protein identifiers, and previewing processing results.}
 \usage{
 MaxQuant_ui(id)
 }
@@ -13,6 +16,7 @@ MaxQuant_ui(id)
 UI layout for the MaxQuant processing module.
 }
 \description{
+MaxQuant User Interface Module
 This function creates the user interface for processing proteomics data
 from MaxQuant output files. It includes options for filtering, selecting
 protein identifiers, and previewing processing results.

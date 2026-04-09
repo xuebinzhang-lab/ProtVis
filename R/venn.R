@@ -1,119 +1,145 @@
-#' venn plot UI Module
-#' @description venn plot UI Module
-#' @param id A unique identifier for the Shiny namespace, venn plot
+#' Venn Diagram UI Module
+#'
+#' Creates a user interface for generating Venn diagrams from uploaded CSV data.
+#' Supports both traditional Venn diagrams (up to 4 sets) and UpSet-style diagrams
+#' (5+ sets), with customizable colors and download functionality.
+#'
+#' @description Venn diagram visualization UI with file upload, color customization,
+#'   and plot download capabilities.
+#' @param id A unique identifier for the Shiny namespace.
 #' @title venn_ui
 #' @name venn_ui
+#' @return A Shiny UI nav_panel containing the Venn diagram interface.
 #' @import bsicons
 #' @import shiny
 #' @import bslib
 #' @export
-#'
+#' @examples
+#' \dontrun{
+#' ui <- venn_ui("venn_diagram")
+#' }
 venn_ui <- function(id){
-  ns <- NS(id)
-  nav_panel(
+  ns <- shiny::NS(id)
+  bslib::nav_panel(
     title = 'Venn',
-    icon = bs_icon("play-circle"),
-    layout_sidebar(
-      sidebar = accordion(
-        accordion_panel(
+    icon = bsicons::bs_icon("play-circle"),
+    bslib::layout_sidebar(
+      sidebar = bslib::accordion(
+        bslib::accordion_panel(
           title = "File Upload",
-          icon = bs_icon("upload"),
-          fileInput(
+          icon = bsicons::bs_icon("upload"),
+          shiny::fileInput(
             inputId = ns('file'),
             label = 'File',
             multiple = FALSE,
             accept = '.csv'
           )
-          )
-        ),
-      page_fluid(
-        layout_column_wrap(
+        )
+      ),
+      bslib::page_fluid(
+        bslib::layout_column_wrap(
           width = 1,
           height = 600,
-          navset_card_tab(
+          bslib::navset_card_tab(
             height = 600,
             full_screen = TRUE,
             title = "Venn plot",
-            sidebar = accordion(
+            sidebar = bslib::accordion(
               open = 'closed',
-              accordion_panel(
+              bslib::accordion_panel(
                 title = 'Parameter',
-                uiOutput(ns("colorSelectors"))
-                ),
-              accordion_panel(
+                shiny::uiOutput(ns("colorSelectors"))
+              ),
+              bslib::accordion_panel(
                 title = 'Run',
-                actionButton(ns("run"), "Run")
+                shiny::actionButton(ns("run"), "Run")
               ),
-              accordion_panel(
+              bslib::accordion_panel(
                 title = 'Download',
-                downloadButton(ns("downloadPlot"), "Download")
+                shiny::downloadButton(ns("downloadPlot"), "Download")
               )
-              ),
-            mainPanel(
-              plotOutput(ns("venn_plot"))
-            )
+            ),
+            shiny::mainPanel(
+              shiny::plotOutput(ns("venn_plot"))
             )
           )
         )
       )
     )
+  )
 }
 
-
-
-#' venn plot Server Module
-#' @description Server logic for venn plot
+#' Venn Diagram Server Module
+#'
+#' Server-side logic for the Venn diagram module. Handles CSV file processing,
+#' dynamic color selection, Venn diagram generation (using ggvenn for ≤4 sets
+#' or venn package for 5+ sets), and PDF download functionality.
+#'
+#' @description Server logic for generating Venn diagrams with automatic
+#'   detection of set count to choose appropriate visualization method.
 #' @title venn_server
 #' @name venn_server
-#' @param id Standard shiny server arguments
+#' @param id Standard shiny server identifier.
+#' @return A Shiny server module function.
 #' @import shiny
 #' @import utils
 #' @import tidyr
+#' @import dplyr
+#' @import ggplot2
+#' @import grDevices
+#' @import tibble
 #' @export
-#'
-utils::globalVariables(c("Name", "Set"))
+#' @examples
+#' \dontrun{
+#' server <- function(input, output, session) {
+#'   venn_server("venn_diagram")
+#' }
+#' }
+
+utils::globalVariables(c("Name", "Set", "everything", "across"))
+
 venn_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # 保存reactive数据
-    reactive_data <- reactiveValues()
+    reactive_data <- shiny::reactiveValues()
 
     # 动态生成颜色选择器
-    observeEvent(input$file, {
-      req(input$file)
+    shiny::observeEvent(input$file, {
+      shiny::req(input$file)
       data <- utils::read.csv(input$file$datapath)
-      output$colorSelectors <- renderUI({
-        lapply(seq_along(colnames(data)), function(i) {
+      output$colorSelectors <- shiny::renderUI({
+        lapply(base::seq_along(base::colnames(data)), function(i) {
           colourpicker::colourInput(
-            inputId = ns(paste0("color_", i)),
-            label = paste("Select Color for", colnames(data)[i]),
-            value = sample(colors(), 1)
+            inputId = ns(base::paste0("color_", i)),
+            label = base::paste("Select Color for", base::colnames(data)[i]),
+            value = base::sample(base::colors(), 1)
           )
         })
       })
     })
 
-    observeEvent(input$run, {
-      req(input$file)
+    shiny::observeEvent(input$run, {
+      shiny::req(input$file)
       data <- utils::read.csv(input$file$datapath)
 
       # Prepare data for plotting
       long_df <- data %>%
-        tidyr::pivot_longer(cols = everything(), names_to = "Set", values_to = "Name") %>%
+        tidyr::pivot_longer(cols = tidyr::everything(), names_to = "Set", values_to = "Name") %>%
         dplyr::distinct(Name, Set) %>%
-        tidyr::pivot_wider(names_from = Set, values_from = Set, values_fill = list(Set = "0")) %>%
-        dplyr::mutate(across(-Name, ~ifelse(. == "0", 0, 1))) %>%
+        tidyr::pivot_wider(names_from = Set, values_from = Set, values_fill = base::list(Set = "0")) %>%
+        dplyr::mutate(dplyr::across(-Name, ~base::ifelse(. == "0", 0, 1))) %>%
         tibble::column_to_rownames("Name")
 
       # Save reactive data
-      reactive_data$set_list <- as.list(data)
+      reactive_data$set_list <- base::as.list(data)
       reactive_data$upset_data <- long_df
-      reactive_data$colors <- sapply(seq_along(colnames(data)), function(i) input[[paste0("color_", i)]])
+      reactive_data$colors <- base::sapply(base::seq_along(base::colnames(data)), function(i) input[[base::paste0("color_", i)]])
 
       # Render plot based on color count
-      output$venn_plot <- renderPlot({
-        if (length(reactive_data$colors) <= 4) {
+      output$venn_plot <- shiny::renderPlot({
+        if (base::length(reactive_data$colors) <= 4) {
           ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors)
         } else {
           venn::venn(
@@ -126,17 +152,17 @@ venn_server <- function(id) {
     })
 
     # 下载PDF功能
-    output$downloadPlot <- downloadHandler(
-      filename = function() paste("venn_plot", Sys.Date(), ".pdf", sep = ""),
+    output$downloadPlot <- shiny::downloadHandler(
+      filename = function() base::paste("venn_plot", base::Sys.Date(), ".pdf", sep = ""),
       content = function(file) {
-        if (length(reactive_data$colors) <= 4) {
+        if (base::length(reactive_data$colors) <= 4) {
           ggplot2::ggsave(file, plot = ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors),
-                 width = 8, height = 6, dpi = 300, device = "pdf")
+                          width = 8, height = 6, dpi = 300, device = "pdf")
         } else {
           grDevices::pdf(file, width = 8, height = 6)
           venn::venn(reactive_data$upset_data, ilabels = TRUE, box = FALSE, ilcs = 1, sncs = 1.2,
-               lwd = 4, lty = 1, col = reactive_data$colors, zcolor = reactive_data$colors)
-          dev.off()
+                     lwd = 4, lty = 1, col = reactive_data$colors, zcolor = reactive_data$colors)
+          grDevices::dev.off()
         }
       }
     )

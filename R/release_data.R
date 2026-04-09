@@ -5,14 +5,20 @@
 #'
 #' @param id The namespace identifier for the module
 #' @return A tagList containing the UI elements
+#' @import shiny
+#' @export
+#' @examples
+#' \dontrun{
+#' ui <- release_data_ui("release_data")
+#' }
 release_data_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    verbatimTextOutput(ns("workdir_display")),
-    actionButton(ns("load_files"), "Load .rda Files"),
-    uiOutput(ns("rda_files_ui")),
-    selectInput(ns("output_format"), "Output Format", choices = c("xlsx", "csv")),
-    actionButton(ns("export_btn"), "Export")
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::verbatimTextOutput(ns("workdir_display")),
+    shiny::actionButton(ns("load_files"), "Load .rda Files"),
+    shiny::uiOutput(ns("rda_files_ui")),
+    shiny::selectInput(ns("output_format"), "Output Format", choices = c("xlsx", "csv")),
+    shiny::actionButton(ns("export_btn"), "Export")
   )
 }
 
@@ -24,12 +30,23 @@ release_data_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactive list containing shared state variables (must include 'workdir')
 #' @return None (server-side module)
+#' @import shiny
+#' @import openxlsx
+#' @import tools
+#' @export
+#' @name release_data_server
+#' @examples
+#' \dontrun{
+#' server <- function(input, output, session) {
+#'   release_data_server("release_data", shared_state)
+#' }
+#' }
 release_data_server <- function(id, shared_state) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Display current working directory
-    output$workdir_display <- renderText({
+    output$workdir_display <- shiny::renderText({
       wd <- shared_state$workdir
       if (is.null(wd) || wd == "") {
         "Working directory not set"
@@ -39,33 +56,33 @@ release_data_server <- function(id, shared_state) {
     })
 
     # Load all .rda files in the working directory
-    rda_files <- eventReactive(input$load_files, {
+    rda_files <- shiny::eventReactive(input$load_files, {
       wd <- shared_state$workdir
-      req(wd)
+      shiny::req(wd)
       if (!dir.exists(wd)) {
-        showNotification("Directory does not exist", type = "error")
+        shiny::showNotification("Directory does not exist", type = "error")
         return(NULL)
       }
       files <- list.files(wd, pattern = "\\.rda$", full.names = FALSE)
       if (length(files) == 0) {
-        showNotification("No .rda files found", type = "warning")
+        shiny::showNotification("No .rda files found", type = "warning")
         return(NULL)
       }
       files
     })
 
     # Render UI for selecting .rda files to export
-    output$rda_files_ui <- renderUI({
+    output$rda_files_ui <- shiny::renderUI({
       files <- rda_files()
-      req(files)
-      checkboxGroupInput(ns("selected_rda"), "Select .rda files to export", choices = files)
+      shiny::req(files)
+      shiny::checkboxGroupInput(ns("selected_rda"), "Select .rda files to export", choices = files)
     })
 
     # Handle export button click
-    observeEvent(input$export_btn, {
+    shiny::observeEvent(input$export_btn, {
       wd <- shared_state$workdir
-      req(wd)
-      req(input$selected_rda)
+      shiny::req(wd)
+      shiny::req(input$selected_rda)
       format <- input$output_format
 
       # Process each selected .rda file
@@ -94,25 +111,25 @@ release_data_server <- function(id, shared_state) {
                 df <- as.data.frame(obj)
                 openxlsx::write.xlsx(df, out_file)
               }, error = function(e) {
-                showNotification(paste("Cannot export object", obj_name, "- not a data.frame"), type = "warning")
+                shiny::showNotification(paste("Cannot export object", obj_name, "- not a data.frame"), type = "warning")
               })
             }
           } else if (format == "csv") {
             if (is.data.frame(obj)) {
-              write.csv(obj, out_file, row.names = FALSE)
+              utils::write.csv(obj, out_file, row.names = FALSE)
             } else {
               tryCatch({
                 df <- as.data.frame(obj)
-                write.csv(df, out_file, row.names = FALSE)
+                utils::write.csv(df, out_file, row.names = FALSE)
               }, error = function(e) {
-                showNotification(paste("Cannot export object", obj_name, "- not a data.frame"), type = "warning")
+                shiny::showNotification(paste("Cannot export object", obj_name, "- not a data.frame"), type = "warning")
               })
             }
           }
         }
       }
 
-      showNotification("Export completed", type = "message")
+      shiny::showNotification("Export completed", type = "message")
     })
   })
 }

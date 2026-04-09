@@ -2,7 +2,9 @@
 % Please edit documentation in R/enrichment_analysis.R
 \name{enrichment_analysis_ui}
 \alias{enrichment_analysis_ui}
-\title{Enrichment Analysis Module UI}
+\title{Enrichment Analysis Module UI
+This function creates the user interface for the enrichment analysis module.
+It includes file uploads, parameter settings, and visualization panels for GO and KEGG enrichment analysis.}
 \usage{
 enrichment_analysis_ui(id)
 }
@@ -13,6 +15,7 @@ enrichment_analysis_ui(id)
 A Shiny UI tagList containing the enrichment analysis interface
 }
 \description{
+Enrichment Analysis Module UI
 This function creates the user interface for the enrichment analysis module.
 It includes file uploads, parameter settings, and visualization panels for GO and KEGG enrichment analysis.
 }

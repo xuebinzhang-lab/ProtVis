@@ -10,9 +10,7 @@
 #'
 mv_imputation_ui <- function(id) {
   ns <- NS(id)
-
-  nav_panel(
-    # title = 'Multivariate Imputation',
+  bslib::nav_panel(
     title = 'Data transformation',
     icon = bs_icon("play-circle"),
     layout_sidebar(
@@ -53,7 +51,7 @@ mv_imputation_ui <- function(id) {
             mainPanel(
               DT::DTOutput(ns("originalData"))
             )
-            ),
+          ),
           navset_card_tab(
             height = 600,
             full_screen = TRUE,
@@ -75,9 +73,9 @@ mv_imputation_ui <- function(id) {
             mainPanel(
               plotOutput(ns("imputedPlot"))
             )
-            )
           )
         )
+      )
     )
   )
 }
@@ -93,6 +91,8 @@ mv_imputation_ui <- function(id) {
 #' @import ggplot2
 #' @export
 #'
+
+
 mv_imputation_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns

@@ -10,10 +10,20 @@ protein_links_server(id)
 \item{id}{The namespace identifier for the module}
 }
 \value{
-A Shiny server module
+A Shiny server module function
 }
 \description{
-Detects whether the input is a UniProt ID (via pattern or database lookup)
-or a raw protein sequence, and generates links for UniProt, InterPro, PSIPRED,
-and Swiss-Model accordingly.
+Server-side logic that detects whether the input is a UniProt ID (via pattern or database lookup)
+or a raw protein sequence, and generates links for UniProt, InterPro, and Swiss-Model accordingly.
+If no UniProt ID is provided directly, it runs BLASTp against SwissProt/TrEMBL databases to find matches.
+
+Reactive output that generates protein database links based on user input.
+Priority: 1) Direct UniProt ID input, 2) BLASTp search from sequence
+}
+\examples{
+\dontrun{
+server <- function(input, output, session) {
+  protein_links_server("protein_links")
+}
+}
 }
