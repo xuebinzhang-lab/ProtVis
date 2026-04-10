@@ -20,10 +20,3 @@ Server-side logic for protein secondary structure analysis. Performs
 Normal Mode Analysis (NMA) on uploaded PDB files and generates fluctuation
 plots with secondary structure elements highlighted.
 }
-\examples{
-\dontrun{
-server <- function(input, output, session) {
-  protein_structure_server("structure_analysis")
-}
-}
-}

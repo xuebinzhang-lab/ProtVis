@@ -5,10 +5,11 @@
 #'
 #' @param id Character string specifying the namespace id for the module
 #' @return A Shiny UI tagList containing the module interface
+#' @import shiny
+#' @importFrom DT dataTableOutput
 #' @name background_make_ui
 #' @export
-#' @examples
-#' background_make_ui("my_background")
+#'
 background_make_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -78,7 +79,8 @@ background_make_ui <- function(id) {
 #' @param id Character string specifying the namespace id for the module
 #' @return A Shiny module server function
 #' @export
-#' @importFrom dplyr select filter mutate rename distinct left_join
+#' @importFrom shiny moduleServer observeEvent req renderText reactiveVal showNotification downloadHandler
+#' @importFrom dplyr select filter mutate rename distinct left_join pull
 #' @importFrom tidyr separate_rows
 #' @importFrom stringr str_extract str_remove str_detect
 #' @importFrom GO.db GOTERM
@@ -88,6 +90,8 @@ background_make_ui <- function(id) {
 #' @importFrom tools file_ext
 #' @importFrom readxl read_excel
 #' @name background_make_server
+#' @export
+#'
 
 utils::globalVariables(c("query", "GOs", "NAME", "TERM", "KEGG_Pathway",
                          "name", "ko"))

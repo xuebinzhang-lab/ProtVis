@@ -2,7 +2,8 @@
 % Please edit documentation in R/overview.R
 \name{overview_server}
 \alias{overview_server}
-\title{Overview Server Module}
+\title{Overview Server Module
+Server-side logic for the overview analysis module}
 \arguments{
 \item{id}{Character string specifying the namespace id}
 
@@ -12,5 +13,6 @@
 A module server function that handles the overview analysis logic
 }
 \description{
+Overview Server Module
 Server-side logic for the overview analysis module
 }

@@ -27,21 +27,7 @@ or path to FASTA file}
 
 \item{blastp_path}{Character string path to BLASTp executable}
 }
-\value{
-A data frame containing BLAST results with columns: SeqID,
-  UniProtAcc, EntryName, Description, Identity, Database
-}
 \description{
 Performs BLASTp search against SwissProt and TrEMBL databases to find
 matching UniProt entries for protein sequences.
-}
-\examples{
-\dontrun{
-result <- blast_uniprot(
-  input = "MAEGEITTFTALTEKFNLPPGNYKKPKLLYCSNGGHFLRILPDGTVDGTRDRSDQHIQLQLSAESIGEG",
-  db_swiss = "/path/to/uniprot_sprot",
-  db_trembl = "/path/to/uniprot_trembl",
-  blastp_path = "/path/to/blastp"
-)
-}
 }

@@ -2,13 +2,18 @@
 % Please edit documentation in R/Raw.R
 \name{Raw_ui}
 \alias{Raw_ui}
-\title{临时 Raw 数据模块UI}
+\title{Raw Data Upload Module UI}
 \usage{
 Raw_ui(id)
 }
 \arguments{
-\item{id}{模块ID}
+\item{id}{A character string representing the Shiny module namespace ID.}
+}
+\value{
+A Shiny UI tag list containing a file input and a text output.
 }
 \description{
-临时 Raw 数据模块UI
+Provides a simple user interface for uploading raw data files. It includes
+a file input selector and a display area to show basic metadata about the
+uploaded file.
 }

@@ -1,6 +1,7 @@
-# R/mod_gsea.R
 #' GSEA module UI
-#' @import shiny bslib data.table DESeq2 clusterProfiler ggplot2 GseaVis
+#' @import shiny
+#' @import bslib
+#' @importFrom DT dataTableOutput
 #' @name gsea_ui
 #' @noRd
 #' @export
@@ -27,7 +28,7 @@ gsea_ui <- function(id) {
     ),
     bslib::card(
       bslib::card_header("GSEA Results Table"),
-      bslib::card_body(shiny::dataTableOutput(ns("gsea_table")))
+      bslib::card_body(DT::dataTableOutput(ns("gsea_table")))
     ),
     bslib::layout_columns(
       bslib::card(
@@ -45,7 +46,13 @@ gsea_ui <- function(id) {
 }
 
 #' GSEA module server
-#' @importFrom shiny moduleServer reactiveVal observeEvent renderDataTable renderPlot downloadHandler updateSelectInput
+#' @import shiny
+#' @importFrom data.table fread rbindlist data.table
+#' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq results
+#' @importFrom clusterProfiler GSEA dotplot
+#' @importFrom GseaVis gseaNb
+#' @importFrom utils write.csv
+#' @importFrom grDevices pdf dev.off
 #' @noRd
 #' @name gsea_server
 #' @export
@@ -95,7 +102,9 @@ gsea_server <- function(id) {
       }
       top_df <- df[1:min(nrow(df), input$plot_top_x), ]
       top_df_val(top_df)
-      shiny::updateSelectInput(session, "pathway", choices = top_df$Description)
+      if (nrow(top_df) > 0) {
+        shiny::updateSelectInput(session, "pathway", choices = top_df$Description)
+      }
       output$gsea_table <- shiny::renderDataTable({ top_df })
       output$dotplot <- shiny::renderPlot({
         if (nrow(top_df) > 0) {

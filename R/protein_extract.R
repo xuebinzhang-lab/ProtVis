@@ -1,11 +1,15 @@
 #' Protein Extract UI Module
-#'
 #' Creates the user interface for protein extraction module that allows users to
 #' upload FASTA files, input target protein IDs, and extract matching sequences.
-#'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing all UI elements
+#' @import shiny
+#' @import bslib
+#' @importFrom shinyWidgets radioGroupButtons
+#' @importFrom DT dataTableOutput
+#' @name protein_extract_ui
 #' @export
+#'
 protein_extract_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
@@ -28,7 +32,7 @@ protein_extract_ui <- function(id) {
         ),
         # Conditional panel for manual input
         shiny::conditionalPanel(
-          condition = paste0("input['", ns("input_mode"), "'] == 'manual'"),
+          condition = base::paste0("input['", ns("input_mode"), "'] == 'manual'"),
           shiny::div(
             style = "margin-top: 10px;",
             shiny::h5("Enter Protein IDs (one per line)"),
@@ -99,21 +103,22 @@ protein_extract_ui <- function(id) {
 }
 
 #' Protein Extract Server Module
-#'
 #' Server-side logic for protein extraction module that handles FASTA file processing,
 #' protein ID matching, and result generation.
-#'
 #' @param id The namespace identifier for the module
 #' @return A reactive list containing matched sequences and summary statistics
-#' @export
+#' @import shiny
+#' @importFrom Biostrings readAAStringSet width writeXStringSet
+#' @importFrom stringr str_trim str_detect str_extract
+#' @importFrom tools file_ext
+#' @importFrom utils read.delim head zip
+#' @importFrom DT renderDataTable datatable
 #' @name protein_extract_server
-
-
+#' @export
 
 protein_extract_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     # Reactive values storage
     rv <- shiny::reactiveValues(
       fasta_data = NULL,
@@ -121,33 +126,29 @@ protein_extract_server <- function(id) {
       matched_seqs = NULL,
       unmatched_ids = NULL
     )
-
     # Load FASTA file
     shiny::observeEvent(input$fasta_file, {
       shiny::req(input$fasta_file)
-
       tryCatch({
         # Handle gzipped files
-        if (endsWith(input$fasta_file$name, ".gz")) {
-          con <- gzfile(input$fasta_file$datapath)
+        if (base::endsWith(input$fasta_file$name, ".gz")) {
+          con <- base::gzfile(input$fasta_file$datapath)
           rv$fasta_data <- Biostrings::readAAStringSet(con)
-          close(con)
+          base::close(con)
         } else {
           rv$fasta_data <- Biostrings::readAAStringSet(input$fasta_file$datapath)
         }
-
         shiny::showNotification("FASTA file loaded successfully!", type = "message")
       }, error = function(e) {
         shiny::showNotification(paste("Error loading FASTA file:", e$message), type = "error")
         rv$fasta_data <- NULL
       })
     })
-
     # Get protein IDs based on input method
     shiny::observe({
       if (input$input_mode == "manual") {
         shiny::req(input$protein_ids)
-        ids <- strsplit(input$protein_ids, "\n")[[1]]
+        ids <- base::strsplit(input$protein_ids, "\n")[[1]]
         rv$protein_ids <- stringr::str_trim(ids[ids != ""])
       } else {
         shiny::req(input$id_file)
@@ -166,30 +167,24 @@ protein_extract_server <- function(id) {
         })
       }
     })
-
     # Extract protein sequences
     shiny::observeEvent(input$extract, {
       shiny::req(rv$fasta_data, rv$protein_ids)
-
       tryCatch({
         # Extract protein IDs from FASTA headers (assuming headers contain IDs)
-        fasta_headers <- names(rv$fasta_data)
-
+        fasta_headers <- base::names(rv$fasta_data)
         # Create pattern to match any of the protein IDs
-        pattern <- paste0("\\b(", paste(rv$protein_ids, collapse = "|"), ")\\b")
-
+        pattern <- base::paste0("\\b(", base::paste(rv$protein_ids, collapse = "|"), ")\\b")
         # Find matches
         matched_idx <- stringr::str_detect(fasta_headers, pattern)
         rv$matched_seqs <- rv$fasta_data[matched_idx]
-
         # Find unmatched IDs
         found_ids <- stringr::str_extract(fasta_headers[matched_idx], pattern)
         rv$unmatched_ids <- base::setdiff(rv$protein_ids, found_ids)
-
         shiny::showNotification(
-          sprintf("Matched %d out of %d proteins",
-                  length(rv$matched_seqs),
-                  length(rv$protein_ids)),
+          base::sprintf("Matched %d out of %d proteins",
+                        base::length(rv$matched_seqs),
+                        base::length(rv$protein_ids)),
           type = "message"
         )
       }, error = function(e) {
@@ -198,28 +193,25 @@ protein_extract_server <- function(id) {
         rv$unmatched_ids <- NULL
       })
     })
-
     # Display matched sequence summary
     output$matched_summary <- shiny::renderPrint({
       shiny::req(rv$matched_seqs)
-      cat("=== Matched Protein Summary ===\n")
-      cat(sprintf("Total proteins in FASTA: %d\n", length(rv$fasta_data)))
-      cat(sprintf("Target proteins queried: %d\n", length(rv$protein_ids)))
-      cat(sprintf("Successfully matched: %d (%.1f%%)\n",
-                  length(rv$matched_seqs),
-                  length(rv$matched_seqs)/length(rv$protein_ids)*100))
-      cat("\n=== First 10 Matched Proteins ===\n")
-      utils::print(utils::head(names(rv$matched_seqs), 10))
+      base::cat("=== Matched Protein Summary ===\n")
+      base::cat(base::sprintf("Total proteins in FASTA: %d\n", base::length(rv$fasta_data)))
+      base::cat(base::sprintf("Target proteins queried: %d\n", base::length(rv$protein_ids)))
+      base::cat(base::sprintf("Successfully matched: %d (%.1f%%)\n",
+                              base::length(rv$matched_seqs),
+                              base::length(rv$matched_seqs)/base::length(rv$protein_ids)*100))
+      base::cat("\n=== First 10 Matched Proteins ===\n")
+      utils::print(utils::head(base::names(rv$matched_seqs), 10))
     })
-
     # Display sequence table
     output$sequence_table <- DT::renderDataTable({
       shiny::req(rv$matched_seqs)
-
-      data.frame(
-        Protein_ID = names(rv$matched_seqs),
+      base::data.frame(
+        Protein_ID = base::names(rv$matched_seqs),
         Length = Biostrings::width(rv$matched_seqs),
-        Sequence = as.character(rv$matched_seqs),
+        Sequence = base::as.character(rv$matched_seqs),
         stringsAsFactors = FALSE
       ) %>%
         DT::datatable(
@@ -233,65 +225,58 @@ protein_extract_server <- function(id) {
           )
         )
     })
-
     # Display unmatched IDs
     output$unmatched_ids <- shiny::renderPrint({
       shiny::req(rv$unmatched_ids)
-      cat("=== Unmatched Protein IDs ===\n")
-      cat(sprintf("Total unmatched: %d\n\n", length(rv$unmatched_ids)))
-      if (length(rv$unmatched_ids) <= 20) {
-        cat(rv$unmatched_ids, sep = "\n")
+      base::cat("=== Unmatched Protein IDs ===\n")
+      base::cat(base::sprintf("Total unmatched: %d\n\n", base::length(rv$unmatched_ids)))
+      if (base::length(rv$unmatched_ids) <= 20) {
+        base::cat(rv$unmatched_ids, sep = "\n")
       } else {
-        cat(utils::head(rv$unmatched_ids, 20), sep = "\n")
-        cat(sprintf("\n... and %d more", length(rv$unmatched_ids) - 20))
+        base::cat(utils::head(rv$unmatched_ids, 20), sep = "\n")
+        base::cat(base::sprintf("\n... and %d more", base::length(rv$unmatched_ids) - 20))
       }
     })
-
     # FASTA Viewer 输出
     shiny::observe({
       shiny::req(rv$matched_seqs)
-      fasta_text <- paste0(
-        paste0(">", names(rv$matched_seqs), "\n", as.character(rv$matched_seqs)),
+      fasta_text <- base::paste0(
+        base::paste0(">", base::names(rv$matched_seqs), "\n", base::as.character(rv$matched_seqs)),
         collapse = "\n"
       )
       shiny::updateTextAreaInput(session, "fasta_viewer", value = fasta_text)
     })
-
     # Download handler
     output$download_results <- shiny::downloadHandler(
       filename = function() {
-        paste0("protein_extract_results_", Sys.Date(), ".zip")
+        base::paste0("protein_extract_results_", base::Sys.Date(), ".zip")
       },
       content = function(file) {
         shiny::req(rv$matched_seqs)
-
         # Create temp directory
-        temp_dir <- tempdir()
-        fasta_file <- file.path(temp_dir, "matched_sequences.fasta")
-        summary_file <- file.path(temp_dir, "summary.txt")
-        unmatched_file <- file.path(temp_dir, "unmatched_ids.txt")
-
+        temp_dir <- base::tempdir()
+        fasta_file <- base::file.path(temp_dir, "matched_sequences.fasta")
+        summary_file <- base::file.path(temp_dir, "summary.txt")
+        unmatched_file <- base::file.path(temp_dir, "unmatched_ids.txt")
         # Write outputs
         Biostrings::writeXStringSet(rv$matched_seqs, fasta_file)
-        writeLines(
+        base::writeLines(
           c("=== Protein Extraction Summary ===",
-            sprintf("FASTA file: %s", input$fasta_file$name),
-            sprintf("Total proteins in FASTA: %d", length(rv$fasta_data)),
-            sprintf("Target proteins queried: %d", length(rv$protein_ids)),
-            sprintf("Successfully matched: %d", length(rv$matched_seqs)),
-            sprintf("Unmatched IDs: %d", length(rv$unmatched_ids))),
+            base::sprintf("FASTA file: %s", input$fasta_file$name),
+            base::sprintf("Total proteins in FASTA: %d", base::length(rv$fasta_data)),
+            base::sprintf("Target proteins queried: %d", base::length(rv$protein_ids)),
+            base::sprintf("Successfully matched: %d", base::length(rv$matched_seqs)),
+            base::sprintf("Unmatched IDs: %d", base::length(rv$unmatched_ids))),
           summary_file
         )
-        writeLines(rv$unmatched_ids, unmatched_file)
-
+        base::writeLines(rv$unmatched_ids, unmatched_file)
         # Zip files
         utils::zip(file, files = c(fasta_file, summary_file, unmatched_file), extras = "-j")
       }
     )
-
     # Return reactive values
     shiny::reactive({
-      list(
+      base::list(
         matched_sequences = rv$matched_seqs,
         unmatched_ids = rv$unmatched_ids,
         protein_ids = rv$protein_ids,

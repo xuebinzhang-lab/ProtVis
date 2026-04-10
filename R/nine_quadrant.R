@@ -1,12 +1,14 @@
-# ==== Nine-Quadrant Plot Module UI ====
-#'
 #' Creates the user interface for the Nine-Quadrant Plot module.
 #' This module allows users to upload a CSV/XLSX file, select numeric columns for X/Y axes,
 #' set cutoffs, customize colors for each quadrant, and download the plot as a PDF.
-#'
 #' @param id A character string specifying the namespace of the module.
 #' @return A Shiny UI tagList containing the sidebar layout with input controls and main plot area.
+#' @import shiny
+#' @import bslib
+#' @importFrom colourpicker colourInput
+#' @name nine_quadrant_ui
 #' @export
+#'
 nine_quadrant_ui <- function(id) {
   ns <- NS(id)
   bslib::layout_sidebar(
@@ -48,46 +50,48 @@ nine_quadrant_ui <- function(id) {
   )
 }
 
-# ==== Nine-Quadrant Plot Module Server ====
-#'
 #' Implements the server-side logic for the Nine-Quadrant Plot module.
 #' This includes reading uploaded files, dynamically generating UI for numeric column selection,
 #' classifying points into quadrants, customizing colors, rendering the plot, and providing PDF download.
-#'
 #' @param id A character string specifying the namespace of the module.
 #' @return A Shiny module server that manages the Nine-Quadrant Plot interactivity.
-#' @export
+#' @import shiny
+#' @importFrom tools file_ext
+#' @importFrom utils read.csv
+#' @importFrom readxl read_xlsx
+#' @importFrom dplyr mutate case_when group_by summarise n
+#' @importFrom ggplot2 ggplot aes geom_hline geom_vline geom_point scale_color_manual
+#' @importFrom ggplot2 theme_bw labs coord_cartesian geom_label scale_fill_manual
+#' @importFrom grDevices cairo_pdf pdf dev.off
 #' @name nine_quadrant_server
+#' @export
 
 utils::globalVariables(c("Omic1_status", "Omic2_status", "Quadrant", "x_center", "y_center"))
 
 nine_quadrant_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     # ---- Reactive: Read uploaded file ----
     data <- shiny::reactive({
       shiny::req(input$file)
       ext <- tools::file_ext(input$file$name)
       if (ext == "csv") {
-        read.csv(input$file$datapath, check.names = FALSE)
+        utils::read.csv(input$file$datapath, check.names = FALSE)
       } else if (ext == "xlsx") {
         readxl::read_xlsx(input$file$datapath)
       } else {
         shiny::validate("Unsupported file type")
       }
     })
-
     # ---- Reactive UI: Automatically detect numeric columns ----
     output$col_select_ui <- shiny::renderUI({
       df <- data()
-      num_cols <- names(df)[sapply(df, is.numeric)]
+      num_cols <- base::names(df)[base::sapply(df, is.numeric)]
       shiny::tagList(
         shiny::selectInput(ns("col_x"), "Select Omic1 (X-axis)", choices = num_cols),
         shiny::selectInput(ns("col_y"), "Select Omic2 (Y-axis)", choices = num_cols)
       )
     })
-
     # ---- Reactive: Classify points into quadrants ----
     processed <- shiny::reactive({
       shiny::req(input$col_x, input$col_y)
@@ -105,11 +109,10 @@ nine_quadrant_server <- function(id) {
             .data[[input$col_y]] < -fc ~ "Down",
             TRUE ~ "NS"
           ),
-          Quadrant = paste(Omic1_status, Omic2_status, sep = "_")
+          Quadrant = base::paste(Omic1_status, Omic2_status, sep = "_")
         )
       df
     })
-
     # ---- Reactive: Color mapping for quadrants ----
     colors <- shiny::reactive({
       c(
@@ -135,14 +138,12 @@ nine_quadrant_server <- function(id) {
         dplyr::group_by(Quadrant) %>%
         dplyr::summarise(
           count = dplyr::n(),
-          x_center = median(.data[[input$col_x]], na.rm = TRUE),
-          y_center = median(.data[[input$col_y]], na.rm = TRUE)
+          x_center = stats::median(.data[[input$col_x]], na.rm = TRUE),
+          y_center = stats::median(.data[[input$col_y]], na.rm = TRUE)
         )
-
       # Define axis limits
       x_limits <- c(min(df[[input$col_x]], na.rm = TRUE), max(df[[input$col_x]], na.rm = TRUE))
       y_limits <- c(min(df[[input$col_y]], na.rm = TRUE), max(df[[input$col_y]], na.rm = TRUE))
-
       # Base plot
       p <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[input$col_x]], y = .data[[input$col_y]], color = Quadrant)) +
         ggplot2::geom_hline(yintercept = c(-fc, fc), linetype = "dashed", color = "grey50") +
@@ -155,7 +156,6 @@ nine_quadrant_server <- function(id) {
           y = paste(input$col_y, "(Log2FC)")
         ) +
         ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits)
-
       # Optional: show quadrant counts
       if (input$show_counts) {
         p <- p +
@@ -164,7 +164,7 @@ nine_quadrant_server <- function(id) {
             ggplot2::aes(
               x = x_center,
               y = y_center,
-              label = paste(Quadrant, ":", count),
+              label = base::paste(Quadrant, ":", count),
               fill = Quadrant
             ),
             color = "white",
@@ -177,16 +177,14 @@ nine_quadrant_server <- function(id) {
       }
       return(p)
     }
-
     # ---- Render plot ----
     output$plot <- shiny::renderPlot({
       create_plot()
     })
-
     # ---- Download PDF ----
     output$download_pdf <- shiny::downloadHandler(
       filename = function() {
-        paste0("Nine_Quadrant_", Sys.Date(), ".pdf")
+        base::paste0("Nine_Quadrant_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
         if (capabilities("cairo")) {

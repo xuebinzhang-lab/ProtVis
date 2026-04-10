@@ -18,13 +18,7 @@ Venn diagram visualization UI with file upload, color customization,
 }
 \details{
 Venn Diagram UI Module
-
 Creates a user interface for generating Venn diagrams from uploaded CSV data.
 Supports both traditional Venn diagrams (up to 4 sets) and UpSet-style diagrams
 (5+ sets), with customizable colors and download functionality.
-}
-\examples{
-\dontrun{
-ui <- venn_ui("venn_diagram")
-}
 }

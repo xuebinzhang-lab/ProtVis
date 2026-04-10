@@ -1,21 +1,13 @@
 #' Protein Structure Analysis UI Module
-#'
 #' Creates a user interface for protein secondary structure analysis using
 #' bio3d package to perform Normal Mode Analysis (NMA) on PDB files.
-#'
 #' @title Protein Structure UI
-#' @name protein_structure_ui
 #' @param id A unique identifier for the Shiny namespace
-#' @return A Shiny UI nav_panel containing file upload, parameter controls,
-#'   and visualization output
 #' @import shiny
 #' @import bslib
-#' @import bsicons
+#' @name protein_structure_ui
 #' @export
-#' @examples
-#' \dontrun{
-#' ui <- protein_structure_ui("structure_analysis")
-#' }
+#'
 protein_structure_ui <- function(id) {
   ns <- shiny::NS(id)
   bslib::nav_panel(
@@ -61,7 +53,6 @@ protein_structure_ui <- function(id) {
               ),
               bslib::accordion_panel(
                 title = 'Download',
-                # 添加下载尺寸设置
                 shiny::numericInput(
                   inputId = ns("plot_width"),
                   label = "Plot width (inches)",
@@ -124,56 +115,31 @@ protein_structure_ui <- function(id) {
 #' @param id Standard shiny server identifier
 #' @return A Shiny server module function
 #' @import shiny
-#' @import bio3d
-#' @import graphics
-#' @import grDevices
-#' @export
 #' @name protein_structure_server
-#' @examples
-#' \dontrun{
-#' server <- function(input, output, session) {
-#'   protein_structure_server("structure_analysis")
-#' }
-#' }
+#' @export
+
 protein_structure_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    # 加载 bio3d 包的数据（元素周期表和原子索引）
-    if (!exists("elements") || !exists("atom.index")) {
+    if (!base::exists("elements") || !base::exists("atom.index")) {
       utils::data(elements, package = "bio3d")
       utils::data(atom.index, package = "bio3d")
     }
-
-    # 存储分析结果的reactive value
     plot_data <- shiny::reactiveValues(
       modes = NULL,
       pdb = NULL
     )
-
-    # 运行分析的主事件处理器
     shiny::observeEvent(input$run, {
       shiny::req(input$file)
-
-      # 添加进度指示
       shiny::showNotification("Reading PDB file...", type = "message", duration = 2)
-
       tryCatch({
-        # 读取 PDB 文件
         pdb <- bio3d::read.pdb(input$file$datapath)
-
         shiny::showNotification("Performing Normal Mode Analysis...", type = "message", duration = 2)
-
-        # 进行 NMA 分析
         modes <- bio3d::nma(pdb)
-
-        # 存储结果
         plot_data$modes <- modes
         plot_data$pdb <- pdb
-
-        # 渲染图形
         output$protein_2 <- shiny::renderPlot({
-          if (!is.null(modes) && !is.null(modes$fluctuations)) {
+          if (!base::is.null(modes) && !base::is.null(modes$fluctuations)) {
             bio3d::plot.bio3d(
               modes$fluctuations,
               sse = pdb,
@@ -189,14 +155,10 @@ protein_structure_server <- function(id) {
                            cex = 1.2, col = "red")
           }
         })
-
-        # 下载处理
         output$downloadPlot <- shiny::downloadHandler(
           filename = function() {
-            # 根据选择的格式生成文件名
-            base_name <- paste0("protein_structure_", Sys.Date())
+            base_name <- base::paste0("protein_structure_", Sys.Date())
             format <- input$plot_format
-
             switch(format,
                    "pdf" = paste0(base_name, ".pdf"),
                    "png" = paste0(base_name, ".png"),
@@ -206,14 +168,11 @@ protein_structure_server <- function(id) {
           },
           content = function(file) {
             shiny::req(plot_data$modes, plot_data$pdb)
-
             format <- input$plot_format
-            width <- as.numeric(input$plot_width)
-            height <- as.numeric(input$plot_height)
+            width <- base::as.numeric(input$plot_width)
+            height <- base::as.numeric(input$plot_height)
             units <- input$plot_units
-            dpi <- as.numeric(input$plot_dpi)
-
-            # 根据格式设置图形设备
+            dpi <- base::as.numeric(input$plot_dpi)
             if (format == "pdf") {
               grDevices::pdf(file, width = width, height = height)
             } else if (format == "png") {
@@ -228,8 +187,6 @@ protein_structure_server <- function(id) {
             } else if (format == "svg") {
               grDevices::svg(file, width = width, height = height)
             }
-
-            # 绘制图形
             bio3d::plot.bio3d(
               plot_data$modes$fluctuations,
               sse = plot_data$pdb,
@@ -239,11 +196,8 @@ protein_structure_server <- function(id) {
               lwd = 3,
               ylab = "Fluctuations from NMA (Å)"
             )
-
-            # 添加标题和元数据
             graphics::title(main = "Protein Secondary Structure Analysis",
-                            sub = paste("Generated:", Sys.Date()))
-
+                            sub = base::paste("Generated:", base::Sys.Date()))
             grDevices::dev.off()
           },
           contentType = switch(input$plot_format,
@@ -253,10 +207,8 @@ protein_structure_server <- function(id) {
                                "tiff" = "image/tiff",
                                "svg" = "image/svg+xml")
         )
-
         shiny::showNotification("Analysis completed successfully!",
                                 type = "message", duration = 3)
-
       }, error = function(e) {
         output$protein_2 <- shiny::renderPlot({
           graphics::plot.new()

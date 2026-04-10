@@ -5,7 +5,7 @@
 #' for static files within the `app/www` directory.
 #'
 #' @import shiny
-#' @importFrom golem add_resource_path activate_js favicon bundle_resources
+#' @importFrom golem favicon bundle_resources
 #' @name golem_add_external_resources
 #' @noRd
 #' @export
@@ -34,7 +34,6 @@ golem_add_external_resources <- function() {
 #'
 #' @import shiny
 #' @importFrom bslib nav_panel nav_menu page_navbar bs_theme
-#' @importFrom bsicons bs_icon
 #' @noRd
 #' @name app_ui
 #' @export

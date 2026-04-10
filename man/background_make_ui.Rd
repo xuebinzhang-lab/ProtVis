@@ -16,6 +16,3 @@ A Shiny UI tagList containing the module interface
 Creates the user interface for the background generation module
 that processes EggNOG output files to create GO and KEGG backgrounds.
 }
-\examples{
-background_make_ui("my_background")
-}

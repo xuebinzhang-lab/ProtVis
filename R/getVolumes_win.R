@@ -4,6 +4,7 @@
 #'
 #' @return A named vector of available volumes with optional exclusions.
 #' @importFrom stringr str_remove
+#' @importFrom fs dir_ls dir_exists
 #' @description
 #' This function retrieves available volume information based on the operating system
 #' the R session is currently running on. It supports MacOS, Linux, and Windows.

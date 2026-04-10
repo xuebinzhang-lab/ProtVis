@@ -7,8 +7,12 @@
 #'
 #' @param id Module namespace ID
 #' @return UI elements for the Boxplot module
+#' @import shiny
+#' @import bslib
+#' @importFrom colourpicker colourInput
 #' @name boxplot_module_ui
 #' @export
+#'
 boxplot_module_ui <- function(id) {
   ns <- NS(id)
 
@@ -56,7 +60,19 @@ boxplot_module_ui <- function(id) {
 #' @param id Module namespace ID
 #' @return A list containing reactive plot object
 #' @export
+#' @import shiny
+#' @import bslib
+#' @importFrom openxlsx read.xlsx
+#' @importFrom dplyr select all_of
+#' @importFrom tidyr pivot_longer
+#' @importFrom tidyselect everything
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom ggpubr stat_compare_means
+#' @importFrom ggplot2 ggplot aes geom_boxplot geom_jitter scale_fill_manual
+#' @importFrom ggplot2 labs theme margin theme_minimal theme_classic
+#' @importFrom ggplot2 theme_light theme_bw theme_dark theme_grey ggsave
 #' @name boxplot_module_server
+#'
 
 boxplot_module_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {

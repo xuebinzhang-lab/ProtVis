@@ -2,7 +2,10 @@
 % Please edit documentation in R/stacked_column_chart.R
 \name{stacked_column_chart_ui}
 \alias{stacked_column_chart_ui}
-\title{Stacked Bar Chart UI Module}
+\title{Stacked Bar Chart UI Module
+Creates a user interface for generating customizable stacked bar charts
+from uploaded CSV data. Supports color customization, coordinate flipping,
+axis labeling, and chart download.}
 \usage{
 stacked_column_chart_ui(id)
 }
@@ -13,12 +16,8 @@ stacked_column_chart_ui(id)
 A Shiny UI tagList containing the stacked bar chart interface.
 }
 \description{
+Stacked Bar Chart UI Module
 Creates a user interface for generating customizable stacked bar charts
 from uploaded CSV data. Supports color customization, coordinate flipping,
 axis labeling, and chart download.
-}
-\examples{
-\dontrun{
-ui <- stacked_column_chart_ui("stacked_chart")
-}
 }

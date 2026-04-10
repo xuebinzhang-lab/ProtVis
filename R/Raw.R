@@ -1,35 +1,49 @@
-#' 临时 Raw 数据模块UI
-#' @param id 模块ID
+#' Raw Data Upload Module UI
+#' @description
+#' Provides a simple user interface for uploading raw data files. It includes
+#' a file input selector and a display area to show basic metadata about the
+#' uploaded file.
+#' @param id A character string representing the Shiny module namespace ID.
+#' @return A Shiny UI tag list containing a file input and a text output.
+#' @import shiny
+#' @name Raw_ui
+#' @export
 Raw_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    fileInput(ns("file"), "Upload Raw Data File"),
-    verbatimTextOutput(ns("file_info"))
+  shiny::tagList(
+    shiny::fileInput(ns("file"), "Upload Raw Data File"),
+    shiny::verbatimTextOutput(ns("file_info"))
   )
 }
-
-#' 临时 Raw 数据模块服务器逻辑
-#' @param id 模块ID
+#' Raw Data Upload Module Server
+#' @description
+#' Handles the server-side logic for raw data uploads. It renders file
+#' metadata (name, size, and extension) to the UI and returns a reactive
+#' object containing the file path and name for use in other modules.
+#' @param id A character string representing the Shiny module namespace ID.
+#' @return A reactive expression that returns a list containing:
+#' @import shiny
+#' @importFrom tools file_ext
+#' @name Raw_server
+#' @export
 Raw_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # 临时实现：仅显示上传的文件信息
-    output$file_info <- renderPrint({
-      req(input$file)
-      cat("Raw data file uploaded:\n")
-      cat("Name:", input$file$name, "\n")
-      cat("Size:", format(object.size(input$file$datapath), units = "auto"), "\n")
-      cat("Type:", tools::file_ext(input$file$name), "\n")
+    output$file_info <- shiny::renderPrint({
+      shiny::req(input$file)
+      base::cat("Raw data file uploaded:\n")
+      base::cat("Name:", input$file$name, "\n")
+      base::cat("Size:", base::format(input$file$size, units = "auto"), "\n")
+      base::cat("Type:", tools::file_ext(input$file$name), "\n")
     })
 
-    # 返回上传的数据（实际应用中替换为真实处理逻辑）
-    return(reactive({
-      req(input$file)
-      list(
+    shiny::reactive({
+      shiny::req(input$file)
+      base::list(
         path = input$file$datapath,
         name = input$file$name
       )
-    }))
+    })
   })
 }

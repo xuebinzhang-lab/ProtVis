@@ -2,7 +2,10 @@
 % Please edit documentation in R/TMT.R
 \name{TMT_ui}
 \alias{TMT_ui}
-\title{TMT User Interface}
+\title{TMT User Interface
+Creates a user interface for the TMT (Tandem Mass Tag) analysis section
+in a Shiny application. This includes file upload, parameter selection,
+and visualization options.}
 \usage{
 TMT_ui(id)
 }
@@ -10,6 +13,7 @@ TMT_ui(id)
 \item{id}{A unique identifier for the Shiny namespace.}
 }
 \description{
+TMT User Interface
 Creates a user interface for the TMT (Tandem Mass Tag) analysis section
 in a Shiny application. This includes file upload, parameter selection,
 and visualization options.

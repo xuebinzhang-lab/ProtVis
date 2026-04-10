@@ -1,6 +1,7 @@
-#' @import bslib
 #' @import shiny
-#' @import readxl
+#' @import bslib
+#' @importFrom colourpicker colourInput
+#' @importFrom bsicons bs_icon
 #' @name DEG_ui
 #' @title DEG Analysis UI
 #' @description This function creates the user interface for DEG (Differential Expression Analysis) that includes file upload options, PCA plot settings, and volcano plot settings.
@@ -133,13 +134,16 @@ DEG_ui <- function(id) {
 #' @title DEG Analysis Server Logic
 #' @description This function contains the server-side logic for performing DEG (Differential Expression Analysis), including PCA and volcano plot generation, and DEG result calculations.
 #' @param id A unique ID for the Shiny module, used to create input/output bindings.
-#' @import DESeq2
-#' @import ggplot2
-#' @import dplyr
-#' @import readxl
+#' @import shiny
+#' @importFrom readxl read_xlsx
+#' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq results
+#' @importFrom dplyr mutate across everything case_when arrange desc filter select where
+#' @importFrom tibble column_to_rownames rownames_to_column
+#' @importFrom DT renderDT datatable formatStyle styleEqual
+#' @importFrom grDevices pdf dev.off
+#' @importFrom colourpicker updateColourInput
 #' @name DEG_server
 #' @export
-#'
 
 utils::globalVariables(c("padj", "log2FoldChange", "regular",
                          "GeneID","baseMean","lfcSE","pvalue","Regulation"))

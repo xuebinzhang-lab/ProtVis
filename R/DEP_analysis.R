@@ -5,8 +5,16 @@
 #'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing all UI elements for the DEP analysis module
+#' @import shiny
+#' @import bslib
+#' @importFrom shinyWidgets switchInput
+#' @importFrom rhandsontable rHandsontableOutput
+#' @importFrom colourpicker colourInput
+#' @importFrom bsicons bs_icon
+#' @importFrom DT dataTableOutput
 #' @name DEP_analysis_ui
 #' @export
+#'
 DEP_analysis_ui <- function(id) {
   ns <- NS(id)
   shiny::tagList(
@@ -104,10 +112,22 @@ DEP_analysis_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactive list containing shared state variables across modules
 #' @return A reactive list containing comparison data, normalized matrix, sample info, and DEP results
+#' @import shiny
+#' @importFrom dplyr filter pull select all_of mutate case_when count
+#' @importFrom tibble rownames_to_column
+#' @importFrom rhandsontable renderRHandsontable rhandsontable hot_table hot_to_r
+#' @importFrom readxl read_excel
+#' @importFrom tools file_ext
+#' @importFrom DT renderDataTable datatable dataTableOutput
+#' @importFrom limma lmFit makeContrasts contrasts.fit eBayes topTable
+#' @importFrom pheatmap pheatmap
+#' @importFrom colourpicker colourInput
+#' @importFrom ggplot2 ggsave
 #' @name DEP_analysis_server
 #' @export
+#'
 
-utils::globalVariables(c("logFC", "P.Value", "regulation",
+utils::globalVariables(c("P.Value", "regulation",
                          "logFC","Cluster","Var2","Var1"))
 
 DEP_analysis_server <- function(id, shared_state) {

@@ -7,7 +7,6 @@
 #' @param id A unique identifier for the Shiny namespace.
 #' @import shiny
 #' @import bslib
-#' @import bsicons
 #' @export
 #'
 GO_and_KEGG_ui <- function(id) {
@@ -88,9 +87,11 @@ GO_and_KEGG_ui <- function(id) {
 #' Implements the logic for GO and KEGG analysis.
 #' @param id A unique identifier for the Shiny namespace.
 #' @import shiny
-#' @import clusterProfiler
-#' @export
+#' @importFrom readxl excel_sheets read_excel
+#' @importFrom clusterProfiler enricher dotplot
+#' @importFrom DT renderDT datatable
 #' @name GO_and_KEGG_server
+#' @export
 #'
 
 GO_and_KEGG_server <- function(id) {

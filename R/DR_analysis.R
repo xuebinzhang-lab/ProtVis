@@ -2,18 +2,19 @@
 #' @description Dimension reduction analysis UI Module
 #' @param id A unique identifier for the Shiny namespace, Dimension reduction analysis.
 #' @title DR_analysis_ui
-#' @import bsicons
 #' @import shiny
 #' @import bslib
+#' @importFrom bsicons bs_icon
+#' @importFrom colourpicker colourInput
 #' @name DR_analysis_ui
 #' @export
 #'
 DR_analysis_ui <- function(id) {
   ns <- shiny::NS(id)  # Use shiny::NS to avoid conflicts
-  bsicons::nav_panel(
+  bslib::nav_panel(
     title = 'Dimensionality Reduction Analysis',
     icon = bsicons::bs_icon("alexa"),
-    layout_sidebar(
+    bslib::layout_sidebar(
       sidebar = bslib::accordion(
         bslib::accordion_panel(
           title = "File Upload",
@@ -282,12 +283,15 @@ DR_analysis_ui <- function(id) {
 #' @title DR_analysis_server
 #' @description Server logic for Dimension reduction analysis
 #' @param id The module ID. This is used to namespace the inputs and outputs in the UI and server components.
-#' @param input Standard Shiny server arguments: a list of input values from the UI.
-#' @param output Standard Shiny server arguments: a list of outputs to send back to the UI.
-#' @param session Standard Shiny server arguments: the session object that maintains the state of the app.
 #' @import shiny
-#' @import utils
-#' @import ggplot2
+#' @importFrom utils read.csv write.csv
+#' @importFrom colourpicker colourInput
+#' @importFrom tibble column_to_rownames rownames_to_column
+#' @importFrom dplyr left_join rename
+#' @importFrom DT renderDT datatable
+#' @importFrom PCAtools pca biplot
+#' @importFrom vegan vegdist eigenvals
+#' @importFrom ggplot2 ggsave
 #' @name DR_analysis_server
 #' @export
 #'

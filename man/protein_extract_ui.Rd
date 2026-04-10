@@ -2,7 +2,9 @@
 % Please edit documentation in R/protein_extract.R
 \name{protein_extract_ui}
 \alias{protein_extract_ui}
-\title{Protein Extract UI Module}
+\title{Protein Extract UI Module
+Creates the user interface for protein extraction module that allows users to
+upload FASTA files, input target protein IDs, and extract matching sequences.}
 \usage{
 protein_extract_ui(id)
 }
@@ -13,6 +15,7 @@ protein_extract_ui(id)
 A Shiny UI tagList containing all UI elements
 }
 \description{
+Protein Extract UI Module
 Creates the user interface for protein extraction module that allows users to
 upload FASTA files, input target protein IDs, and extract matching sequences.
 }

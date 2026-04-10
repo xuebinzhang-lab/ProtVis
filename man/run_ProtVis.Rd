@@ -29,12 +29,3 @@ An object that represents the app.
 \description{
 Launches the ProtVis Shiny application for proteomics data analysis.
 }
-\examples{
-\dontrun{
-# Run the app with default settings
-run_ProtVis()
-
-# Run the app on a specific port
-run_ProtVis(options = list(port = 3838))
-}
-}

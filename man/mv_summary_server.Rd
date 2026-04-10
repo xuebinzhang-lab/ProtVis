@@ -4,13 +4,7 @@
 \alias{mv_summary_server}
 \title{mv_summary_server}
 \arguments{
-\item{id}{description}
-
-\item{input}{description}
-
-\item{output}{description}
-
-\item{session}{description}
+\item{id}{A unique identifier for the Shiny namespace.}
 }
 \description{
 mv_summary_server

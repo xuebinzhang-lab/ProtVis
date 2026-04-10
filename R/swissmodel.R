@@ -1,18 +1,15 @@
 #' Swiss-Model UI Function
-#'
 #' Creates the user interface for the Swiss-Model protein structure prediction module.
 #' Includes input fields for protein sequences and API tokens, as well as display panels
 #' for model results including project information, PDB data, quality metrics, and 3D visualization.
-#'
 #' @param id The namespace ID for the Shiny module.
 #' @return A `tagList` containing the UI elements for the Swiss-Model workflow.
 #' @import shiny
 #' @import bslib
-#' @noRd
-#' @examples
-#' \dontrun{
-#' ui <- swissmodel_ui("swiss_model")
-#' }
+#' @importFrom DT dataTableOutput
+#' @name swissmodel_ui
+#' @export
+#'
 swissmodel_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
@@ -20,7 +17,6 @@ swissmodel_ui <- function(id) {
       sidebar = bslib::sidebar(
         width = 350,
         style = "margin-bottom: 15px;",
-
         # Protein sequence input
         shiny::textAreaInput(ns("sequence"), "Protein sequence",
                              value = "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKVADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHASLDKFLASVSTVLTSKYR",
@@ -94,32 +90,27 @@ swissmodel_ui <- function(id) {
 }
 
 #' Swiss-Model Server Function
-#'
 #' Defines the server-side logic for handling user inputs, running the Swiss-Model
 #' prediction workflow, and rendering the results. Handles protein sequence input,
 #' API token validation, error handling, and displaying model results including
 #' quality metrics, Ramachandran plots, and 3D structure visualization.
-#'
 #' @param id The namespace ID for the Shiny module.
 #' @return A `moduleServer` call which binds server-side logic to the UI components.
 #' @import shiny
-#' @import bio3d
-#' @import utils
-#' @noRd
-#' @examples
-#' \dontrun{
-#' server <- function(input, output, session) {
-#'   swissmodel_server("swiss_model")
-#' }
-#' }
+#' @importFrom bio3d read.pdb
+#' @importFrom utils capture.output
+#' @importFrom jsonlite fromJSON
+#' @importFrom DT renderDT
+#' @importFrom r3dmol renderR3dmol
+#' @name swissmodel_server
+#' @export
+#'
 swissmodel_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     shiny::observeEvent(input$run_model, {
       sequence <- input$sequence
       api_token <- input$api_token
-
       # Validate protein sequence input
       if (base::nchar(sequence) == 0) {
         shiny::showModal(shiny::modalDialog(
@@ -130,7 +121,6 @@ swissmodel_server <- function(id) {
         ))
         return()
       }
-
       # Validate API token input
       if (base::nchar(api_token) == 0) {
         shiny::showModal(shiny::modalDialog(
@@ -141,10 +131,8 @@ swissmodel_server <- function(id) {
         ))
         return()
       }
-
       # Set API token and run workflow
       swissmodel::set_swissmodel_token(api_token)
-
       result <- base::tryCatch({
         swissmodel::run_automodel_workflow(sequence)
       }, error = function(e) {
@@ -156,13 +144,10 @@ swissmodel_server <- function(id) {
         ))
         return(NULL)
       })
-
       if (base::is.null(result)) return()
-
       # Process results
       pdb_file <- result$downloaded_files[[1]]
       pdb <- bio3d::read.pdb(pdb_file)
-
       # Render project info URL
       output$project_info_view_url <- shiny::renderUI({
         project_info <- jsonlite::fromJSON(result$project_info_file)
@@ -173,41 +158,34 @@ swissmodel_server <- function(id) {
         )
         shiny::HTML(output_text)
       })
-
       # Render project info file content
       output$project_info_file <- shiny::renderText({
         project_info <- jsonlite::fromJSON(result$project_info_file)
         project_info_text <- utils::capture.output(base::print(project_info))
         view_url <- project_info$view_url[1]
-
         base::paste(
           base::paste(project_info_text, collapse = "\n"),
           sep = "\n\n"
         )
       })
-
       # Render PDB information
       output$pdb_information <- shiny::renderText({
         base::print(swissmodel::pdb_info(pdb))
         base::paste(utils::capture.output(base::print(swissmodel::pdb_info(pdb))), collapse = "\n")
       })
-
       # Render model quality table
       output$model_quality <- DT::renderDT({
         model_quality <- swissmodel::analyze_model_quality(pdb)
         base::data.frame(Value = base::unlist(model_quality))
       })
-
       # Render Ramachandran plot
       output$Ramachandran_plot <- shiny::renderPlot({
         swissmodel::plot_ramachandran(pdb)
       })
-
       # Render residue composition plot
       output$residue_composition <- shiny::renderPlot({
         swissmodel::plot_residue_composition(pdb)
       })
-
       # Render 3D PDB structure
       output$pdb_plot <- r3dmol::renderR3dmol({
         swissmodel::plot_pdb(pdb)

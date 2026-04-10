@@ -2,7 +2,9 @@
 % Please edit documentation in R/release_data.R
 \name{release_data_server}
 \alias{release_data_server}
-\title{Release Data Server Module}
+\title{Release Data Server Module
+Server-side logic for the release data module.
+Handles loading .rda files and exporting their contents to the selected format.}
 \usage{
 release_data_server(id, shared_state)
 }
@@ -11,17 +13,8 @@ release_data_server(id, shared_state)
 
 \item{shared_state}{A reactive list containing shared state variables (must include 'workdir')}
 }
-\value{
-None (server-side module)
-}
 \description{
+Release Data Server Module
 Server-side logic for the release data module.
 Handles loading .rda files and exporting their contents to the selected format.
-}
-\examples{
-\dontrun{
-server <- function(input, output, session) {
-  release_data_server("release_data", shared_state)
-}
-}
 }

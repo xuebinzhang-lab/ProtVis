@@ -7,13 +7,12 @@
 #'                should contain "_1", "_2", "_3" suffixes to indicate replicates.
 #' @return A data frame with corrected values where zeros have been replaced
 #'         according to the correction rules. Rows with all zeros remain unchanged.
-#' @importFrom dplyr select rowwise filter ungroup full_join mutate if_else group_by case_when across na_if
+#' @importFrom dplyr select rowwise filter ungroup full_join mutate if_else group_by
+#' @importFrom dplyr case_when across na_if contains c_across
 #' @importFrom tidyr pivot_longer replace_na pivot_wider
 #' @importFrom stringr str_sub
-#' @importFrom tibble column_to_rownames
 #' @name correct_values
 #' @export
-#'
 #'
 utils::globalVariables(c("ID", "sample_id", "value", "value_fix", "sample_group", "."))
 correct_values <- function(raw_mat) {
@@ -71,9 +70,11 @@ correct_values <- function(raw_mat) {
 #' - Export functionality
 #' @param id Character string module ID for namespacing
 #' @return A Shiny UI layout with sidebar controls and main display area
-#' @importFrom shiny NS actionButton uiOutput div
-#' @importFrom bslib layout_sidebar sidebar accordion accordion_panel card card_header card_body navset_tab nav_panel
+#' @import shiny
+#' @import bslib
 #' @importFrom shinyWidgets switchInput
+#' @importFrom bsicons bs_icon
+#' @importFrom DT dataTableOutput
 #' @name correct_noise_ui
 #' @export
 #'
@@ -158,10 +159,10 @@ correct_noise_ui <- function(id) {
 #' @param id Character string module ID for namespacing
 #' @param shared_state Reactive values list for sharing data between modules
 #' @return Server logic for the noise correction module
-#' @importFrom shiny moduleServer reactive reactiveValues observeEvent req showNotification
+#' @import shiny
 #' @importFrom dplyr left_join pull
 #' @importFrom DT renderDataTable datatable
-#' @importFrom tibble column_to_rownames
+#' @importFrom tibble column_to_rownames rownames_to_column
 #' @name correct_noise_server
 #' @export
 #'
