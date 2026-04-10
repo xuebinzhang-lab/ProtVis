@@ -9,19 +9,8 @@ protein_structure_ui(id)
 \arguments{
 \item{id}{A unique identifier for the Shiny namespace}
 }
-\value{
-A Shiny UI nav_panel containing file upload, parameter controls,
-  and visualization output
-}
 \description{
 Protein Structure Analysis UI Module
-}
-\details{
 Creates a user interface for protein secondary structure analysis using
 bio3d package to perform Normal Mode Analysis (NMA) on PDB files.
-}
-\examples{
-\dontrun{
-ui <- protein_structure_ui("structure_analysis")
-}
 }

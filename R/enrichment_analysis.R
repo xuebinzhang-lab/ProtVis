@@ -10,6 +10,7 @@
 #' @title plot_go_circos
 #' @name plot_go_circos
 #' @export
+#'
 plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
   data <- go_data[order(go_data$pvalue), ]
   datasig <- data[data$pvalue < 0.05, , drop = FALSE]
@@ -165,6 +166,10 @@ plot_go_circos <- function(go_data, top_n = 15, output_pdf = NULL) {
 #' It includes file uploads, parameter settings, and visualization panels for GO and KEGG enrichment analysis.
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing the enrichment analysis interface
+#' @import shiny
+#' @import bslib
+#' @importFrom shinyWidgets switchInput
+#' @importFrom colourpicker colourInput
 #' @name enrichment_analysis_ui
 #' @export
 #'
@@ -268,7 +273,7 @@ enrichment_analysis_ui <- function(id) {
                 type = "tabs",
                 shiny::tabPanel("Visualization",
                                 bslib::layout_sidebar(
-                                sidebar = sidebar(
+                                sidebar = bslib::sidebar(
                                 width = 250,
                                 position = "left",
                                 open = "closed",
@@ -337,8 +342,6 @@ enrichment_analysis_ui <- function(id) {
 }
 
 
-# -------------------------------------------------------------------------
-
 #' Enrichment Analysis Module Server
 #'
 #' This function provides the server-side logic for the enrichment analysis module.
@@ -347,6 +350,17 @@ enrichment_analysis_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactive values list for sharing state between modules
 #' @return A module server function that handles enrichment analysis operations
+#' @import shiny
+#' @importFrom dplyr filter pull select mutate across everything
+#' @importFrom tidyr separate
+#' @importFrom stringr str_trim
+#' @importFrom readxl read_excel excel_sheets
+#' @importFrom tools file_ext
+#' @importFrom DT renderDT
+#' @importFrom clusterProfiler enricher dotplot
+#' @importFrom ggplot2 scale_color_manual
+#' @importFrom grDevices pdf dev.off
+#' @importFrom utils write.csv read.csv read.table
 #' @name enrichment_analysis_server
 #' @export
 #'
@@ -511,7 +525,7 @@ enrichment_analysis_server <- function(id, shared_state) {
         clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
           ggplot2::scale_color_manual(values = input$go_color)
       } else {
-        plot_go_circos(rv$go_res, top_n = input$go_top_n)
+        plot_go_circos(as.data.frame(rv$go_res@result), top_n = input$go_top_n)
       }
     })
     output$kegg_plot <- shiny::renderPlot({
@@ -530,7 +544,7 @@ enrichment_analysis_server <- function(id, shared_state) {
       base::as.data.frame(rv$go_res@result)
     }, options = base::list(pageLength = 10, scrollX = TRUE))
 
-    output$kegg_res_table <- renderDT({
+    output$kegg_res_table <- DT::renderDT({
       shiny::req(rv$kegg_res)
       base::as.data.frame(rv$kegg_res@result)
     }, options = base::list(pageLength = 10, scrollX = TRUE))
@@ -545,7 +559,7 @@ enrichment_analysis_server <- function(id, shared_state) {
             print(clusterProfiler::dotplot(rv$go_res, showCategory = input$go_top_n) +
                     ggplot2::scale_color_manual(values = input$go_color))
           } else {
-            print(graphics::barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
+            print(barplot(rv$go_res, showCategory = input$go_top_n, fill = input$go_color))
           }
           grDevices::dev.off()
         } else {

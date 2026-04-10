@@ -5,6 +5,7 @@
 #'
 #' @param data A numeric matrix or data frame containing the data to be normalized
 #' @return A matrix with the same dimensions as input where each column has been median-centered
+#' @importFrom stats median
 #' @name sample_subtract
 #' @export
 #'
@@ -16,13 +17,17 @@ sample_subtract <- function(data) {
 
 #' UI module for data normalization
 #'
-#' Creates the user interface for the data normalization module which includes:
+#' Creates the user interface for data normalization module which includes:
 #' - Data loading controls
 #' - Visualization of original and normalized data
 #' - Normalization execution button
 #'
 #' @param id The namespace identifier for the module
 #' @return A Shiny UI tagList containing the module interface
+#' @import shiny
+#' @import bslib
+#' @importFrom shinyjs useShinyjs
+#' @importFrom colourpicker colourInput
 #' @name data_normalization_ui
 #' @export
 #'
@@ -100,8 +105,6 @@ data_normalization_ui <- function(id) {
   )
 }
 
-
-
 #' Server module for data normalization
 #'
 #' Handles the server-side logic for data normalization including:
@@ -113,8 +116,17 @@ data_normalization_ui <- function(id) {
 #' @param id The namespace identifier for the module
 #' @param shared_state A reactiveValues object containing shared state between modules
 #' @return A module server function
+#' @import shiny
+#' @importFrom DT renderDT datatable
+#' @importFrom tibble rownames_to_column
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr left_join
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom ggplot2 ggplot aes xlab ylab geom_boxplot coord_flip scale_fill_manual theme_bw
+#' @importFrom grDevices pdf dev.off
 #' @name data_normalization_server
 #' @export
+#'
 
 data_normalization_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -146,7 +158,7 @@ data_normalization_server <- function(id, shared_state) {
       }
     })
 
-    output$load_status_panel <- renderUI({
+    output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
         shiny::span("✅ Data loaded", style = "color: green;")
       } else {
@@ -185,7 +197,7 @@ data_normalization_server <- function(id, shared_state) {
       sample_info <- rv$sample_info
       normalized_data <- sample_subtract(rv$expression_matrix)
       rv$normalized_matrix <- base::as.data.frame(normalized_data)
-      base::save(sample_info, normalized_data, file = file.path(shared_state$workdir, "Step6_data_normalization.rda"))
+      base::save(sample_info, normalized_data, file = base::file.path(shared_state$workdir, "Step6_data_normalization.rda"))
       shiny::showNotification("Normalization completed", type = "message")
     })
     output$dataNormalization <- DT::renderDT({

@@ -2,7 +2,10 @@
 % Please edit documentation in R/protein_links.R
 \name{protein_links_server}
 \alias{protein_links_server}
-\title{Protein Links Server Module}
+\title{Protein Links Server Module
+Server-side logic that detects whether the input is a UniProt ID (via pattern or database lookup)
+or a raw protein sequence, and generates links for UniProt, InterPro, and Swiss-Model accordingly.
+If no UniProt ID is provided directly, it runs BLASTp against SwissProt/TrEMBL databases to find matches.}
 \usage{
 protein_links_server(id)
 }
@@ -13,17 +16,6 @@ protein_links_server(id)
 A Shiny server module function
 }
 \description{
-Server-side logic that detects whether the input is a UniProt ID (via pattern or database lookup)
-or a raw protein sequence, and generates links for UniProt, InterPro, and Swiss-Model accordingly.
-If no UniProt ID is provided directly, it runs BLASTp against SwissProt/TrEMBL databases to find matches.
-
 Reactive output that generates protein database links based on user input.
 Priority: 1) Direct UniProt ID input, 2) BLASTp search from sequence
-}
-\examples{
-\dontrun{
-server <- function(input, output, session) {
-  protein_links_server("protein_links")
-}
-}
 }

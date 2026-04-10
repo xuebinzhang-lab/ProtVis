@@ -5,9 +5,11 @@
 #' @param id A unique identifier for the Shiny namespace.
 #' @import shiny
 #' @import bslib
-#' @import bsicons
+#' @importFrom bsicons bs_icon
+#' @importFrom colourpicker colourInput
 #' @name DEP_visualize_ui
 #' @export
+#'
 DEP_visualize_ui <- function(id) {
   ns <- NS(id)
   bslib::nav_panel(
@@ -31,12 +33,12 @@ DEP_visualize_ui <- function(id) {
             accept = '.csv'
           ),
           shiny::textInput(
-            inputId = "LogFC",
+            inputId = ns("LogFC"),
             label = "LogFC:",
             value = "1"
           ),
           shiny::textInput(
-            inputId = "Pvalue",
+            inputId = ns("Pvalue"),
             label = "Pvalue:",
             value = "0.05"
           ),
@@ -228,10 +230,10 @@ DEP_visualize_server <- function(id) {
         utils::read.csv(input$SampleInfo$datapath)
       })
       # Update select input choices based on data columns
-      shiny::updateSelectInput(session, "pvalue_col", choices = base::names(data()))
-      shiny::updateSelectInput(session, "log2fc_col", choices = base::names(data()))
-      shiny::updateSelectInput(session, "vip_col", choices = base::names(data()))
-      shiny::updateSelectInput(session, "log2fc_col_Density", choices = base::names(data()))
+      shiny::updateSelectInput(session, ns("pvalue_col"), choices = base::names(data()))
+      shiny::updateSelectInput(session, ns("log2fc_col"), choices = base::names(data()))
+      shiny::updateSelectInput(session, ns("vip_col"), choices = base::names(data()))
+      shiny::updateSelectInput(session, ns("log2fc_col_Density"), choices = base::names(data()))
     })
     # Generate the volcano plot based on user inputs
     plot_reactive <- shiny::reactive({

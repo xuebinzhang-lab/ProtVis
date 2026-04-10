@@ -2,15 +2,14 @@
 % Please edit documentation in R/TMT.R
 \name{TMT_server}
 \alias{TMT_server}
-\title{TMT Server Logic}
+\title{TMT Server Logic
+Defines the server-side logic for the TMT (Tandem Mass Tag) analysis section
+in a Shiny application, including plot generation based on user input.}
 \arguments{
-\item{input}{Shiny input values.}
-
-\item{output}{Shiny output values.}
-
-\item{session}{Shiny session object.}
+\item{id}{A unique identifier for the Shiny namespace.}
 }
 \description{
+TMT Server Logic
 Defines the server-side logic for the TMT (Tandem Mass Tag) analysis section
 in a Shiny application, including plot generation based on user input.
 }

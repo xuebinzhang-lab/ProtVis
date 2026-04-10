@@ -2,13 +2,18 @@
 % Please edit documentation in R/Raw.R
 \name{Raw_server}
 \alias{Raw_server}
-\title{临时 Raw 数据模块服务器逻辑}
+\title{Raw Data Upload Module Server}
 \usage{
 Raw_server(id)
 }
 \arguments{
-\item{id}{模块ID}
+\item{id}{A character string representing the Shiny module namespace ID.}
+}
+\value{
+A reactive expression that returns a list containing:
 }
 \description{
-临时 Raw 数据模块服务器逻辑
+Handles the server-side logic for raw data uploads. It renders file
+metadata (name, size, and extension) to the UI and returns a reactive
+object containing the file path and name for use in other modules.
 }

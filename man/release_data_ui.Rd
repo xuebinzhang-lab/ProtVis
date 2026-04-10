@@ -2,7 +2,9 @@
 % Please edit documentation in R/release_data.R
 \name{release_data_ui}
 \alias{release_data_ui}
-\title{Release Data UI Module}
+\title{Release Data UI Module
+Creates the user interface for the release data module.
+This module allows users to load .rda files and export their contents to xlsx or csv format.}
 \usage{
 release_data_ui(id)
 }
@@ -13,11 +15,7 @@ release_data_ui(id)
 A tagList containing the UI elements
 }
 \description{
+Release Data UI Module
 Creates the user interface for the release data module.
 This module allows users to load .rda files and export their contents to xlsx or csv format.
-}
-\examples{
-\dontrun{
-ui <- release_data_ui("release_data")
-}
 }

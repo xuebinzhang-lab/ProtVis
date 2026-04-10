@@ -1,28 +1,16 @@
 #' Run the Shiny Application
-#'
 #' @description Launches the ProtVis Shiny application for proteomics data analysis.
-#'
 #' @param onStart A function that will be called before the app is actually run.
 #' @param options Named list of values passed to `shiny::shinyOptions`.
 #' @param enableBookmarking Can be "url", "server", or "disable".
 #' @param uiPattern A regular expression used to determine which requests should be handled by the UI.
 #' @param ... Arguments to pass to `golem_opts`. See `?golem::get_golem_options` for more details.
-#'
 #' @return An object that represents the app.
-#'
-#' @importFrom shiny shinyApp
+#' @import shiny
 #' @importFrom golem with_golem_options
 #' @importFrom utils modifyList
+#' @name run_ProtVis
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Run the app with default settings
-#' run_ProtVis()
-#'
-#' # Run the app on a specific port
-#' run_ProtVis(options = list(port = 3838))
-#' }
 
 run_ProtVis <- function(
     onStart = NULL,

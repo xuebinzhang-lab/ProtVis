@@ -12,7 +12,6 @@ app_sys <- function(...) {
   base::system.file(..., package = "ProtVis")
 }
 
-
 #' Read App Config
 #'
 #' @param value Value to retrieve from the config file.
@@ -21,19 +20,21 @@ app_sys <- function(...) {
 #' @param use_parent Logical, scan the parent directory for config file.
 #' @param file Location of the config file
 #'
+#' @importFrom config get
 #' @noRd
+#'
 get_golem_config <- function(
-  value,
-  config = Sys.getenv(
-    "GOLEM_CONFIG_ACTIVE",
-    Sys.getenv(
-      "R_CONFIG_ACTIVE",
-      "default"
-    )
-  ),
-  use_parent = TRUE,
-  # Modify this if your config file is somewhere else
-  file = app_sys("golem-config.yml")
+    value,
+    config = Sys.getenv(
+      "GOLEM_CONFIG_ACTIVE",
+      Sys.getenv(
+        "R_CONFIG_ACTIVE",
+        "default"
+      )
+    ),
+    use_parent = TRUE,
+    # Modify this if your config file is somewhere else
+    file = app_sys("golem-config.yml")
 ) {
   config::get(
     value = value,

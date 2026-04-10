@@ -5,7 +5,8 @@
 #' @name Expression_profile_ui
 #' @import shiny
 #' @import bslib
-#' @import bsicons
+#' @importFrom bsicons bs_icon
+#' @importFrom colourpicker colourInput
 #' @export
 #'
 Expression_profile_ui <- function(id) {
@@ -87,17 +88,20 @@ Expression_profile_ui <- function(id) {
 }
 
 
-# server ------------------------------------------------------------------
-# Server
 #' @import shiny
-#' @import ggplot2
-#' @import bslib
-#' @import bsicons
+#' @importFrom utils read.csv write.csv
+#' @importFrom dplyr as_tibble mutate count rename right_join select
+#' @importFrom reshape2 melt
+#' @importFrom purrr map2
+#' @importFrom patchwork wrap_plots
+#' @importFrom ggplot2 ggsave
+#' @importFrom ggprism theme_prism
 #' @name Expression_profile_server
 #' @title Expression_profile_server
 #' @export
+#'
 
-utils::globalVariables(c("Cluster", "Cluster_Count", "variable",
+utils::globalVariables(c("Cluster_Count", "variable",
                          "index","Cluster","Var2","Var1"))
 Expression_profile_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {

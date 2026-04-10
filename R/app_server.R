@@ -1,7 +1,7 @@
 #' The application server-side
 #'
 #' @param input,output,session Internal parameters for {shiny}.
-#'     DO NOT REMOVE.
+#'   DO NOT REMOVE.
 #'
 #' @import shiny
 #' @importFrom bslib bs_themer
@@ -11,7 +11,6 @@
 #'
 app_server <- function(input, output, session) {
   bslib::bs_themer()
-
   shared_state <- reactiveValues(
     workdir = NULL,
     sample_info = NULL,

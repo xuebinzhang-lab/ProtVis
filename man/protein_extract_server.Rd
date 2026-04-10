@@ -2,7 +2,9 @@
 % Please edit documentation in R/protein_extract.R
 \name{protein_extract_server}
 \alias{protein_extract_server}
-\title{Protein Extract Server Module}
+\title{Protein Extract Server Module
+Server-side logic for protein extraction module that handles FASTA file processing,
+protein ID matching, and result generation.}
 \usage{
 protein_extract_server(id)
 }
@@ -13,6 +15,7 @@ protein_extract_server(id)
 A reactive list containing matched sequences and summary statistics
 }
 \description{
+Protein Extract Server Module
 Server-side logic for protein extraction module that handles FASTA file processing,
 protein ID matching, and result generation.
 }

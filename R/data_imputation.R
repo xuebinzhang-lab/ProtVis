@@ -4,8 +4,13 @@
 #' selecting imputation methods, and viewing imputed results.
 #' @param id Module ID used to namespace the UI elements.
 #' @return A Shiny UI element containing sidebar controls and main panel tabs.
+#' @import shiny
+#' @import bslib
+#' @importFrom shinyjs useShinyjs
+#' @importFrom bsicons bs_icon
 #' @name data_imputation_ui
 #' @export
+#'
 data_imputation_ui <- function(id) {
   ns <- NS(id)
   shiny::tagList(
@@ -107,6 +112,13 @@ data_imputation_ui <- function(id) {
 #' @return No direct return value; generates Shiny server-side outputs.
 #' @name data_imputation_server
 #' @export
+#' @import shiny
+#' @importFrom DT renderDT datatable
+#' @importFrom visdat vis_dat
+#' @importFrom ggplot2 scale_fill_manual ggsave
+#' @importFrom dplyr mutate across everything
+#' @importFrom impute impute.knn
+#' @importFrom missForest missForest
 #'
 data_imputation_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -135,7 +147,7 @@ data_imputation_server <- function(id, shared_state) {
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        shiny::showNotification("❌ Step4_select_protein_id.rda not found.", type = "error")
+        shiny::showNotification("❌ Step4_data_transformed.rda not found.", type = "error")
       }
     })
     # Display load status in the UI
@@ -162,7 +174,7 @@ data_imputation_server <- function(id, shared_state) {
         shiny::req(rv$expression_matrix)
         DT::datatable(rv$expression_matrix, options = list(pageLength = 10))
       })
-      output$originalPlot <- renderPlot({
+      output$originalPlot <- shiny::renderPlot({
         shiny::req(rv$expression_matrix)
         visdat::vis_dat(data.frame(rv$expression_matrix)) +
           ggplot2::scale_fill_manual(
@@ -177,7 +189,7 @@ data_imputation_server <- function(id, shared_state) {
       })
     })
     # Perform imputation when "Run Imputation" button is clicked
-    imputed_data <- eventReactive(input$run_impute, {
+    imputed_data <- shiny::eventReactive(input$run_impute, {
       shiny::req(rv$expression_matrix)
       df <- base::as.data.frame(rv$expression_matrix)
       method <- input$choice_method

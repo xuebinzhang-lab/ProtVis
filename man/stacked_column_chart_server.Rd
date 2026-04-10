@@ -2,7 +2,9 @@
 % Please edit documentation in R/stacked_column_chart.R
 \name{stacked_column_chart_server}
 \alias{stacked_column_chart_server}
-\title{Stacked Bar Chart Server Module}
+\title{Stacked Bar Chart Server Module
+Server-side logic for the stacked bar chart module. Processes uploaded CSV data,
+generates customizable stacked bar charts using ggplot2, and handles plot downloads.}
 \arguments{
 \item{id}{A unique identifier for the Shiny namespace.}
 }
@@ -10,13 +12,7 @@
 A Shiny server module function.
 }
 \description{
+Stacked Bar Chart Server Module
 Server-side logic for the stacked bar chart module. Processes uploaded CSV data,
 generates customizable stacked bar charts using ggplot2, and handles plot downloads.
-}
-\examples{
-\dontrun{
-server <- function(input, output, session) {
-  stacked_column_chart_server("stacked_chart")
-}
-}
 }

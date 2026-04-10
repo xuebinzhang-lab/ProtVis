@@ -2,7 +2,8 @@
 % Please edit documentation in R/protein_links.R
 \name{get_uniprot_entry}
 \alias{get_uniprot_entry}
-\title{Get UniProt Entry from Gene ID}
+\title{Get UniProt Entry from Gene ID
+Queries UniProt REST API to retrieve primary accession number for a given gene ID.}
 \usage{
 get_uniprot_entry(gene_id)
 }
@@ -13,10 +14,6 @@ get_uniprot_entry(gene_id)
 Character string of the primary UniProt accession, or NA if not found
 }
 \description{
+Get UniProt Entry from Gene ID
 Queries UniProt REST API to retrieve primary accession number for a given gene ID.
-}
-\examples{
-\dontrun{
-accession <- get_uniprot_entry("TP53")
-}
 }

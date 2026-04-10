@@ -13,7 +13,7 @@ data_normalization_ui(id)
 A Shiny UI tagList containing the module interface
 }
 \description{
-Creates the user interface for the data normalization module which includes:
+Creates the user interface for data normalization module which includes:
 - Data loading controls
 - Visualization of original and normalized data
 - Normalization execution button

@@ -2,7 +2,9 @@
 % Please edit documentation in R/protein_links.R
 \name{protein_links_ui}
 \alias{protein_links_ui}
-\title{Protein Links UI Module}
+\title{Protein Links UI Module
+Creates a user interface for entering a UniProt ID or protein sequence
+and displays quick links to popular protein analysis tools (UniProt, InterPro, PSIPRED, Swiss-Model).}
 \usage{
 protein_links_ui(id)
 }
@@ -13,11 +15,7 @@ protein_links_ui(id)
 A Shiny UI tagList containing a text input and a dynamic links panel
 }
 \description{
+Protein Links UI Module
 Creates a user interface for entering a UniProt ID or protein sequence
 and displays quick links to popular protein analysis tools (UniProt, InterPro, PSIPRED, Swiss-Model).
-}
-\examples{
-\dontrun{
-ui <- protein_links_ui("protein_links")
-}
 }

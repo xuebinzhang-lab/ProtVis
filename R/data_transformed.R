@@ -7,14 +7,12 @@
 #' - Export functionality
 #' @param id Character string module ID for namespacing
 #' @return A Shiny UI layout with sidebar controls and main display area
-#' @importFrom shiny NS tagList actionButton uiOutput div
-#' @importFrom bslib layout_sidebar sidebar accordion card card_header card_body navset_tab nav_panel
+#' @import shiny
+#' @import bslib
 #' @importFrom shinyjs useShinyjs
-#' @importFrom DT dataTableOutput
-#' @importFrom shiny selectInput
+#' @importFrom colourpicker colourInput
 #' @name data_transformed_ui
 #' @export
-#'
 
 data_transformed_ui <- function(id) {
   ns <- NS(id)
@@ -98,13 +96,12 @@ data_transformed_ui <- function(id) {
 #' @param id Character string module ID for namespacing
 #' @param shared_state Reactive values list for sharing data between modules
 #' @return Server logic for the data transformation module
-#' @importFrom shiny moduleServer reactive reactiveValues observeEvent req showNotification
+#' @import shiny
 #' @importFrom DT renderDT datatable
 #' @importFrom tibble column_to_rownames
 #' @name data_transformed_server
 #' @export
 #'
-
 
 data_transformed_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {

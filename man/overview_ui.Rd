@@ -2,7 +2,8 @@
 % Please edit documentation in R/overview.R
 \name{overview_ui}
 \alias{overview_ui}
-\title{Overview UI Module}
+\title{Overview UI Module
+Creates the user interface for the overview analysis module}
 \usage{
 overview_ui(id)
 }
@@ -13,5 +14,6 @@ overview_ui(id)
 A Shiny UI tagList containing the overview analysis interface
 }
 \description{
+Overview UI Module
 Creates the user interface for the overview analysis module
 }

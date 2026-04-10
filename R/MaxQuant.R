@@ -4,9 +4,11 @@
 #' protein identifiers, and previewing processing results.
 #' @param id Character. Module ID used for namespacing the UI elements.
 #' @return UI layout for the MaxQuant processing module.
+#' @import shiny
+#' @import bslib
+#' @importFrom DT dataTableOutput
 #' @name MaxQuant_ui
 #' @export
-#'
 
 MaxQuant_ui <- function(id) {
   ns <- NS(id)
@@ -72,6 +74,10 @@ MaxQuant_ui <- function(id) {
 #'   across modules, including `workdir`, `sample_info`, and `expression_matrix`.
 #' @return A list of reactive values containing processed results, including:
 #'   - `protein_id_select`: A reactive expression with selected protein IDs.
+#' @import shiny
+#' @importFrom dplyr filter mutate select contains
+#' @importFrom stringr str_split
+#' @importFrom DT renderDataTable datatable renderDT
 #' @name MaxQuant_server
 #' @export
 
@@ -169,10 +175,11 @@ MaxQuant_server <- function(id, shared_state) {
     })
     output$sample_info_ui <- shiny::renderUI({
       shiny::req(rv$load_success)
-      DT::renderDT({
-        req(rv$sample_info)
-        DT::datatable(rv$sample_info, options = list(pageLength = input$rows_to_show))
-      })
+      DT::DTOutput(ns("tbl_sample_info"))
+    })
+    output$tbl_sample_info <- DT::renderDT({
+      shiny::req(rv$sample_info)
+      DT::datatable(rv$sample_info, options = list(pageLength = 10))
     })
     output$matrix_check <- shiny::renderUI({
       if (!rv$load_success || is.null(rv$expression_matrix)) {
