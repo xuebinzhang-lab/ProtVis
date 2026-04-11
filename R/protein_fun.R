@@ -50,7 +50,7 @@ protein_fun_ui <- function(id) {
             bslib::card_header("Domain"),
             bslib::card_body(
               shiny::plotOutput(ns("domain_plot"), height = "300px"),
-              shiny::dataTableOutput(ns("domain_table"))
+              DT::DTOutput(ns("domain_table"))
             )
           ),
           bslib::card(

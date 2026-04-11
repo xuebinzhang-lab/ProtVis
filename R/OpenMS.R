@@ -64,13 +64,12 @@ OpenMS_ui <- function(id) {
           shiny::downloadButton(ns("download_diff"), "Download DE Results")
         )
       ),
-      shiny::mainPanel(
-        shiny::tabsetPanel(
-          shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
-          shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
-          shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
-          shiny::tabPanel("DE Table", shiny::dataTableOutput(ns("de_table")))
-        )
+      # 👇 只改这里：删掉了多余的 mainPanel，直接放 tabsetPanel
+      shiny::tabsetPanel(
+        shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
+        shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
+        shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
+        shiny::tabPanel("DE Table", DT::DTOutput(ns("de_table")))
       )
     )
   )

@@ -26,7 +26,7 @@ gsea_ui <- function(id) {
     ),
     bslib::card(
       bslib::card_header("GSEA Results Table"),
-      bslib::card_body(shiny::dataTableOutput(ns("gsea_table")))
+      bslib::card_body(DT::DTOutput(ns("gsea_table")))
     ),
     bslib::layout_columns(
       bslib::card(
@@ -102,7 +102,7 @@ gsea_server <- function(id) {
       if (nrow(top_df) > 0) {
         shiny::updateSelectInput(session, "pathway", choices = top_df$Description)
       }
-      output$gsea_table <- DT::renderDataTable({ top_df })
+      output$gsea_table <- DT::renderDT({ top_df })
       output$dotplot <- shiny::renderPlot({
         if (nrow(top_df) > 0) {
           sub_res <- gsea_res

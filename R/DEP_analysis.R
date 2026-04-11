@@ -77,21 +77,21 @@ DEP_analysis_ui <- function(id) {
             "Sample Info",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              shiny::dataTableOutput(ns("sample_info"))
+              DT::DTOutput(ns("sample_info"))
             )
           ),
           bslib::nav_panel(
             "Normalized Data",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              shiny::dataTableOutput(ns("normalized_data"))
+              DT::DTOutput(ns("normalized_data"))
             )
           ),
           bslib::nav_panel(
             "Group Comparison",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              shiny::dataTableOutput(ns("group_comparison"), height = "100%")
+              DT::DTOutput(ns("group_comparison"), height = "100%")
             )
           ),
           bslib::nav_panel(
@@ -117,7 +117,7 @@ DEP_analysis_ui <- function(id) {
 #' @importFrom rhandsontable renderRHandsontable rhandsontable hot_table hot_to_r
 #' @importFrom readxl read_excel
 #' @importFrom tools file_ext
-#' @importFrom DT renderDataTable datatable dataTableOutput
+#' @importFrom DT renderDT datatable DTOutput
 #' @importFrom limma lmFit makeContrasts contrasts.fit eBayes topTable
 #' @importFrom pheatmap pheatmap
 #' @importFrom colourpicker colourInput
@@ -238,7 +238,7 @@ DEP_analysis_server <- function(id, shared_state) {
             bslib::card(
               height = "800px",
               bslib::card_header(base::paste("DEP table -", tab_name)),
-              bslib::card_body(shiny::dataTableOutput(ns(paste0("dep_table_", i))))
+              bslib::card_body(DT::DTOutput(ns(paste0("dep_table_", i))))
             ),
             # Volcano plot
             bslib::card(
@@ -350,7 +350,7 @@ DEP_analysis_server <- function(id, shared_state) {
               dplyr::mutate(FC = 2^logFC)
             rv$dep_results[[base::paste0(group1, "_vs_", group2)]] <- new_result
             # DEP table
-            output[[base::paste0("dep_table_", i_local)]] <- DT::renderDataTable({
+            output[[base::paste0("dep_table_", i_local)]] <- DT::renderDT({
               DT::datatable(new_result, options = base::list(scrollX = TRUE, pageLength = 10,
                                                        dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
                             extensions = 'Buttons', rownames = FALSE)
@@ -516,15 +516,15 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     # --- Preview tables ---
-    output$sample_info <- DT::renderDataTable({
+    output$sample_info <- DT::renderDT({
       shiny::req(rv$sample_info)
       DT::datatable(rv$sample_info, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
-    output$normalized_data <- DT::renderDataTable({
+    output$normalized_data <- DT::renderDT({
       shiny::req(rv$normalized_matrix)
       DT::datatable(rv$normalized_matrix, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })
-    output$group_comparison <- DT::renderDataTable({
+    output$group_comparison <- DT::renderDT({
       shiny::req(rv$compare_data)
       DT::datatable(rv$compare_data, options = base::list(scrollX = TRUE, dom = 't'), rownames = FALSE)
     })

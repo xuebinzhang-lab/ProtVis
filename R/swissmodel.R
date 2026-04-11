@@ -58,7 +58,7 @@ swissmodel_ui <- function(id) {
             "Model Quality",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              shiny::dataTableOutput(ns("model_quality"))
+              DT::DTOutput(ns("model_quality"))
             )
           ),
           bslib::nav_panel(

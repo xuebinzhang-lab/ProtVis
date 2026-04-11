@@ -13,7 +13,6 @@
 mv_summary_ui <- function(id) {
   ns <- NS(id)
   bslib::nav_panel(
-    # title = 'Multivariate Summary',
     title = 'Data normalization',
     icon = bsicons::bs_icon("play-circle"),
     bslib::layout_sidebar(
@@ -30,150 +29,137 @@ mv_summary_ui <- function(id) {
           )
         )
       ),
-      bslib::page_fluid(
-        bslib::layout_column_wrap(
-          width = 1/2,
+      # ===================== 核心修改：删掉 page_fluid，警告直接消失 =====================
+      bslib::layout_column_wrap(
+        width = 1/2,
+        height = 600,
+        bslib::navset_card_tab(
           height = 600,
-          bslib::navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # boxplot -----------------------------------------------------------------
-            title = "Boxplot",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Parameter',
-                colourpicker::colourInput(ns("boxplot_color"),
-                                          "Color:",
-                                          value = "black"),
-                shiny::actionButton(ns("boxplot"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Run',
-                shiny::actionButton(ns("boxplot"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Download',
-                shiny::numericInput(ns("boxplot_height"),
-                             label = "Height:",
-                             value = 7,
-                             step = 0.1),
-                shiny::numericInput(ns("boxplot_width"),label = "Width:",
-                             value = 7, step = 1),
-                shiny::downloadButton(ns("download_boxplot"), "Download")
-              )
+          full_screen = TRUE,
+          title = "Boxplot",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              colourpicker::colourInput(ns("boxplot_color"),
+                                        "Color:",
+                                        value = "black"),
+              shiny::actionButton(ns("boxplot"), "Run")
             ),
-            shiny::mainPanel(
-              shiny::tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                shiny::tabPanel(
-                  title = "Figure before normalization",
-                  shiny::plotOutput(ns("boxplotbeforeshow"))
-                ),
-                shiny::tabPanel(
-                  title = "Figure after normalization",
-                  shiny::plotOutput(ns("boxplotaftershow"))
-                )
-              )
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("boxplot"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              shiny::numericInput(ns("boxplot_height"),
+                                  label = "Height:",
+                                  value = 7,
+                                  step = 0.1),
+              shiny::numericInput(ns("boxplot_width"),label = "Width:",
+                                  value = 7, step = 1),
+              shiny::downloadButton(ns("download_boxplot"), "Download")
             )
           ),
-          bslib::navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # PCA ---------------------------------------------------------------------
-            title = "PCA",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Run',
-                actionButton(ns("run_btn_PCA"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Download',
-                icon = bsicons::bs_icon('download'),
-                shiny::downloadButton(ns("download_PCA_table"), label = "Output Table", icon = shiny::icon("download"))
-              )
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure before normalization",
+              shiny::plotOutput(ns("boxplotbeforeshow"))
             ),
-            shiny::mainPanel(
-              shiny::tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                shiny::tabPanel(
-                  title = "Figure",
-                  shiny::plotOutput(ns("PCAplotshow"))
-                ),
-                shiny::tabPanel(
-                  title = "Table",
-                  DT::DTOutput(ns("PCA_dataTable"))
-                )
-              )
-            )
-          ),
-          bslib::navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # correlation -------------------------------------------------------------
-            title = "Correlation",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Parameter',
-                shiny::selectInput("method", "Correlation Method",
-                            choices = c("pearson", "kendall", "spearman"), selected = "pearson")
-              ),
-              bslib::accordion_panel(
-                title = 'Run',
-                shiny::actionButton(ns("calculate"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Download',
-                icon = bsicons::bs_icon('download'),
-                shiny::numericInput(ns("correlationPlotHeight"), "Height:",
-                             value = 8, min = 1, max = 100, step = 1),
-                shiny::numericInput(ns("correlationPlotWidth"), "Width:",
-                             value = 8, min = 1, max = 100, step = 1),
-                shiny::downloadButton(ns("Figure_correlation_download"), label = "Download Figure",
-                               icon = icon("download")),
-                shiny::downloadButton(ns("table_correlation_download"), label = "Download Table",
-                               icon = icon("download"))
-              )
-            ),
-            shiny::mainPanel(
-              shiny::tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                shiny::tabPanel(
-                  title = "Figure",
-                  shiny::plotOutput(ns("correlationPlot"))
-                ),
-                shiny::tabPanel(
-                  title = "Table",
-                  DT::DTOutput(ns("correlation_dataTable"))
-                )
-              )
-            )
-          ),
-          bslib::navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # heatmap -----------------------------------------------------------------
-            title = "Heatmap",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Parameter',
-                shiny::radioButtons(inputId = ns("Logical_value2"),
-                             label = "Logical value",
-                             choices = c("TRUE", "FALSE"),
-                             selected = "TRUE")
-              ),
-              bslib::accordion_panel(
-                title = 'Run',
-                shiny::actionButton(ns("plotheatmap"), "Run")
-              )
-            ),
-            shiny::mainPanel(
-              shiny::plotOutput(ns("correlationPlotshow"))
+            shiny::tabPanel(
+              title = "Figure after normalization",
+              shiny::plotOutput(ns("boxplotaftershow"))
             )
           )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "PCA",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("run_btn_PCA"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              icon = bsicons::bs_icon('download'),
+              shiny::downloadButton(ns("download_PCA_table"), label = "Output Table", icon = shiny::icon("download"))
+            )
+          ),
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure",
+              shiny::plotOutput(ns("PCAplotshow"))
+            ),
+            shiny::tabPanel(
+              title = "Table",
+              DT::DTOutput(ns("PCA_dataTable"))
+            )
+          )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "Correlation",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              shiny::selectInput(ns("method"), "Correlation Method",
+                                 choices = c("pearson", "kendall", "spearman"), selected = "pearson")
+            ),
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("calculate"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              icon = bsicons::bs_icon('download'),
+              shiny::numericInput(ns("correlationPlotHeight"), "Height:",
+                                  value = 8, min = 1, max = 100, step = 1),
+              shiny::numericInput(ns("correlationPlotWidth"), "Width:",
+                                  value = 8, min = 1, max = 100, step = 1),
+              shiny::downloadButton(ns("Figure_correlation_download"), label = "Download Figure",
+                                    icon = shiny::icon("download")),
+              shiny::downloadButton(ns("table_correlation_download"), label = "Download Table",
+                                    icon = shiny::icon("download"))
+            )
+          ),
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure",
+              shiny::plotOutput(ns("correlationPlot"))
+            ),
+            shiny::tabPanel(
+              title = "Table",
+              DT::DTOutput(ns("correlation_dataTable"))
+            )
+          )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "Heatmap",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              shiny::radioButtons(inputId = ns("Logical_value2"),
+                                  label = "Logical value",
+                                  choices = c("TRUE", "FALSE"),
+                                  selected = "TRUE")
+            ),
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("plotheatmap"), "Run")
+            )
+          ),
+          shiny::plotOutput(ns("correlationPlotshow"))
         )
       )
     )

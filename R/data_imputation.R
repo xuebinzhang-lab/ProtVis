@@ -26,8 +26,8 @@ data_imputation_ui <- function(id) {
             title = "Imputation Settings",
             icon = imputation_settings_icon,
             shiny::selectInput(ns("choice_method"), "Method",
-                        choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
-                        selected = "Mean"),
+                               choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
+                               selected = "Mean"),
             shiny::numericInput(ns("minprob_q"), "q for MinProb", value = 0.01, min = 0, max = 0.05, step = 0.005),
             shiny::actionButton(ns("run_impute"), "Run Imputation", class = "btn btn-light fw-bold")
           ),
@@ -41,53 +41,41 @@ data_imputation_ui <- function(id) {
           )
         )
       ),
-      bslib::page_fluid(
-        shiny::tabsetPanel(
-          id = ns("tabs"),
-          shiny::tabPanel(
-            title = "Sample Info",
-            DT::DTOutput(ns("sample_info"))
-          ),
-          shiny::tabPanel(
-            title = "Expression Matrix",
-            DT::DTOutput(ns("expression_matrix"))
-          ),
-          shiny::tabPanel(
-            title = "Visualize missing values",
-            bslib::page_fluid(
-              bslib::layout_column_wrap(
-                width = 1/2,
-                height = 600,
-                bslib::card(
-                  height = "800px",
-                  bslib::card_header("Original Data"),
-                  bslib::card_body(
-                    DT::DTOutput(ns("originalData"))
-                  )
-                ),
-                bslib::card(
-                  height = "800px",
-                  bslib::card_header("Original Data visualize"),
-                  bslib::card_body(
-                    shiny::plotOutput(ns("originalPlot"))
-                  )
-                ),
-
-                bslib::card(
-                  height = "800px",
-                  bslib::card_header("Imputed Data"),
-                  bslib::card_body(
-                    DT::DTOutput(ns("imputedData"))
-                  )
-                ),
-                bslib::card(
-                  height = "800px",
-                  bslib::card_header("Imputed Data visualize"),
-                  bslib::card_body(
-                    shiny::plotOutput(ns("imputedPlot"))
-                  )
-                )
-              )
+      # 👇 只改了这里：去掉多余的 page_fluid，直接放 tabsetPanel
+      shiny::tabsetPanel(
+        id = ns("tabs"),
+        shiny::tabPanel(
+          title = "Sample Info",
+          DT::DTOutput(ns("sample_info"))
+        ),
+        shiny::tabPanel(
+          title = "Expression Matrix",
+          DT::DTOutput(ns("expression_matrix"))
+        ),
+        shiny::tabPanel(
+          title = "Visualize missing values",
+          bslib::layout_column_wrap(
+            width = 1/2,
+            height = 600,
+            bslib::card(
+              height = "800px",
+              bslib::card_header("Original Data"),
+              bslib::card_body(DT::DTOutput(ns("originalData")))
+            ),
+            bslib::card(
+              height = "800px",
+              bslib::card_header("Original Data visualize"),
+              bslib::card_body(shiny::plotOutput(ns("originalPlot")))
+            ),
+            bslib::card(
+              height = "800px",
+              bslib::card_header("Imputed Data"),
+              bslib::card_body(DT::DTOutput(ns("imputedData")))
+            ),
+            bslib::card(
+              height = "800px",
+              bslib::card_header("Imputed Data visualize"),
+              bslib::card_body(shiny::plotOutput(ns("imputedPlot")))
             )
           )
         )

@@ -6,6 +6,8 @@
 #' @return UI layout for the MaxQuant processing module.
 #' @import shiny
 #' @import bslib
+#' @import bsicons
+#' @importFrom DT DTOutput renderDT datatable
 #' @name MaxQuant_ui
 #' @export
 
@@ -43,18 +45,19 @@ MaxQuant_ui <- function(id) {
           fill = TRUE,
           bslib::navset_tab(
             id = ns("Expression_Matrix"),
+            header = NULL,
             bslib::nav_panel("Sample info",
-                      uiOutput(ns("sample_info_ui"))
+                             uiOutput(ns("sample_info_ui"))
             ),
             bslib::nav_panel("Expression Matrix",
-                      htmlOutput(ns("matrix_check")),
-                      shiny::dataTableOutput(ns("tbl_expression_matrix"))
+                             htmlOutput(ns("matrix_check")),
+                             DT::DTOutput(ns("tbl_expression_matrix"))
             ),
             bslib::nav_panel("Filtered Unreliable Peptide",
-                      shiny::dataTableOutput(ns("tbl_unreliable_filtered"))
+                             DT::DTOutput(ns("tbl_unreliable_filtered"))
             ),
             bslib::nav_panel("Reporter",
-                      shiny::dataTableOutput(ns("result_df"))
+                             DT::DTOutput(ns("result_df"))
             )
           )
         )
@@ -76,7 +79,8 @@ MaxQuant_ui <- function(id) {
 #' @import shiny
 #' @importFrom dplyr filter mutate select contains
 #' @importFrom stringr str_split
-#' @importFrom DT renderDataTable datatable renderDT
+#' @importFrom DT renderDT datatable
+#' @import magrittr
 #' @name MaxQuant_server
 #' @export
 
@@ -87,10 +91,12 @@ MaxQuant_server <- function(id, shared_state) {
       sample_info = NULL,
       expression_matrix = NULL,
       expression_matrix_filtered = NULL,
+      unreliable_filtered = NULL,
       load_success = FALSE,
       filter_summary = NULL
     )
     filter_done <- shiny::reactiveVal(FALSE)
+
     # Load data
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
@@ -113,28 +119,39 @@ MaxQuant_server <- function(id, shared_state) {
         shiny::showNotification("❌ Step1_project_init.rda not found in working directory.", type = "error")
       }
     })
-    # remove unreliable peptide
+
+    # remove unreliable peptide (修复核心逻辑)
     shiny::observeEvent(input$run_filter_unreliable, {
       shiny::req(rv$expression_matrix)
       selected_filters <- input$selected_Method
       filtered <- rv$expression_matrix
-      if ("site" %in% selected_filters && "Only identified by site" %in% base::colnames(filtered)) {
+
+      # 统一过滤不可靠肽段
+      if ("site" %in% selected_filters && "Only identified by site" %in% colnames(filtered)) {
         filtered <- dplyr::filter(filtered, base::is.na(`Only identified by site`))
       }
-      if ("peptide" %in% selected_filters && "Reverse" %in% base::colnames(filtered)) {
+      if ("peptide" %in% selected_filters && "Reverse" %in% colnames(filtered)) {
         filtered <- dplyr::filter(filtered, base::is.na(`Reverse`))
       }
-      if ("conpeptide" %in% selected_filters && "Potential contaminant" %in% base::colnames(filtered)) {
-        filtered <- dplyr::filter(filtered, base::is.na(`Potential contaminant`)) %>%
-          dplyr::mutate(ID = stringr::str_split(`Protein IDs`,";",2,T)[,1]) %>%
-          dplyr::select(ID, dplyr::contains("Reporter"))
+      if ("conpeptide" %in% selected_filters && "Potential contaminant" %in% colnames(filtered)) {
+        filtered <- dplyr::filter(filtered, base::is.na(`Potential contaminant`))
       }
-      # Update results
+
+      # 统一生成 ID 和提取 Reporter 列
+      if (nrow(filtered) > 0 && "Protein IDs" %in% colnames(filtered)) {
+        filtered <- filtered %>%
+          dplyr::mutate(ID = stringr::str_split(`Protein IDs`, ";", 2, TRUE)[, 1]) %>%
+          dplyr::select(ID, dplyr::contains("Reporter"), dplyr::everything())
+      }
+
+      # 更新结果
       rv$expression_matrix_filtered <- filtered
       rv$unreliable_filtered <- filtered
       filter_done(TRUE)
+
       shiny::showNotification(paste("Unreliable peptides filtered, remaining rows:", nrow(filtered)), type = "message")
-      # save data
+
+      # 保存结果
       save_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
       sample_info <- rv$sample_info
       expression_matrix <- rv$expression_matrix
@@ -142,16 +159,27 @@ MaxQuant_server <- function(id, shared_state) {
       base::save(sample_info, expression_matrix, expression_matrix_filtered, file = save_path)
       shiny::showNotification("✅ Saved to Step2_remove_unreliable_peptide.rda", type = "message")
     })
+
     # Display report results
     shiny::observeEvent(input$report, {
-      shiny::req(rv$expression_matrix_filtered)
-      shiny::req(rv$expression_matrix)
+      shiny::req(rv$expression_matrix_filtered, rv$expression_matrix)
       filtered <- rv$expression_matrix
-      n_oibs <- nrow(dplyr::filter(filtered, !base::is.na(`Only identified by site`)))
-      n_r <- nrow(dplyr::filter(filtered, !base::is.na(`Reverse`)))
-      n_pc <- nrow(dplyr::filter(filtered, !base::is.na(`Potential contaminant`)))
-      rep_id <- (filtered$`Protein IDs` %>% stringr::str_split(";",2,T))[,1]
+
+      n_oibs <- if("Only identified by site" %in% colnames(filtered)) {
+        nrow(dplyr::filter(filtered, !base::is.na(`Only identified by site`)))
+      } else {0}
+
+      n_r <- if("Reverse" %in% colnames(filtered)) {
+        nrow(dplyr::filter(filtered, !base::is.na(`Reverse`)))
+      } else {0}
+
+      n_pc <- if("Potential contaminant" %in% colnames(filtered)) {
+        nrow(dplyr::filter(filtered, !base::is.na(`Potential contaminant`)))
+      } else {0}
+
+      rep_id <- (filtered$`Protein IDs` %>% stringr::str_split(";", 2, TRUE))[, 1]
       removed_protein_group <- base::setdiff(base::sort(rep_id), base::sort(rv$expression_matrix_filtered$ID))
+
       result_df <- base::data.frame(
         Metric = c("Only identified by site", "Reverse", "Potential contaminant", "Removed protein groups count"),
         Count = c(n_oibs, n_r, n_pc, length(removed_protein_group)),
@@ -159,11 +187,12 @@ MaxQuant_server <- function(id, shared_state) {
       )
       rv$filter_summary <- result_df
     })
-    output$result_df <- DT::renderDataTable({
+
+    output$result_df <- DT::renderDT({
       shiny::req(rv$filter_summary)
-      DT::datatable(rv$filter_summary,
-                    options = list(pageLength = 5, searching = FALSE))
+      DT::datatable(rv$filter_summary, options = list(pageLength = 5, searching = FALSE))
     })
+
     # UI outputs
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
@@ -172,14 +201,17 @@ MaxQuant_server <- function(id, shared_state) {
         shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
+
     output$sample_info_ui <- shiny::renderUI({
       shiny::req(rv$load_success)
       DT::DTOutput(ns("tbl_sample_info"))
     })
+
     output$tbl_sample_info <- DT::renderDT({
       shiny::req(rv$sample_info)
       DT::datatable(rv$sample_info, options = list(pageLength = 10))
     })
+
     output$matrix_check <- shiny::renderUI({
       if (!rv$load_success || is.null(rv$expression_matrix)) {
         shiny::HTML("<span style='color: red;'>Expression matrix not loaded.</span>")
@@ -189,18 +221,15 @@ MaxQuant_server <- function(id, shared_state) {
                                 "columns</span>"))
       }
     })
-    output$tbl_expression_matrix <- DT::renderDataTable({
+
+    output$tbl_expression_matrix <- DT::renderDT({
       shiny::req(rv$expression_matrix)
-      DT::datatable(rv$expression_matrix, options = base::list(pageLength = 10, scrollX = TRUE))
-    })
-    output$tbl_filtered_expression <- DT::renderDataTable({
-      shiny::req(filter_done())
-      DT::datatable(rv$expression_matrix_filtered, options = base::list(pageLength = 10, scrollX = TRUE))
+      DT::datatable(rv$expression_matrix, options = list(pageLength = 10, scrollX = TRUE))
     })
 
-    output$tbl_unreliable_filtered <- DT::renderDataTable({
+    output$tbl_unreliable_filtered <- DT::renderDT({
       shiny::req(rv$unreliable_filtered)
-      DT::datatable(rv$unreliable_filtered, options = base::list(pageLength = 10, scrollX = TRUE))
+      DT::datatable(rv$unreliable_filtered, options = list(pageLength = 10, scrollX = TRUE))
     })
 
   })

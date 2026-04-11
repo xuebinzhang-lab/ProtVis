@@ -47,13 +47,14 @@ project_init_ui <- function(id) {
       bslib::card_body(
         bslib::navset_tab(
           id = ns("preview_tabs"),
+          header = NULL,
           bslib::nav_panel("Sample Info",
                            shiny::htmlOutput(ns("file_check_init")),
-                    shiny::dataTableOutput(ns("tbl_sample_info"))
+                    DT::DTOutput(ns("tbl_sample_info"))
           ),
           bslib::nav_panel("Expression Matrix",
                            shiny::htmlOutput(ns("matrix_check")),
-                    shiny::dataTableOutput(ns("tbl_expression_matrix"))
+                    DT::DTOutput(ns("tbl_expression_matrix"))
           )
         )
       )
@@ -70,7 +71,7 @@ project_init_ui <- function(id) {
 #' @importFrom tools file_ext
 #' @importFrom utils read.csv
 #' @importFrom readxl read_excel
-#' @importFrom DT renderDataTable
+#' @importFrom DT renderDT
 #' @name project_init_server
 #' @export
 #'
@@ -137,12 +138,12 @@ project_init_server <- function(id, shared_state) {
       })
     })
     # Preview sample info table
-    output$tbl_sample_info <- DT::renderDataTable({
+    output$tbl_sample_info <- DT::renderDT({
       shiny::req(shared_state$sample_info)
       shared_state$sample_info
     })
     # Preview expression matrix table
-    output$tbl_expression_matrix <- DT::renderDataTable({
+    output$tbl_expression_matrix <- DT::renderDT({
       shiny::req(shared_state$expression_matrix)
       shared_state$expression_matrix
     })

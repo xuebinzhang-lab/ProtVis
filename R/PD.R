@@ -43,9 +43,9 @@ PD_ui <- function(id) {
         bslib::accordion_panel(
           title = "Differential Expression Settings",
           icon = bs_icon("filter-circle"),
-          uiOutput(ns("group_select")),
-          numericInput(ns("logFC_cutoff"), "Log2 Fold Change Threshold", value = 1, min = 0, step = 0.1),
-          numericInput(ns("adj_pval"), "Adjusted P-value (FDR) Threshold", value = 0.05, min = 0, max = 1, step = 0.01)
+          shiny::uiOutput(ns("group_select")),
+          shiny::numericInput(ns("logFC_cutoff"), "Log2 Fold Change Threshold", value = 1, min = 0, step = 0.1),
+          shiny::numericInput(ns("adj_pval"), "Adjusted P-value (FDR) Threshold", value = 0.05, min = 0, max = 1, step = 0.01)
         ),
         bslib::accordion_panel(
           title = "Theme and Colors",
@@ -64,13 +64,12 @@ PD_ui <- function(id) {
           shiny::downloadButton(ns("download_diff"), "Download DE Results")
         )
       ),
-      shiny::mainPanel(
-        shiny::tabsetPanel(
-          shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
-          shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
-          shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
-          shiny::tabPanel("DE Table", shiny::dataTableOutput(ns("de_table")))
-        )
+      # 👇 只改这里：删掉 mainPanel，直接放 tabsetPanel
+      shiny::tabsetPanel(
+        shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
+        shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
+        shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
+        shiny::tabPanel("DE Table", DT::DTOutput(ns("de_table")))
       )
     )
   )

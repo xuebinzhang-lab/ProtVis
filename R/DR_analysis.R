@@ -10,7 +10,7 @@
 #' @export
 #'
 DR_analysis_ui <- function(id) {
-  ns <- shiny::NS(id)  # Use shiny::NS to avoid conflicts
+  ns <- shiny::NS(id)
   bslib::nav_panel(
     title = 'Dimensionality Reduction Analysis',
     icon = bsicons::bs_icon("alexa"),
@@ -44,44 +44,41 @@ DR_analysis_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'PCA'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        # 👇 删掉 page_fluid，直接写内容
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "PCA",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  shiny::uiOutput(ns("colorSelectors_PCA"))
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_PCA"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::downloadButton(ns("download_PCA_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_PCA_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "PCA",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                shiny::uiOutput(ns("colorSelectors_PCA"))
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("PCAplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("PCA_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_PCA"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::downloadButton(ns("download_PCA_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_PCA_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("PCAplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("PCA_dataTable"))
               )
             )
           )
@@ -91,44 +88,40 @@ DR_analysis_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'PCoA'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "PCoA",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  shiny::uiOutput(ns("colorSelectors_PCoA"))
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_PCoA"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::downloadButton(ns("download_PCoA_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_PCoA_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "PCoA",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                shiny::uiOutput(ns("colorSelectors_PCoA"))
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("PCoAplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("PCoA_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_PCoA"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::downloadButton(ns("download_PCoA_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_PCoA_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("PCoAplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("PCoA_dataTable"))
               )
             )
           )
@@ -138,44 +131,40 @@ DR_analysis_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'tSNE'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "tSNE",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  shiny::uiOutput(ns("colorSelectors_tSNE"))
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_tSNE"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::downloadButton(ns("download_tSNE_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_tSNE_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "tSNE",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                shiny::uiOutput(ns("colorSelectors_tSNE"))
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("tSNEplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("tSNE_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_tSNE"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::downloadButton(ns("download_tSNE_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_tSNE_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("tSNEplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("tSNE_dataTable"))
               )
             )
           )
@@ -185,44 +174,40 @@ DR_analysis_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'UMAP'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "UMAP",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  shiny::uiOutput(ns("colorSelectors_UMAP"))
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_UMAP"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::downloadButton(ns("download_UMAP_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_UMAP_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "UMAP",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                shiny::uiOutput(ns("colorSelectors_UMAP"))
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("UMAPplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("UMAP_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_UMAP"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::downloadButton(ns("download_UMAP_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_UMAP_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("UMAPplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("UMAP_dataTable"))
               )
             )
           )
@@ -232,44 +217,40 @@ DR_analysis_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'NMDS'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "NMDS",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  shiny::uiOutput(ns("colorSelectors_NMDS"))
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_NMDS"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::downloadButton(ns("download_NMDS_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_NMDS_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "NMDS",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                shiny::uiOutput(ns("colorSelectors_NMDS"))
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("NMDSplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("NMDS_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_NMDS"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::downloadButton(ns("download_NMDS_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_NMDS_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("NMDSplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("NMDS_dataTable"))
               )
             )
           )
