@@ -5,7 +5,6 @@
 #'
 #' @import shiny
 #' @importFrom bslib bs_themer
-#' @noRd
 #' @name app_server
 #' @export
 #'

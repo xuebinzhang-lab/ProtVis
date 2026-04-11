@@ -7,7 +7,6 @@
 #' @import shiny
 #' @importFrom golem favicon bundle_resources
 #' @name golem_add_external_resources
-#' @noRd
 #' @export
 #'
 golem_add_external_resources <- function() {
@@ -34,7 +33,6 @@ golem_add_external_resources <- function() {
 #'
 #' @import shiny
 #' @importFrom bslib nav_panel nav_menu page_navbar bs_theme
-#' @noRd
 #' @name app_ui
 #' @export
 #'

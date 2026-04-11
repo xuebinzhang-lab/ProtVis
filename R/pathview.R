@@ -2,7 +2,6 @@
 #' @import shiny
 #' @import bslib
 #' @name pathview_ui
-#' @noRd
 #' @export
 #'
 pathview_ui <- function(id) {
@@ -62,7 +61,6 @@ pathview_ui <- function(id) {
 #' @importFrom clusterProfiler enricher
 #' @importFrom utils head
 #' @importFrom pathview pathview
-#' @noRd
 #' @export
 #'
 utils::globalVariables(c("ko", "KO", "pathway", "Description"))

@@ -77,7 +77,7 @@ DEP_visualize_ui <- function(id) {
         bslib::layout_column_wrap(
           width = 1/2,
           height = 600,
-          shiny::navset_card_tab(
+          bslib::navset_card_tab(
             height = 600,
             full_screen = TRUE,
             title = "Volcano plot",
@@ -128,7 +128,7 @@ DEP_visualize_ui <- function(id) {
               shiny::plotOutput(ns("output_ui"))
             )
           ),
-          shiny::navset_card_tab(
+          bslib::navset_card_tab(
             height = 600,
             full_screen = TRUE,
             title = "Fold Change Density Plot",
@@ -149,7 +149,7 @@ DEP_visualize_ui <- function(id) {
               shiny::plotOutput(ns("output_ui2"))
             )
           ),
-          shiny::navset_card_tab(
+          bslib::navset_card_tab(
             height = 600,
             full_screen = TRUE,
             title = "Venn Diagram of DEP Between Groups",
@@ -172,7 +172,7 @@ DEP_visualize_ui <- function(id) {
               shiny::plotOutput(ns("plot2"))
             )
           ),
-          shiny::navset_card_tab(
+          bslib::navset_card_tab(
             height = 600,
             full_screen = TRUE,
             title = "DEP Functional Enrichment Analysis",

@@ -33,7 +33,7 @@ TMT_ui <- function(id) {
           ),
           shiny::actionButton(ns("run_button"), "Run")
         ),
-        shiny::accordion_panel(
+        bslib::accordion_panel(
           title = "Download Figure",
           icon = bs_icon("download"),
           shiny::textInput(

@@ -20,7 +20,7 @@ MaxQuant_ui <- function(id) {
       bslib::accordion(
         bslib::accordion_panel(
           title = "remove unreliable peptide",
-          icon = bslib::bs_icon("Filter"),
+          icon = bsicons::bs_icon("Filter"),
           shiny::div(
             style = "font-size: 12px;",
             shiny::checkboxGroupInput(
