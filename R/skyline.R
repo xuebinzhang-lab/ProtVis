@@ -6,7 +6,6 @@
 #' @import shiny
 #' @import bslib
 #' @importFrom bsicons bs_icon
-#' @importFrom DT dataTableOutput
 #' @name skyline_ui
 #' @export
 #'
@@ -71,7 +70,7 @@ skyline_ui <- function(id) {
           shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
           shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
           shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
-          shiny::tabPanel("DE Table", DT::dataTableOutput(ns("de_table")))
+          shiny::tabPanel("DE Table", shiny::dataTableOutput(ns("de_table")))
         )
       )
     )

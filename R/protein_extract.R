@@ -6,7 +6,6 @@
 #' @import shiny
 #' @import bslib
 #' @importFrom shinyWidgets radioGroupButtons
-#' @importFrom DT dataTableOutput
 #' @name protein_extract_ui
 #' @export
 #'
@@ -78,7 +77,7 @@ protein_extract_ui <- function(id) {
             "Sequence Table",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              DT::dataTableOutput(ns("sequence_table"))
+              shiny::dataTableOutput(ns("sequence_table"))
             )
           ),
           bslib::nav_panel(

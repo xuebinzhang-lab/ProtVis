@@ -6,7 +6,6 @@
 #' @return A `tagList` containing the UI elements for the Swiss-Model workflow.
 #' @import shiny
 #' @import bslib
-#' @importFrom DT dataTableOutput
 #' @name swissmodel_ui
 #' @export
 #'
@@ -59,7 +58,7 @@ swissmodel_ui <- function(id) {
             "Model Quality",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              DT::dataTableOutput(ns("model_quality"))
+              shiny::dataTableOutput(ns("model_quality"))
             )
           ),
           bslib::nav_panel(

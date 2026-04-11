@@ -6,7 +6,6 @@
 #' @import bslib
 #' @importFrom shinyFiles shinyDirButton
 #' @importFrom bsicons bs_icon
-#' @importFrom DT dataTableOutput
 #' @name project_init_ui
 #' @export
 #'
@@ -50,11 +49,11 @@ project_init_ui <- function(id) {
           id = ns("preview_tabs"),
           bslib::nav_panel("Sample Info",
                            shiny::htmlOutput(ns("file_check_init")),
-                    DT::dataTableOutput(ns("tbl_sample_info"))
+                    shiny::dataTableOutput(ns("tbl_sample_info"))
           ),
           bslib::nav_panel("Expression Matrix",
                            shiny::htmlOutput(ns("matrix_check")),
-                    DT::dataTableOutput(ns("tbl_expression_matrix"))
+                    shiny::dataTableOutput(ns("tbl_expression_matrix"))
           )
         )
       )

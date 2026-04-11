@@ -6,7 +6,6 @@
 #' @param id Character string specifying the namespace id for the module
 #' @return A Shiny UI tagList containing the module interface
 #' @import shiny
-#' @importFrom DT dataTableOutput
 #' @name background_make_ui
 #' @export
 #'
@@ -54,14 +53,14 @@ background_make_ui <- function(id) {
             height = "800px",
             bslib::card_header("GO Background"),
             bslib::card_body(
-              DT::dataTableOutput(ns("go_background"))
+              shiny::dataTableOutput(ns("go_background"))
             )
           ),
           bslib::card(
             height = "800px",
             bslib::card_header("KEGG Background"),
             bslib::card_body(
-              DT::dataTableOutput(ns("kegg_background"))
+              shiny::dataTableOutput(ns("kegg_background"))
             )
           )
         )
