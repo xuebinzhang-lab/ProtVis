@@ -11,7 +11,6 @@
 #' @importFrom rhandsontable rHandsontableOutput
 #' @importFrom colourpicker colourInput
 #' @importFrom bsicons bs_icon
-#' @importFrom DT dataTableOutput
 #' @name DEP_analysis_ui
 #' @export
 #'
@@ -78,21 +77,21 @@ DEP_analysis_ui <- function(id) {
             "Sample Info",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              DT::dataTableOutput(ns("sample_info"))
+              shiny::dataTableOutput(ns("sample_info"))
             )
           ),
           bslib::nav_panel(
             "Normalized Data",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              DT::dataTableOutput(ns("normalized_data"))
+              shiny::dataTableOutput(ns("normalized_data"))
             )
           ),
           bslib::nav_panel(
             "Group Comparison",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              DT::dataTableOutput(ns("group_comparison"), height = "100%")
+              shiny::dataTableOutput(ns("group_comparison"), height = "100%")
             )
           ),
           bslib::nav_panel(
@@ -239,7 +238,7 @@ DEP_analysis_server <- function(id, shared_state) {
             bslib::card(
               height = "800px",
               bslib::card_header(base::paste("DEP table -", tab_name)),
-              bslib::card_body(DT::dataTableOutput(ns(paste0("dep_table_", i))))
+              bslib::card_body(shiny::dataTableOutput(ns(paste0("dep_table_", i))))
             ),
             # Volcano plot
             bslib::card(

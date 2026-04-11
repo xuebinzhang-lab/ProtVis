@@ -74,7 +74,6 @@ correct_values <- function(raw_mat) {
 #' @import bslib
 #' @importFrom shinyWidgets switchInput
 #' @importFrom bsicons bs_icon
-#' @importFrom DT dataTableOutput
 #' @name correct_noise_ui
 #' @export
 #'
@@ -132,13 +131,13 @@ correct_noise_ui <- function(id) {
             ),
             bslib::nav_panel("Expression Matrix",
                              shiny::htmlOutput(ns("matrix_check")),
-                      DT::dataTableOutput(ns("expression_matrix_filtered"))
+                      shiny::dataTableOutput(ns("expression_matrix_filtered"))
             ),
             bslib::nav_panel("Rename Columns",
-                      DT::dataTableOutput(ns("tbl_rename_columns"))
+                      shiny::dataTableOutput(ns("tbl_rename_columns"))
             ),
             bslib::nav_panel("Correct Noise",
-                      DT::dataTableOutput(ns("tbl_correct_noise"))
+                      shiny::dataTableOutput(ns("tbl_correct_noise"))
             )
           )
         )
@@ -205,7 +204,7 @@ correct_noise_server <- function(id, shared_state) {
 
     output$sample_info_ui <- shiny::renderUI({
       shiny::req(shared_state$sample_info)
-      DT::dataTableOutput(ns("tbl_sample_info"))
+      shiny::dataTableOutput(ns("tbl_sample_info"))
     })
     output$tbl_sample_info <- DT::renderDataTable({
       shiny::req(shared_state$sample_info)

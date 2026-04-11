@@ -6,7 +6,6 @@
 #' @return UI layout for the MaxQuant processing module.
 #' @import shiny
 #' @import bslib
-#' @importFrom DT dataTableOutput
 #' @name MaxQuant_ui
 #' @export
 
@@ -49,13 +48,13 @@ MaxQuant_ui <- function(id) {
             ),
             bslib::nav_panel("Expression Matrix",
                       htmlOutput(ns("matrix_check")),
-                      DT::dataTableOutput(ns("tbl_expression_matrix"))
+                      shiny::dataTableOutput(ns("tbl_expression_matrix"))
             ),
             bslib::nav_panel("Filtered Unreliable Peptide",
-                      DT::dataTableOutput(ns("tbl_unreliable_filtered"))
+                      shiny::dataTableOutput(ns("tbl_unreliable_filtered"))
             ),
             bslib::nav_panel("Reporter",
-                      DT::dataTableOutput(ns("result_df"))
+                      shiny::dataTableOutput(ns("result_df"))
             )
           )
         )

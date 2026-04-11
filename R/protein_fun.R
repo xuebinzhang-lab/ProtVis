@@ -10,7 +10,6 @@
 #' @importFrom shiny NS tagList div actionButton uiOutput verbatimTextOutput downloadButton plotOutput
 #' @importFrom bslib layout_sidebar sidebar page_fluid layout_column_wrap card card_header card_body
 #' @importFrom plotly plotlyOutput
-#' @importFrom DT dataTableOutput
 #' @export
 #'
 protein_fun_ui <- function(id) {
@@ -51,7 +50,7 @@ protein_fun_ui <- function(id) {
             bslib::card_header("Domain"),
             bslib::card_body(
               shiny::plotOutput(ns("domain_plot"), height = "300px"),
-              DT::dataTableOutput(ns("domain_table"))
+              shiny::dataTableOutput(ns("domain_table"))
             )
           ),
           bslib::card(
