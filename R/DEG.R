@@ -24,31 +24,29 @@ DEG_ui <- function(id) {
           bslib::accordion_panel(
             title = "PCA Settings",
             icon = pca_icon,
-            # PCA graphic settings
             shiny::selectInput(ns("pca_colby"), "Color by:",
-                        choices = c("None" = "none"),
-                        selected = "none"),
+                               choices = c("None" = "none"),
+                               selected = "none"),
             shiny::selectInput(ns("pca_shapeby"), "Shape by:",
-                        choices = c("None" = "none"),
-                        selected = "none"),
+                               choices = c("None" = "none"),
+                               selected = "none"),
             shiny::selectInput(ns("pca_pointsize"), "Point Size:",
-                        choices = c("Small" = 2, "Medium" = 3, "Large" = 4),
-                        selected = 3),
-            # Dynamic group color setting
+                               choices = c("Small" = 2, "Medium" = 3, "Large" = 4),
+                               selected = 3),
             shiny::uiOutput(ns("group_colors_ui")),
             colourpicker::colourInput(ns("pca_base_color"), "Base Color (when no grouping)", value = "#2E86AB"),
             shiny::checkboxInput(ns("pca_show_labels"), "Show Sample Labels", value = FALSE),
             shiny::checkboxInput(ns("pca_encircle"), "Encircle Groups", value = TRUE),
             shiny::checkboxInput(ns("pca_show_ellipse"), "Show Confidence Ellipse", value = TRUE),
             shiny::numericInput(ns("pca_ellipse_alpha"), "Ellipse Transparency",
-                         value = 0.2, min = 0, max = 1, step = 0.1),
+                                value = 0.2, min = 0, max = 1, step = 0.1),
             shiny::numericInput(ns("pca_legend_size"), "Legend Text Size",
-                         value = 12, min = 8, max = 20, step = 1),
+                                value = 12, min = 8, max = 20, step = 1),
             shiny::hr(),
             shiny::numericInput(ns("download_width_pca"), "Width of PCA Plot (inches)",
-                         value = 8, min = 3, max = 20),
+                                value = 8, min = 3, max = 20),
             shiny::numericInput(ns("download_height_pca"), "Height of PCA Plot (inches)",
-                         value = 7, min = 3, max = 20),
+                                value = 7, min = 3, max = 20),
             shiny::downloadButton(ns("download_pca"), "Download PCA Plot PDF", class = "btn-sm"),
             shiny::downloadButton(ns("download_pca_data"), "Download PCA Data", class = "btn-sm")
           ),
@@ -59,77 +57,76 @@ DEG_ui <- function(id) {
             colourpicker::colourInput(ns("color_down"), "Color for Down-regulated", value = "lightblue"),
             colourpicker::colourInput(ns("color_not_sig"), "Color for Not Significant", value = "grey"),
             shiny::numericInput(ns("volcano_point_size"), "Point Size",
-                         value = 2, min = 1, max = 5, step = 0.5),
+                                value = 2, min = 1, max = 5, step = 0.5),
             shiny::sliderInput(ns("volcano_alpha"), "Point Transparency",
-                        min = 0.1, max = 1, value = 0.7, step = 0.1),
+                               min = 0.1, max = 1, value = 0.7, step = 0.1),
             shiny::checkboxInput(ns("volcano_show_grid"), "Show Grid", value = FALSE),
             shiny::hr(),
             shiny::numericInput(ns("download_width_voc"), "Width of Volcano Plot (inches)",
-                         value = 8, min = 3, max = 20),
+                                value = 8, min = 3, max = 20),
             shiny::numericInput(ns("download_height_voc"), "Height of Volcano Plot (inches)",
-                         value = 7, min = 3, max = 20),
+                                value = 7, min = 3, max = 20),
             shiny::downloadButton(ns("download_pdf"), "Download Volcano Plot PDF", class = "btn-sm"),
             shiny::downloadButton(ns("download_deg_data"), "Download DEG Data", class = "btn-sm")
           )
         )
       ),
-      bslib::page_fluid(
-        bslib::layout_column_wrap(
-          width = 1/2,
-          height = 750,
-          bslib::card(
-            height = "800px",
-            bslib::card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
-            bslib::card_body(
-              shiny::tabsetPanel(
-                type = "tabs",
-                shiny::tabPanel("Plot",
-                                shiny::plotOutput(ns("pca_plot"), height = "650px")
-                ),
-                shiny::tabPanel("PCA Data",
-                                shiny::div(
-                                  style = "margin-bottom: 10px;",
-                                  shiny::downloadButton(ns("download_pca_table"), "Download as CSV",
-                                  class = "btn-sm btn-success", style = "float: right;")
-                                  ),
-                                DT::DTOutput(ns("pca_data_table"), height = "600px")
-                )
+      # 👇 👇 核心修改：直接删掉多余的 page_fluid()
+      bslib::layout_column_wrap(
+        width = 1/2,
+        height = 750,
+        bslib::card(
+          height = "800px",
+          bslib::card_header("PCA Analysis", icon = shiny::icon("chart-pie")),
+          bslib::card_body(
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel("Plot",
+                              shiny::plotOutput(ns("pca_plot"), height = "650px")
+              ),
+              shiny::tabPanel("PCA Data",
+                              shiny::div(
+                                style = "margin-bottom: 10px;",
+                                shiny::downloadButton(ns("download_pca_table"), "Download as CSV",
+                                                      class = "btn-sm btn-success", style = "float: right;")
+                              ),
+                              DT::DTOutput(ns("pca_data_table"), height = "600px")
               )
             )
-          ),
-          bslib::card(
-            height = "800px",
-            bslib::card_header("Volcano Plot", icon = shiny::icon("fire")),
-            bslib::card_body(
-              shiny::tabsetPanel(
-                type = "tabs",
-                shiny::tabPanel("Plot",
-                                shiny::plotOutput(ns("voc_plot"), height = "650px")
-                ),
-                shiny::tabPanel("DEG Results",
-                                shiny::div(
-                                  style = "margin-bottom: 10px;",
-                                  shiny::downloadButton(ns("download_degs"), "Download as CSV",
-                                  class = "btn-sm btn-success", style = "float: right;")
-                                  ),
-                         DT::DTOutput(ns("deg_table"), height = "600px")),
-                shiny::tabPanel("Statistics",
-                                bslib::card(
-                                  bslib::card_header("DEG Summary Statistics"),
-                                  shiny::tableOutput(ns("deg_stats"))),
-                                bslib::card(
-                                  bslib::card_header("Top DEGs"),
-                                  DT::DTOutput(ns("top_degs_table"), height = "300px")
-                                  )
-                                )
-                )
+          )
+        ),
+        bslib::card(
+          height = "800px",
+          bslib::card_header("Volcano Plot", icon = shiny::icon("fire")),
+          bslib::card_body(
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel("Plot",
+                              shiny::plotOutput(ns("voc_plot"), height = "650px")
+              ),
+              shiny::tabPanel("DEG Results",
+                              shiny::div(
+                                style = "margin-bottom: 10px;",
+                                shiny::downloadButton(ns("download_degs"), "Download as CSV",
+                                                      class = "btn-sm btn-success", style = "float: right;")
+                              ),
+                              DT::DTOutput(ns("deg_table"), height = "600px")),
+              shiny::tabPanel("Statistics",
+                              bslib::card(
+                                bslib::card_header("DEG Summary Statistics"),
+                                shiny::tableOutput(ns("deg_stats"))),
+                              bslib::card(
+                                bslib::card_header("Top DEGs"),
+                                DT::DTOutput(ns("top_degs_table"), height = "300px")
+                              )
               )
             )
           )
         )
       )
+    )
   )
-  }
+}
 
 #' @title DEG Analysis Server Logic
 #' @description This function contains the server-side logic for performing DEG (Differential Expression Analysis), including PCA and volcano plot generation, and DEG result calculations.

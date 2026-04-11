@@ -37,47 +37,44 @@ Expression_profile_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'Kmeans'",
         ns = ns,
-        bslib::page_fluid(
-          bslib::layout_column_wrap(
-            width = 1,
+        # 👇 👇 只改这里：删掉了 page_fluid，警告直接消失
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 600,
+          bslib::navset_card_tab(
             height = 600,
-            bslib::navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "Kmeans",
-              sidebar = bslib::accordion(
-                open = 'closed',
-                bslib::accordion_panel(
-                  title = 'Parameter',
-                  colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
-                  shiny::numericInput(ns("centers"), "centers:", value = 6, min = 0)
-                ),
-                bslib::accordion_panel(
-                  title = 'Run',
-                  shiny::actionButton(ns("run_btn_Kmeans"), "Run")
-                ),
-                bslib::accordion_panel(
-                  title = 'Download',
-                  icon = bsicons::bs_icon('download'),
-                  shiny::numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
-                  shiny::numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
-                  shiny::downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = shiny::icon("download")),
-                  shiny::br(),
-                  shiny::downloadButton(ns("download_Kmeans_table"), label = "Table", icon = shiny::icon("download"))
-                )
+            full_screen = TRUE,
+            title = "Kmeans",
+            sidebar = bslib::accordion(
+              open = 'closed',
+              bslib::accordion_panel(
+                title = 'Parameter',
+                colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
+                shiny::numericInput(ns("centers"), "centers:", value = 6, min = 0)
               ),
-              mainPanel(
-                shiny::tabsetPanel(
-                  type = "tabs",
-                  shiny::tabPanel(
-                    title = "Figure",
-                    shiny::plotOutput(ns("Kmeansplotshow"))
-                  ),
-                  shiny::tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("Kmeans_dataTable"))
-                  )
-                )
+              bslib::accordion_panel(
+                title = 'Run',
+                shiny::actionButton(ns("run_btn_Kmeans"), "Run")
+              ),
+              bslib::accordion_panel(
+                title = 'Download',
+                icon = bsicons::bs_icon('download'),
+                shiny::numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
+                shiny::numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
+                shiny::downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = shiny::icon("download")),
+                shiny::br(),
+                shiny::downloadButton(ns("download_Kmeans_table"), label = "Table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel(
+                title = "Figure",
+                shiny::plotOutput(ns("Kmeansplotshow"))
+              ),
+              shiny::tabPanel(
+                title = "Table",
+                DT::DTOutput(ns("Kmeans_dataTable"))
               )
             )
           )

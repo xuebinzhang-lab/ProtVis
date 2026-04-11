@@ -184,15 +184,14 @@ enrichment_analysis_ui <- function(id) {
         shiny::uiOutput(ns("compare_select_ui")),
         shiny::div(style = "margin-bottom: 15px;",
                    shiny::fileInput(ns("enrichment_analysis_file"), "Upload Enrichment Analysis File (Created by Toolkits > Background Make)",
-                      accept = c(".csv", ".xlsx"),
-                      buttonLabel = "Browse..."),
+                                    accept = c(".csv", ".xlsx"),
+                                    buttonLabel = "Browse..."),
                    shiny::actionButton(ns("check_file"), "Check File",
-                         class = "btn btn-success fw-bold mb-2")
+                                       class = "btn btn-success fw-bold mb-2")
         ),
         shiny::hr(),
         tags$small("The genelist requires an ID column.(.xlsx or .csv)",
                    style = "color: #6c757d"),
-        # Input mode toggle switch
         shinyWidgets::switchInput(
           inputId = ns("input_mode"),
           label = "Input Manually",
@@ -201,7 +200,6 @@ enrichment_analysis_ui <- function(id) {
           offLabel = "Paste",
           width = "100%"
         ),
-        # Conditional panel: File upload mode
         shiny::conditionalPanel(
           condition = base::paste0("input['", ns("input_mode"), "'] == true"),
           tags$small('Upload Genelist', style = "color: #6c757d"),
@@ -212,7 +210,6 @@ enrichment_analysis_ui <- function(id) {
             accept = c('.csv','.xlsx')
           )
         ),
-        # Conditional panel: Manual input mode
         shiny::conditionalPanel(
           condition = base::paste0("input['", ns("input_mode"), "'] == false"),
           shiny::div(
@@ -224,7 +221,7 @@ enrichment_analysis_ui <- function(id) {
               rows = 5
             ),
             shiny::actionButton(ns("apply_paste"), "Apply paste data",
-                         class = "btn btn-light fw-bold")
+                                class = "btn btn-light fw-bold")
           )
         ),
         bslib::accordion(
@@ -253,86 +250,83 @@ enrichment_analysis_ui <- function(id) {
           )
         )
       ),
-      bslib::page_fluid(
+      # ===================== 这里删掉了 page_fluid，警告直接消失 =====================
+      bslib::card(
+        bslib::card_header("File Check Result"),
+        bslib::card_body(
+          shiny::textOutput(ns("file_check_result"))
+        )
+      ),
+      bslib::layout_column_wrap(
+        width = 1/2,
+        height = 600,
         bslib::card(
-          bslib::card_header("File Check Result"),
+          height = "800px",
+          bslib::card_header("GO Enrichment Analysis"),
           bslib::card_body(
-            shiny::textOutput(ns("file_check_result"))
+            shiny::tabsetPanel(
+              id = ns("go_tabs"),
+              type = "tabs",
+              shiny::tabPanel("Visualization",
+                              bslib::layout_sidebar(
+                                sidebar = bslib::sidebar(
+                                  width = 250,
+                                  position = "left",
+                                  open = "closed",
+                                  shiny::selectInput(ns("go_plot_type"), "Select plot type:",
+                                                     choices = c("Bar plot" = "bar",
+                                                                 "Dot plot" = "dot",
+                                                                 "Circle plot" = "circle"),
+                                                     selected = "bar"),
+                                  shiny::sliderInput(ns("go_top_n"), "Top N terms:",
+                                                     min = 5, max = 20, value = 10),
+                                  colourpicker::colourInput(ns("go_color"), "Select color:", value = "#2c7bb6"),
+                                  shiny::numericInput(ns("go_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
+                                  shiny::numericInput(ns("go_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
+                                  shiny::downloadButton(ns("download_go_plot"), "Download Plot (PDF)"),
+                                  shiny::downloadButton(ns("download_go_table"), "Download Table (CSV)")
+                                ),
+                                bslib::card_body(
+                                  shiny::plotOutput(ns("go_plot"))
+                                )
+                              )
+              ),
+              shiny::tabPanel("Result Table", DT::DTOutput(ns("go_res_table")))
+            )
           )
         ),
-        bslib::layout_column_wrap(
-          width = 1/2,
-          height = 600,
-          # === GO enrichment card ===
-          bslib::card(
-            height = "800px",
-            bslib::card_header("GO Enrichment Analysis"),
-            bslib::card_body(
-              shiny::tabsetPanel(
-                id = ns("go_tabs"),
-                type = "tabs",
-                shiny::tabPanel("Visualization",
-                                bslib::layout_sidebar(
+        bslib::card(
+          height = "800px",
+          bslib::card_header("KEGG Enrichment Analysis"),
+          bslib::card_body(
+            shiny::tabsetPanel(
+              id = ns("kegg_tabs"),
+              type = "tabs",
+              shiny::tabPanel("Visualization",
+                              bslib::layout_sidebar(
                                 sidebar = bslib::sidebar(
-                                width = 250,
-                                position = "left",
-                                open = "closed",
-                                shiny::selectInput(ns("go_plot_type"), "Select plot type:",
-                                         choices = c("Bar plot" = "bar",
-                                                     "Dot plot" = "dot",
-                                                     "Circle plot" = "circle"),
-                                         selected = "bar"),
-                                shiny::sliderInput(ns("go_top_n"), "Top N terms:",
-                                         min = 5, max = 20, value = 10),
-                             colourpicker::colourInput(ns("go_color"), "Select color:", value = "#2c7bb6"),
-                             shiny::numericInput(ns("go_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
-                             shiny::numericInput(ns("go_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
-                             shiny::downloadButton(ns("download_go_plot"), "Download Plot (PDF)"),
-                             shiny::downloadButton(ns("download_go_table"), "Download Table (CSV)")
-                           ),
-                           bslib::card_body(
-                             shiny::plotOutput(ns("go_plot"))
-                           )
-                         )
-                ),
-                shiny::tabPanel("Result Table", DT::DTOutput(ns("go_res_table")))
-              )
-            )
-          ),
-          # === KEGG enrichment card ===
-          bslib::card(
-            height = "800px",
-            bslib::card_header("KEGG Enrichment Analysis"),
-            bslib::card_body(
-              shiny::tabsetPanel(
-                id = ns("kegg_tabs"),
-                type = "tabs",
-                shiny::tabPanel("Visualization",
-                                bslib::layout_sidebar(
-                                sidebar = bslib::sidebar(
-                                width = 250,
-                                position = "left",
-                                open = "closed",
-                                shiny::selectInput(ns("kegg_plot_type"), "Select plot type:",
-                                         choices = c("Bar plot" = "bar",
-                                                     "Dot plot" = "dot",
-                                                     "Circle plot" = "circle"),
-                                         selected = "bar"),
-                                shiny::sliderInput(ns("kegg_top_n"), "Top N pathways:",
-                                         min = 5, max = 20, value = 10),
-                                colourpicker::colourInput(ns("kegg_color"), "Select color:", value = "#d7191c"),
-                                shiny::numericInput(ns("kegg_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
-                                shiny::numericInput(ns("kegg_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
-                                shiny::downloadButton(ns("download_kegg_plot"), "Download Plot (PDF)"),
-                                shiny::downloadButton(ns("download_kegg_table"), "Download Table (CSV)")
-                           ),
-                           bslib::card_body(
-                             shiny::plotOutput(ns("kegg_plot"))
-                           )
-                         )
-                ),
-                shiny::tabPanel("Result Table", DT::DTOutput(ns("kegg_res_table")))
-              )
+                                  width = 250,
+                                  position = "left",
+                                  open = "closed",
+                                  shiny::selectInput(ns("kegg_plot_type"), "Select plot type:",
+                                                     choices = c("Bar plot" = "bar",
+                                                                 "Dot plot" = "dot",
+                                                                 "Circle plot" = "circle"),
+                                                     selected = "bar"),
+                                  shiny::sliderInput(ns("kegg_top_n"), "Top N pathways:",
+                                                     min = 5, max = 20, value = 10),
+                                  colourpicker::colourInput(ns("kegg_color"), "Select color:", value = "#d7191c"),
+                                  shiny::numericInput(ns("kegg_width"), "Plot width (inch)", value = 8, min = 4, max = 20),
+                                  shiny::numericInput(ns("kegg_height"), "Plot height (inch)", value = 6, min = 4, max = 20),
+                                  shiny::downloadButton(ns("download_kegg_plot"), "Download Plot (PDF)"),
+                                  shiny::downloadButton(ns("download_kegg_table"), "Download Table (CSV)")
+                                ),
+                                bslib::card_body(
+                                  shiny::plotOutput(ns("kegg_plot"))
+                                )
+                              )
+              ),
+              shiny::tabPanel("Result Table", DT::DTOutput(ns("kegg_res_table")))
             )
           )
         )

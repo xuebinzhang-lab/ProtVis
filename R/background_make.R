@@ -53,14 +53,14 @@ background_make_ui <- function(id) {
             height = "800px",
             bslib::card_header("GO Background"),
             bslib::card_body(
-              shiny::dataTableOutput(ns("go_background"))
+              DT::DTOutput(ns("go_background"))
             )
           ),
           bslib::card(
             height = "800px",
             bslib::card_header("KEGG Background"),
             bslib::card_body(
-              shiny::dataTableOutput(ns("kegg_background"))
+              DT::DTOutput(ns("kegg_background"))
             )
           )
         )
@@ -206,12 +206,12 @@ background_make_server <- function(id) {
     })
 
     # ---- UI Output Rendering ----
-    output$go_background <- DT::renderDataTable({
+    output$go_background <- DT::renderDT({
       req(go_bg())
       go_bg()
     })
 
-    output$kegg_background <- DT::renderDataTable({
+    output$kegg_background <- DT::renderDT({
       req(kegg_bg())
       kegg_bg()
     })

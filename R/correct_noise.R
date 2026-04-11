@@ -126,18 +126,19 @@ correct_noise_ui <- function(id) {
           fill = TRUE,
           bslib::navset_tab(
             id = ns("Expression_Matrix"),
+            header = NULL,
             bslib::nav_panel("Sample info",
                              shiny::uiOutput(ns("sample_info_ui"))
             ),
             bslib::nav_panel("Expression Matrix",
                              shiny::htmlOutput(ns("matrix_check")),
-                      shiny::dataTableOutput(ns("expression_matrix_filtered"))
+                      DT::DTOutput(ns("expression_matrix_filtered"))
             ),
             bslib::nav_panel("Rename Columns",
-                      shiny::dataTableOutput(ns("tbl_rename_columns"))
+                      DT::DTOutput(ns("tbl_rename_columns"))
             ),
             bslib::nav_panel("Correct Noise",
-                      shiny::dataTableOutput(ns("tbl_correct_noise"))
+                      DT::DTOutput(ns("tbl_correct_noise"))
             )
           )
         )
@@ -160,7 +161,7 @@ correct_noise_ui <- function(id) {
 #' @return Server logic for the noise correction module
 #' @import shiny
 #' @importFrom dplyr left_join pull
-#' @importFrom DT renderDataTable datatable
+#' @importFrom DT renderDT datatable
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @name correct_noise_server
 #' @export
@@ -169,17 +170,13 @@ correct_noise_ui <- function(id) {
 correct_noise_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     rv <- shiny::reactiveValues(load_success = FALSE)
-
     observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
-
       rda_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
       if (base::file.exists(rda_path)) {
         e <- base::new.env()
         base::load(rda_path, envir = e)
-
         if (base::exists("sample_info", envir = e)) {
           shared_state$sample_info <- e$sample_info
         }
@@ -193,7 +190,6 @@ correct_noise_server <- function(id, shared_state) {
         shiny::showNotification("❌ Step2_remove_unreliable_peptide.rda not found in working directory.", type = "error")
       }
     })
-
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
         shiny::span("✅ Data loaded", style = "color: green;")
@@ -201,34 +197,29 @@ correct_noise_server <- function(id, shared_state) {
         shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
-
     output$sample_info_ui <- shiny::renderUI({
       shiny::req(shared_state$sample_info)
-      shiny::dataTableOutput(ns("tbl_sample_info"))
+      DT::DTOutput(ns("tbl_sample_info"))
     })
-    output$tbl_sample_info <- DT::renderDataTable({
+    output$tbl_sample_info <- DT::renderDT({
       shiny::req(shared_state$sample_info)
       DT::datatable(shared_state$sample_info, options = list(pageLength = 10))
     })
 
-    output$expression_matrix_filtered <- DT::renderDataTable({
+    output$expression_matrix_filtered <- DT::renderDT({
       shiny::req(shared_state$expression_matrix_filtered)
       DT::datatable(shared_state$expression_matrix_filtered, options = list(scrollX = TRUE, pageLength = 10))
     })
-
     correct_noise_step1 <- shiny::reactive({
       shiny::req(shared_state$expression_matrix_filtered, shared_state$sample_info)
       new_name <- dplyr::left_join(
         data.frame(maxquant_id = colnames(shared_state$expression_matrix_filtered)[-1]),
         shared_state$sample_info
       ) %>% dplyr::pull(sample_id)
-
       shared_state$expression_matrix_filtered %>%
         stats::setNames(c("ID", new_name))
     })
-
-    # 根据 rename_columns 开关决定是否显示重命名表格
-    output$tbl_rename_columns <- DT::renderDataTable({
+    output$tbl_rename_columns <- DT::renderDT({
       shiny::req(correct_noise_step1())
       if (isTRUE(input$rename_columns)) {
         DT::datatable(correct_noise_step1(), options = list(scrollX = TRUE, pageLength = 10))
@@ -236,9 +227,7 @@ correct_noise_server <- function(id, shared_state) {
         NULL
       }
     })
-
-    # 根据 correct_noise 开关决定是否显示校正噪声表格
-    output$tbl_correct_noise <- DT::renderDataTable({
+    output$tbl_correct_noise <- DT::renderDT({
       shiny::req(correct_noise_step1())
       if (isTRUE(input$correct_noise)) {
         correct_noise_step1() %>%
@@ -249,14 +238,11 @@ correct_noise_server <- function(id, shared_state) {
         NULL
       }
     })
-
     # -------------------------------------------------------------------------
-
     corrected_matrix <- shiny::reactive({
       shiny::req(correct_noise_step1())
       correct_values(correct_noise_step1())
     })
-
     observeEvent(input$export_correct_noise, {
       shiny::req(rv$load_success, shared_state$workdir, shared_state$sample_info, corrected_matrix())
       save_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")

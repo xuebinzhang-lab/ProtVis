@@ -77,7 +77,7 @@ protein_extract_ui <- function(id) {
             "Sequence Table",
             shiny::div(
               style = "height: 500px; overflow: auto;",
-              shiny::dataTableOutput(ns("sequence_table"))
+              DT::DTOutput(ns("sequence_table"))
             )
           ),
           bslib::nav_panel(
@@ -111,7 +111,7 @@ protein_extract_ui <- function(id) {
 #' @importFrom stringr str_trim str_detect str_extract
 #' @importFrom tools file_ext
 #' @importFrom utils read.delim head zip
-#' @importFrom DT renderDataTable datatable
+#' @importFrom DT renderDT datatable
 #' @name protein_extract_server
 #' @export
 
@@ -205,7 +205,7 @@ protein_extract_server <- function(id) {
       base::print(utils::head(base::names(rv$matched_seqs), 10))
     })
     # Display sequence table
-    output$sequence_table <- DT::renderDataTable({
+    output$sequence_table <- DT::renderDT({
       shiny::req(rv$matched_seqs)
       base::data.frame(
         Protein_ID = base::names(rv$matched_seqs),

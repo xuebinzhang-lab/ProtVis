@@ -92,12 +92,13 @@ missing_value_ui <- function(id) {
             fill = TRUE,
             bslib::navset_tab(
               id = ns("Sample Info"),
-              bslib::nav_panel("Sample Info", shiny::dataTableOutput(ns("tbl_sample_info"))),
-              bslib::nav_panel("Expression Matrix", shiny::dataTableOutput(ns("tbl_expression_matrix"))),
-              bslib::nav_panel("Step 1: 0→NA",shiny::dataTableOutput(ns("table_zero_to_na"))),
-              bslib::nav_panel("Step 2: >50% NA in group",shiny::dataTableOutput(ns("table_group_na"))),
-              bslib::nav_panel("Step 3: Impute mean",shiny::dataTableOutput(ns("table_imputed"))),
-              bslib::nav_panel("Data transformed",shiny::dataTableOutput(ns("table_data_transformed")))
+              header = NULL,
+              bslib::nav_panel("Sample Info", DT::DTOutput(ns("tbl_sample_info"))),
+              bslib::nav_panel("Expression Matrix", DT::DTOutput(ns("tbl_expression_matrix"))),
+              bslib::nav_panel("Step 1: 0→NA",DT::DTOutput(ns("table_zero_to_na"))),
+              bslib::nav_panel("Step 2: >50% NA in group",DT::DTOutput(ns("table_group_na"))),
+              bslib::nav_panel("Step 3: Impute mean",DT::DTOutput(ns("table_imputed"))),
+              bslib::nav_panel("Data transformed",DT::DTOutput(ns("table_data_transformed")))
             )
           )
         )
