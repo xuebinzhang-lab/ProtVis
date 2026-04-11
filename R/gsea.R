@@ -3,7 +3,6 @@
 #' @import bslib
 #' @importFrom DT dataTableOutput
 #' @name gsea_ui
-#' @noRd
 #' @export
 #'
 gsea_ui <- function(id) {
@@ -53,7 +52,6 @@ gsea_ui <- function(id) {
 #' @importFrom GseaVis gseaNb
 #' @importFrom utils write.csv
 #' @importFrom grDevices pdf dev.off
-#' @noRd
 #' @name gsea_server
 #' @export
 #'

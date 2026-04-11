@@ -11,7 +11,6 @@
 #' @importFrom bsicons bs_icon
 #' @importFrom DT dataTableOutput
 #' @name missing_value_ui
-#' @noRd
 #' @export
 #'
 missing_value_ui <- function(id) {
@@ -120,7 +119,6 @@ missing_value_ui <- function(id) {
 #' @importFrom dplyr left_join select everything mutate across where na_if
 #' @importFrom DT renderDT datatable
 #' @name missing_value_server
-#' @noRd
 #' @export
 #'
 missing_value_server <- function(id, shared_state) {

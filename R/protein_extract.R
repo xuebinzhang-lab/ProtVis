@@ -203,7 +203,7 @@ protein_extract_server <- function(id) {
                               base::length(rv$matched_seqs),
                               base::length(rv$matched_seqs)/base::length(rv$protein_ids)*100))
       base::cat("\n=== First 10 Matched Proteins ===\n")
-      utils::print(utils::head(base::names(rv$matched_seqs), 10))
+      base::print(utils::head(base::names(rv$matched_seqs), 10))
     })
     # Display sequence table
     output$sequence_table <- DT::renderDataTable({

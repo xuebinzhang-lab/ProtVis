@@ -1,4 +1,4 @@
-# ProtVis
+# ProtVis: Simplifying proteomics data exploration with interactive visualization
 
 ## Install
 

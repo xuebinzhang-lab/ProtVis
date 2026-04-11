@@ -126,7 +126,7 @@ mv_summary_ui <- function(id) {
               ),
               bslib::accordion_panel(
                 title = 'Download',
-                icon = bslib::bs_icon('download'),
+                icon = bsicons::bs_icon('download'),
                 shiny::numericInput(ns("correlationPlotHeight"), "Height:",
                              value = 8, min = 1, max = 100, step = 1),
                 shiny::numericInput(ns("correlationPlotWidth"), "Width:",

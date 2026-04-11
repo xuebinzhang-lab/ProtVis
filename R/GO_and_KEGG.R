@@ -11,7 +11,7 @@
 #'
 GO_and_KEGG_ui <- function(id) {
   ns <- NS(id)
-  shiny::nav_panel(
+  bslib::nav_panel(
     title = 'GO and KEGG analyze',
     icon = shiny::icon("play-circle"),
     bslib::layout_sidebar(
@@ -47,7 +47,7 @@ GO_and_KEGG_ui <- function(id) {
           shiny::column(
             width = 6,
             height = 600,
-            shiny::navset_card_tab(
+            bslib::navset_card_tab(
               height = 600,
               full_screen = TRUE,
               title = "GO/KEGG Plot",
@@ -67,7 +67,7 @@ GO_and_KEGG_ui <- function(id) {
           shiny::column(
             width = 6,
             height = 600,
-            shiny::navset_card_tab(
+            bslib::navset_card_tab(
               height = 600,
               full_screen = TRUE,
               title = "Results Table",

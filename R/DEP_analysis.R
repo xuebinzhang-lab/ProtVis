@@ -315,7 +315,7 @@ DEP_analysis_server <- function(id, shared_state) {
           )
         )
       })
-      shiny::navset_card_tab(full_screen = TRUE, !!!tabs)
+      bslib::navset_card_tab(full_screen = TRUE, !!!tabs)
     })
     # --- DEP analysis and plots ---
     shiny::observe({

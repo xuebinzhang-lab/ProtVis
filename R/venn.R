@@ -80,7 +80,7 @@ venn_ui <- function(id){
 #' @importFrom dplyr distinct mutate across
 #' @importFrom tibble column_to_rownames
 #' @importFrom ggplot2 ggsave
-#' @importFrom grDevices pdf dev.off
+#' @importFrom grDevices pdf dev.off colors
 #' @name venn_server
 #' @export
 #'
@@ -99,7 +99,7 @@ venn_server <- function(id) {
           colourpicker::colourInput(
             inputId = ns(base::paste0("color_", i)),
             label = base::paste("Select Color for", base::colnames(data)[i]),
-            value = base::sample(base::colors(), 1)
+            value = base::sample(grDevices::colors(), 1)
           )
         })
       })
