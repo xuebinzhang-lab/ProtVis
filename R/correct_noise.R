@@ -171,7 +171,7 @@ correct_noise_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     rv <- shiny::reactiveValues(load_success = FALSE)
-    observeEvent(input$load_data, {
+    shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
       rda_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
       if (base::file.exists(rda_path)) {
@@ -182,6 +182,8 @@ correct_noise_server <- function(id, shared_state) {
         }
         if (base::exists("expression_matrix_filtered", envir = e)) {
           shared_state$expression_matrix_filtered <- e$expression_matrix_filtered
+          shared_state$rename_result <- NULL
+          shared_state$correct_noise_result <- NULL
         }
         rv$load_success <- TRUE
         shiny::showNotification("✅ Step2 data loaded successfully.", type = "message")
@@ -190,6 +192,7 @@ correct_noise_server <- function(id, shared_state) {
         shiny::showNotification("❌ Step2_remove_unreliable_peptide.rda not found in working directory.", type = "error")
       }
     })
+
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
         shiny::span("✅ Data loaded", style = "color: green;")
@@ -197,10 +200,12 @@ correct_noise_server <- function(id, shared_state) {
         shiny::span("❌ Data not loaded", style = "color: red;")
       }
     })
+
     output$sample_info_ui <- shiny::renderUI({
       shiny::req(shared_state$sample_info)
       DT::DTOutput(ns("tbl_sample_info"))
     })
+
     output$tbl_sample_info <- DT::renderDT({
       shiny::req(shared_state$sample_info)
       DT::datatable(shared_state$sample_info, options = list(pageLength = 10))
@@ -210,47 +215,80 @@ correct_noise_server <- function(id, shared_state) {
       shiny::req(shared_state$expression_matrix_filtered)
       DT::datatable(shared_state$expression_matrix_filtered, options = list(scrollX = TRUE, pageLength = 10))
     })
+
     correct_noise_step1 <- shiny::reactive({
       shiny::req(shared_state$expression_matrix_filtered, shared_state$sample_info)
       new_name <- dplyr::left_join(
-        data.frame(maxquant_id = colnames(shared_state$expression_matrix_filtered)[-1]),
+        base::data.frame(maxquant_id = base::colnames(shared_state$expression_matrix_filtered)[-1]),
         shared_state$sample_info
       ) %>% dplyr::pull(sample_id)
+
       shared_state$expression_matrix_filtered %>%
         stats::setNames(c("ID", new_name))
     })
-    output$tbl_rename_columns <- DT::renderDT({
-      shiny::req(correct_noise_step1())
+
+    observe({
+      shiny::req(shared_state$expression_matrix_filtered)
+
       if (isTRUE(input$rename_columns)) {
-        DT::datatable(correct_noise_step1(), options = list(scrollX = TRUE, pageLength = 10))
+        shared_state$rename_result <- correct_noise_step1()
       } else {
-        NULL
+        shared_state$rename_result <- NULL
       }
     })
-    output$tbl_correct_noise <- DT::renderDT({
-      shiny::req(correct_noise_step1())
+
+    observe({
       if (isTRUE(input$correct_noise)) {
-        correct_noise_step1() %>%
-          correct_values() %>%
-          tibble::column_to_rownames("ID") %>%
-          DT::datatable(options = list(scrollX = TRUE, pageLength = 10))
+        shiny::req(correct_noise_step1())
+        shared_state$correct_noise_result <- correct_values(correct_noise_step1())
+      } else {
+        shared_state$correct_noise_result <- NULL
+      }
+    })
+
+    output$tbl_rename_columns <- DT::renderDT({
+      if (isTRUE(input$rename_columns)) {
+        shiny::req(shared_state$rename_result)
+        DT::datatable(shared_state$rename_result, options = base::list(scrollX = TRUE, pageLength = 10))
       } else {
         NULL
       }
     })
-    # -------------------------------------------------------------------------
-    corrected_matrix <- shiny::reactive({
-      shiny::req(correct_noise_step1())
-      correct_values(correct_noise_step1())
+
+    output$tbl_correct_noise <- DT::renderDT({
+      if (isTRUE(input$correct_noise)) {
+        shiny::req(shared_state$correct_noise_result)
+        DT::datatable(
+          shared_state$correct_noise_result %>%
+            tibble::column_to_rownames("ID"),
+          options = base::list(scrollX = TRUE, pageLength = 10)
+        )
+      } else {
+        NULL
+      }
     })
+
     observeEvent(input$export_correct_noise, {
-      shiny::req(rv$load_success, shared_state$workdir, shared_state$sample_info, corrected_matrix())
+      shiny::req(rv$load_success, shared_state$workdir, shared_state$sample_info)
+
+      export_data <- NULL
+
+      if (isTRUE(input$correct_noise) && !is.null(shared_state$correct_noise_result)) {
+        export_data <- shared_state$correct_noise_result
+      } else if (isTRUE(input$rename_columns) && !is.null(shared_state$rename_result)) {
+        export_data <- shared_state$rename_result
+      } else {
+        export_data <- shared_state$expression_matrix_filtered
+      }
+
       save_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
       sample_info <- shared_state$sample_info
-      correct_noise_result <- corrected_matrix() %>%
+
+      correct_noise_result <- export_data %>%
         tibble::column_to_rownames("ID") %>%
-        {. * 10000000} %>%
+        { . * 10000000 } %>%
         tibble::rownames_to_column("ID")
+
       base::save(sample_info, correct_noise_result, file = save_path)
       shiny::showNotification(paste0("✅ Saved to ", save_path), type = "message")
     })

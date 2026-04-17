@@ -7,20 +7,28 @@
 data_imputation_server(id, shared_state)
 }
 \arguments{
-\item{id}{Module ID used to namespace the server elements.}
+\item{id}{Character string. Module ID used for namespacing server outputs.}
 
-\item{shared_state}{A reactive list containing shared application state,
-including the working directory.}
+\item{shared_state}{A `reactiveValues` object shared across modules. It must
+contain at least `workdir`, which points to the current project directory.}
 }
 \value{
-No direct return value; generates Shiny server-side outputs.
+No direct return value. This function creates Shiny server-side
+  outputs, reactive objects, and saves processed `.rda` files.
 }
 \description{
-This function defines the server logic for the data imputation module.
-It handles:
-- Loading data from the working directory
-- Displaying sample information and expression matrix
-- Visualizing missing values in original data
-- Performing data imputation based on the selected method
-- Displaying imputed data and visualizations
+Server logic for the data imputation module. This module:
+- loads transformed expression data from `Step4_data_transformed.rda`
+- displays sample information and transformed expression matrix
+- visualizes missing-value patterns in the original data
+- performs imputation using the selected method
+- saves imputed results to `Step5_data_imputation.rda`
+- allows downloading of missing-value visualization plots
+}
+\details{
+Before imputation, the function preprocesses the expression matrix by:
+- separating the `ID` column from numeric expression values
+- coercing all measurement columns to numeric
+- converting `NaN`, `Inf`, and `-Inf` to `NA`
+- removing rows or columns that are entirely missing
 }

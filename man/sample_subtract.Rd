@@ -7,12 +7,13 @@
 sample_subtract(data)
 }
 \arguments{
-\item{data}{A numeric matrix or data frame containing the data to be normalized}
+\item{data}{A numeric matrix or data frame containing expression values.}
 }
 \value{
-A matrix with the same dimensions as input where each column has been median-centered
+A numeric matrix with the same dimensions as the input,
+  where each column has been median-centered.
 }
 \description{
-This function subtracts the median value (ignoring NAs) from each column of the input data matrix.
-It is commonly used for sample normalization in omics data analysis.
+This function subtracts the median value of each numeric column
+(ignoring NA values) from the corresponding column.
 }

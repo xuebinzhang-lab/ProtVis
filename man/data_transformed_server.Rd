@@ -5,8 +5,9 @@
 \title{Server Logic for Data Transformation Module
 Handles the server-side processing for data transformation including:
 - Loading input data
-- Applying selected transformations (log10, log2, scaling, etc.)
+- Applying selected transformations
 - Data previews
+- Plot downloads
 - Export functionality}
 \usage{
 data_transformed_server(id, shared_state)
@@ -23,7 +24,8 @@ Server logic for the data transformation module
 Server Logic for Data Transformation Module
 Handles the server-side processing for data transformation including:
 - Loading input data
-- Applying selected transformations (log10, log2, scaling, etc.)
+- Applying selected transformations
 - Data previews
+- Plot downloads
 - Export functionality
 }
