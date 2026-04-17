@@ -194,7 +194,6 @@ data_imputation_server <- function(id, shared_state) {
       load_success = FALSE
     )
 
-    # Load transformed data
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
 
@@ -209,10 +208,15 @@ data_imputation_server <- function(id, shared_state) {
 
         if (base::exists("sample_info", envir = e)) {
           rv$sample_info <- e$sample_info
+        } else {
+          rv$sample_info <- NULL
         }
 
         if (base::exists("transformed", envir = e)) {
-          rv$expression_matrix <- e$transformed
+          rv$expression_matrix <- base::as.data.frame(
+            e$transformed,
+            stringsAsFactors = FALSE
+          )
         } else {
           rv$expression_matrix <- NULL
           shiny::showNotification(
@@ -221,11 +225,14 @@ data_imputation_server <- function(id, shared_state) {
           )
         }
 
-        rv$load_success <- TRUE
-        shiny::showNotification(
-          "✅ Data loaded successfully.",
-          type = "message"
-        )
+        rv$load_success <- !base::is.null(rv$expression_matrix)
+
+        if (isTRUE(rv$load_success)) {
+          shiny::showNotification(
+            "✅ Data loaded successfully.",
+            type = "message"
+          )
+        }
       } else {
         rv$load_success <- FALSE
         shiny::showNotification(
@@ -235,7 +242,6 @@ data_imputation_server <- function(id, shared_state) {
       }
     })
 
-    # Load status
     output$load_status_panel <- shiny::renderUI({
       if (isTRUE(rv$load_success)) {
         shiny::span("✅ Data loaded", style = "color: green;")
@@ -244,38 +250,52 @@ data_imputation_server <- function(id, shared_state) {
       }
     })
 
-    # Sample info table
     output$sample_info <- DT::renderDT({
       shiny::req(rv$sample_info)
       DT::datatable(
         rv$sample_info,
-        options = list(scrollX = TRUE, pageLength = 10)
+        options = list(scrollX = TRUE, pageLength = 10),
+        rownames = FALSE
       )
     })
 
-    # Expression matrix table
-    output$expression_matrix <- DT::renderDT({
+    expression_matrix_display <- shiny::reactive({
       shiny::req(rv$expression_matrix)
+
+      df <- base::as.data.frame(rv$expression_matrix, stringsAsFactors = FALSE)
+
+      if ("ID" %in% base::colnames(df)) {
+        ids <- df$ID
+        df <- df[, base::setdiff(base::colnames(df), "ID"), drop = FALSE]
+        base::rownames(df) <- ids
+      }
+
+      df
+    })
+
+    output$expression_matrix <- DT::renderDT({
+      shiny::req(expression_matrix_display())
       DT::datatable(
-        rv$expression_matrix,
-        options = list(scrollX = TRUE, pageLength = 10)
+        expression_matrix_display(),
+        options = list(scrollX = TRUE, pageLength = 10),
+        rownames = TRUE
       )
     })
 
-    # Visualize missing values
     shiny::observeEvent(input$visualize_missing_values, {
       output$originalData <- DT::renderDT({
-        shiny::req(rv$expression_matrix)
+        shiny::req(expression_matrix_display())
         DT::datatable(
-          rv$expression_matrix,
-          options = list(pageLength = 10, scrollX = TRUE)
+          expression_matrix_display(),
+          options = list(pageLength = 10, scrollX = TRUE),
+          rownames = TRUE
         )
       })
 
       output$originalPlot <- shiny::renderPlot({
         shiny::req(rv$expression_matrix)
 
-        visdat::vis_dat(data.frame(rv$expression_matrix)) +
+        visdat::vis_dat(base::data.frame(rv$expression_matrix)) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -288,7 +308,6 @@ data_imputation_server <- function(id, shared_state) {
       })
     })
 
-    # Prepare numeric data for imputation
     prepare_imputation_data <- shiny::reactive({
       shiny::req(rv$expression_matrix)
 
@@ -297,29 +316,26 @@ data_imputation_server <- function(id, shared_state) {
         stringsAsFactors = FALSE
       )
 
-      # Separate ID column
       if ("ID" %in% base::colnames(df)) {
         id_col <- df$ID
         df_num <- df[, base::setdiff(base::colnames(df), "ID"), drop = FALSE]
       } else {
-        id_col <- NULL
+        id_col <- base::rownames(df)
         df_num <- df
       }
 
-      # Convert all columns to numeric
       df_num <- base::as.data.frame(
         base::lapply(df_num, function(x) {
-          base::as.numeric(as.character(x))
-        })
+          base::as.numeric(base::as.character(x))
+        }),
+        stringsAsFactors = FALSE
       )
 
-      # Convert NaN / Inf / -Inf to NA
       df_num[] <- base::lapply(df_num, function(x) {
         x[base::is.nan(x) | base::is.infinite(x)] <- NA
         x
       })
 
-      # Remove columns that are completely NA
       all_na_cols <- vapply(
         df_num,
         function(x) base::all(base::is.na(x)),
@@ -329,7 +345,6 @@ data_imputation_server <- function(id, shared_state) {
         df_num <- df_num[, !all_na_cols, drop = FALSE]
       }
 
-      # Remove rows that are completely NA
       all_na_rows <- apply(
         df_num,
         1,
@@ -337,7 +352,7 @@ data_imputation_server <- function(id, shared_state) {
       )
       df_num <- df_num[!all_na_rows, , drop = FALSE]
 
-      if (!is.null(id_col)) {
+      if (!base::is.null(id_col)) {
         id_col <- id_col[!all_na_rows]
       }
 
@@ -347,17 +362,15 @@ data_imputation_server <- function(id, shared_state) {
       )
     })
 
-    # Run imputation
     imputed_data <- shiny::eventReactive(input$run_impute, {
       prep <- prepare_imputation_data()
       df_num <- prep$data
       id_col <- prep$id
       method <- input$choice_method
 
-      shiny::req(nrow(df_num) > 0, ncol(df_num) > 0)
+      shiny::req(base::nrow(df_num) > 0, base::ncol(df_num) > 0)
 
-      # Warning for high-missing rows
-      na_ratio <- apply(df_num, 1, function(x) mean(is.na(x)))
+      na_ratio <- apply(df_num, 1, function(x) mean(base::is.na(x)))
       high_missing_n <- sum(na_ratio > 0.5, na.rm = TRUE)
 
       if (high_missing_n > 0) {
@@ -376,17 +389,17 @@ data_imputation_server <- function(id, shared_state) {
 
       result <- tryCatch({
         if (method == "kNN") {
-          as.data.frame(impute::impute.knn(as.matrix(df_num))$data)
+          base::as.data.frame(impute::impute.knn(base::as.matrix(df_num))$data)
 
         } else if (method == "RF") {
-          as.data.frame(missForest::missForest(df_num)$ximp)
+          base::as.data.frame(missForest::missForest(df_num)$ximp)
 
         } else if (method == "Mean") {
           df_num %>%
             dplyr::mutate(
               dplyr::across(
                 dplyr::everything(),
-                ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)
+                ~ ifelse(base::is.na(.), mean(., na.rm = TRUE), .)
               )
             )
 
@@ -395,7 +408,7 @@ data_imputation_server <- function(id, shared_state) {
             dplyr::mutate(
               dplyr::across(
                 dplyr::everything(),
-                ~ ifelse(is.na(.), median(., na.rm = TRUE), .)
+                ~ ifelse(base::is.na(.), stats::median(., na.rm = TRUE), .)
               )
             )
 
@@ -404,7 +417,7 @@ data_imputation_server <- function(id, shared_state) {
             dplyr::mutate(
               dplyr::across(
                 dplyr::everything(),
-                ~ ifelse(is.na(.), 0, .)
+                ~ ifelse(base::is.na(.), 0, .)
               )
             )
 
@@ -413,7 +426,7 @@ data_imputation_server <- function(id, shared_state) {
             dplyr::mutate(
               dplyr::across(
                 dplyr::everything(),
-                ~ ifelse(is.na(.), min(., na.rm = TRUE), .)
+                ~ ifelse(base::is.na(.), min(., na.rm = TRUE), .)
               )
             )
 
@@ -429,22 +442,31 @@ data_imputation_server <- function(id, shared_state) {
         return(NULL)
       })
 
-      shiny::req(!is.null(result))
+      shiny::req(!base::is.null(result))
 
-      # Add ID column back
-      if (!is.null(id_col)) {
-        result <- cbind(ID = id_col, result)
+      result <- base::as.data.frame(result, stringsAsFactors = FALSE)
+
+      if (!base::is.null(id_col)) {
+        base::rownames(result) <- id_col
       }
 
       result
     })
 
-    # Save imputed data
+    output$imputedData <- DT::renderDT({
+      shiny::req(imputed_data())
+      DT::datatable(
+        imputed_data(),
+        options = list(pageLength = 10, scrollX = TRUE),
+        rownames = TRUE
+      )
+    })
+
     shiny::observeEvent(input$run_impute, {
       shiny::req(imputed_data(), rv$sample_info, shared_state$workdir)
 
       sample_info <- rv$sample_info
-      imputed_df <- base::as.data.frame(imputed_data())
+      imputed_df <- base::as.data.frame(imputed_data(), stringsAsFactors = FALSE)
 
       base::save(
         sample_info,
@@ -461,20 +483,13 @@ data_imputation_server <- function(id, shared_state) {
       )
     })
 
-    # Imputed data table
-    output$imputedData <- DT::renderDT({
-      shiny::req(imputed_data())
-      DT::datatable(
-        imputed_data(),
-        options = list(pageLength = 10, scrollX = TRUE)
-      )
-    })
-
-    # Imputed data visualization
     output$imputedPlot <- shiny::renderPlot({
       shiny::req(imputed_data())
 
-      visdat::vis_dat(data.frame(imputed_data())) +
+      plot_df <- imputed_data()
+      plot_df <- tibble::rownames_to_column(plot_df, var = "ID")
+
+      visdat::vis_dat(base::data.frame(plot_df)) +
         ggplot2::scale_fill_manual(
           values = c(
             "character" = "skyblue",
@@ -486,13 +501,12 @@ data_imputation_server <- function(id, shared_state) {
         )
     })
 
-    # Download original plot
     output$downloadOriginalPlot <- shiny::downloadHandler(
       filename = function() {
-        paste0("original_data_plot_", Sys.Date(), ".pdf")
+        base::paste0("original_data_plot_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
-        g <- visdat::vis_dat(data.frame(rv$expression_matrix)) +
+        g <- visdat::vis_dat(base::data.frame(rv$expression_matrix)) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -504,7 +518,7 @@ data_imputation_server <- function(id, shared_state) {
           )
 
         ggplot2::ggsave(
-          file,
+          filename = file,
           plot = g,
           width = input$img_width,
           height = input$img_height,
@@ -513,15 +527,17 @@ data_imputation_server <- function(id, shared_state) {
       }
     )
 
-    # Download imputed plot
     output$downloadImputedPlot <- shiny::downloadHandler(
       filename = function() {
-        paste0("imputed_data_plot_", Sys.Date(), ".pdf")
+        base::paste0("imputed_data_plot_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
         shiny::req(imputed_data())
 
-        g <- visdat::vis_dat(data.frame(imputed_data())) +
+        plot_df <- imputed_data()
+        plot_df <- tibble::rownames_to_column(plot_df, var = "ID")
+
+        g <- visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -533,7 +549,7 @@ data_imputation_server <- function(id, shared_state) {
           )
 
         ggplot2::ggsave(
-          file,
+          filename = file,
           plot = g,
           width = input$img_width,
           height = input$img_height,
