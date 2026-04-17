@@ -29,15 +29,18 @@ overview_ui <- function(id) {
             colourpicker::colourInput(
               ns("cor_high_color"),
               "High Color",
-              value = "purple"),
+              value = "purple"
+            ),
             colourpicker::colourInput(
               ns("cor_mid_color"),
               "middle Color",
-              value = "black"),
+              value = "black"
+            ),
             colourpicker::colourInput(
               ns("cor_low_color"),
               "Low Color",
-              value = "yellow"),
+              value = "yellow"
+            ),
             shiny::numericInput(ns("cor_color_min"), "Set Min Value", value = -1, step = 0.1),
             shiny::numericInput(ns("cor_color_max"), "Set Max Value", value = 1, step = 0.1),
             shiny::actionButton(ns("run_correlation"), "Run Correlation"),
@@ -64,15 +67,18 @@ overview_ui <- function(id) {
             colourpicker::colourInput(
               ns("exp_high_color"),
               "High Color",
-              value = "purple"),
+              value = "purple"
+            ),
             colourpicker::colourInput(
               ns("exp_mid_color"),
               "middle Color",
-              value = "black"),
+              value = "black"
+            ),
             colourpicker::colourInput(
               ns("exp_low_color"),
               "Low Color",
-              value = "yellow"),
+              value = "yellow"
+            ),
             shiny::numericInput(ns("exp_color_min"), "Set Min Value", value = -1, step = 0.1),
             shiny::numericInput(ns("exp_color_max"), "Set Max Value", value = 1, step = 0.1),
             shiny::actionButton(ns("run_expression"), "Run Expression"),
@@ -149,8 +155,6 @@ overview_ui <- function(id) {
 #' @importFrom grid gpar grid.text
 #' @importFrom grDevices pdf dev.off
 #' @importFrom matrixStats rowVars
-#' @importFrom data.table setnames
-#' @importFrom magrittr set_rownames
 #' @importFrom Rtsne Rtsne
 #' @importFrom umap umap
 #' @importFrom vegan metaMDS
@@ -159,7 +163,7 @@ overview_ui <- function(id) {
 #' @importFrom ggplot2 ggplot aes geom_point stat_ellipse theme_bw labs
 #' @name overview_server
 #' @export
-
+#'
 utils::globalVariables(c(
   "tissue", "tissue2", "species", "Type", "Species",
   "V1", "V2", "SampleType"
@@ -180,14 +184,8 @@ overview_server <- function(id, shared_state) {
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
 
-      step5_path <- base::file.path(
-        shared_state$workdir,
-        "Step5_data_imputation.rda"
-      )
-      step6_path <- base::file.path(
-        shared_state$workdir,
-        "Step6_data_normalization.rda"
-      )
+      step5_path <- base::file.path(shared_state$workdir, "Step5_data_imputation.rda")
+      step6_path <- base::file.path(shared_state$workdir, "Step6_data_normalization.rda")
 
       if (!base::file.exists(step5_path) || !base::file.exists(step6_path)) {
         missing_files <- c(step5_path, step6_path)[
@@ -202,6 +200,8 @@ overview_server <- function(id, shared_state) {
           type = "error"
         )
         rv$load_success <- FALSE
+        rv$cor_results <- NULL
+        rv$exp_results <- NULL
         return()
       }
 
@@ -219,6 +219,8 @@ overview_server <- function(id, shared_state) {
             type = "error"
           )
           rv$load_success <- FALSE
+          rv$cor_results <- NULL
+          rv$exp_results <- NULL
           return()
         }
 
@@ -228,6 +230,8 @@ overview_server <- function(id, shared_state) {
             type = "error"
           )
           rv$load_success <- FALSE
+          rv$cor_results <- NULL
+          rv$exp_results <- NULL
           return()
         }
 
@@ -252,6 +256,9 @@ overview_server <- function(id, shared_state) {
           base::rownames(normalized_mat) <- ids
         }
 
+        imputed_ids <- base::rownames(imputed_mat)
+        normalized_ids <- base::rownames(normalized_mat)
+
         imputed_mat <- base::as.data.frame(
           base::lapply(imputed_mat, function(x) base::as.numeric(base::as.character(x))),
           stringsAsFactors = FALSE
@@ -261,12 +268,17 @@ overview_server <- function(id, shared_state) {
           stringsAsFactors = FALSE
         )
 
+        base::rownames(imputed_mat) <- imputed_ids
+        base::rownames(normalized_mat) <- normalized_ids
+
         if (!base::identical(base::colnames(imputed_mat), base::colnames(normalized_mat))) {
           shiny::showNotification(
             "Sample names don't match between imputed and normalized data.",
             type = "error"
           )
           rv$load_success <- FALSE
+          rv$cor_results <- NULL
+          rv$exp_results <- NULL
           return()
         }
 
@@ -276,12 +288,16 @@ overview_server <- function(id, shared_state) {
             type = "error"
           )
           rv$load_success <- FALSE
+          rv$cor_results <- NULL
+          rv$exp_results <- NULL
           return()
         }
 
         rv$sample_info <- e5$sample_info
         rv$imputed_matrix <- imputed_mat
         rv$normalized_matrix <- normalized_mat
+        rv$cor_results <- NULL
+        rv$exp_results <- NULL
         rv$load_success <- TRUE
 
         shiny::showNotification(
@@ -294,6 +310,8 @@ overview_server <- function(id, shared_state) {
           type = "error"
         )
         rv$load_success <- FALSE
+        rv$cor_results <- NULL
+        rv$exp_results <- NULL
       })
     })
 
@@ -336,7 +354,9 @@ overview_server <- function(id, shared_state) {
     })
 
     cor_heatmap <- shiny::reactive({
-      shiny::req(rv$cor_results, rv$sample_info)
+      shiny::req(isTRUE(rv$load_success))
+      shiny::req(!base::is.null(rv$cor_results))
+      shiny::req(!base::is.null(rv$sample_info))
 
       metadata_share <- dplyr::left_join(
         base::data.frame(sample_id = base::colnames(rv$normalized_matrix)),
@@ -408,7 +428,16 @@ overview_server <- function(id, shared_state) {
     })
 
     output$cor_res <- shiny::renderPlot({
-      ComplexHeatmap::draw(cor_heatmap())
+      shiny::validate(
+        shiny::need(isTRUE(rv$load_success), "")
+      )
+      shiny::validate(
+        shiny::need(!base::is.null(rv$cor_results), "")
+      )
+
+      ht <- cor_heatmap()
+      shiny::req(!base::is.null(ht))
+      ComplexHeatmap::draw(ht)
     })
 
     output$cor_download_pdf <- shiny::downloadHandler(
@@ -416,6 +445,9 @@ overview_server <- function(id, shared_state) {
         base::paste0("correlation_heatmap_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
+        shiny::req(isTRUE(rv$load_success))
+        shiny::req(!base::is.null(rv$cor_results))
+
         grDevices::pdf(
           file,
           width = input$cor_plot_width,
@@ -448,7 +480,9 @@ overview_server <- function(id, shared_state) {
     })
 
     exp_heatmap <- shiny::reactive({
-      shiny::req(rv$exp_results, rv$sample_info)
+      shiny::req(isTRUE(rv$load_success))
+      shiny::req(!base::is.null(rv$exp_results))
+      shiny::req(!base::is.null(rv$sample_info))
 
       metadata_share <- dplyr::left_join(
         base::data.frame(sample_id = base::colnames(rv$normalized_matrix)),
@@ -512,7 +546,16 @@ overview_server <- function(id, shared_state) {
     })
 
     output$expression_pattern <- shiny::renderPlot({
-      ComplexHeatmap::draw(exp_heatmap())
+      shiny::validate(
+        shiny::need(isTRUE(rv$load_success), "")
+      )
+      shiny::validate(
+        shiny::need(!base::is.null(rv$exp_results), "")
+      )
+
+      ht <- exp_heatmap()
+      shiny::req(!base::is.null(ht))
+      ComplexHeatmap::draw(ht)
     })
 
     output$exp_download_pdf <- shiny::downloadHandler(
@@ -520,6 +563,9 @@ overview_server <- function(id, shared_state) {
         base::paste0("expression_pattern_heatmap_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
+        shiny::req(isTRUE(rv$load_success))
+        shiny::req(!base::is.null(rv$exp_results))
+
         grDevices::pdf(
           file,
           width = input$exp_plot_width,
