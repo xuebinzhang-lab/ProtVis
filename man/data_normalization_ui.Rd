@@ -7,14 +7,15 @@
 data_normalization_ui(id)
 }
 \arguments{
-\item{id}{The namespace identifier for the module}
+\item{id}{Character string. Module namespace ID.}
 }
 \value{
-A Shiny UI tagList containing the module interface
+A Shiny UI object for the normalization module.
 }
 \description{
-Creates the user interface for data normalization module which includes:
-- Data loading controls
-- Visualization of original and normalized data
-- Normalization execution button
+Creates the user interface for the data normalization module, including:
+- loading imputed data
+- running normalization
+- viewing original and normalized data
+- downloading boxplots
 }

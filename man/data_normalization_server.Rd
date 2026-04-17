@@ -7,17 +7,24 @@
 data_normalization_server(id, shared_state)
 }
 \arguments{
-\item{id}{The namespace identifier for the module}
+\item{id}{Character string. Module namespace ID.}
 
-\item{shared_state}{A reactiveValues object containing shared state between modules}
+\item{shared_state}{A reactiveValues object shared between modules.
+It must contain at least `workdir`.}
 }
 \value{
-A module server function
+No direct return value. This function generates Shiny outputs and
+  writes `Step6_data_normalization.rda`.
 }
 \description{
-Handles the server-side logic for data normalization including:
-- Loading input data
-- Performing median subtraction normalization
-- Generating visualizations
-- Saving results
+Handles the server-side logic for data normalization using
+median subtraction normalization.
+}
+\details{
+This module:
+- loads imputed data from `Step5_data_imputation.rda`
+- applies column-wise median subtraction normalization
+- displays original and normalized data
+- saves normalized results to `Step6_data_normalization.rda`
+- provides downloadable PDF boxplots
 }

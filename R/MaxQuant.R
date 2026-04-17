@@ -119,14 +119,12 @@ MaxQuant_server <- function(id, shared_state) {
         shiny::showNotification("❌ Step1_project_init.rda not found in working directory.", type = "error")
       }
     })
-
-    # remove unreliable peptide (修复核心逻辑)
+    # remove unreliable peptide
     shiny::observeEvent(input$run_filter_unreliable, {
       shiny::req(rv$expression_matrix)
       selected_filters <- input$selected_Method
       filtered <- rv$expression_matrix
-
-      # 统一过滤不可靠肽段
+      # Uniform filtering of unreliable peptide fragments
       if ("site" %in% selected_filters && "Only identified by site" %in% colnames(filtered)) {
         filtered <- dplyr::filter(filtered, base::is.na(`Only identified by site`))
       }
@@ -136,22 +134,26 @@ MaxQuant_server <- function(id, shared_state) {
       if ("conpeptide" %in% selected_filters && "Potential contaminant" %in% colnames(filtered)) {
         filtered <- dplyr::filter(filtered, base::is.na(`Potential contaminant`))
       }
-
-      # 统一生成 ID 和提取 Reporter 列
-      if (nrow(filtered) > 0 && "Protein IDs" %in% colnames(filtered)) {
+      # Unify ID generation and Reporter column extraction.
+      if (base::nrow(filtered) > 0 && "Protein IDs" %in% base::colnames(filtered)) {
         filtered <- filtered %>%
           dplyr::mutate(ID = stringr::str_split(`Protein IDs`, ";", 2, TRUE)[, 1]) %>%
-          dplyr::select(ID, dplyr::contains("Reporter"), dplyr::everything())
+          dplyr::select(
+            ID,
+            dplyr::contains("Reporter"),
+            dplyr::everything(),
+            -`Protein IDs`,
+            -`Only identified by site`,
+            -`Reverse`,
+            -`Potential contaminant`
+          )
       }
-
-      # 更新结果
+      # Update results
       rv$expression_matrix_filtered <- filtered
       rv$unreliable_filtered <- filtered
       filter_done(TRUE)
-
       shiny::showNotification(paste("Unreliable peptides filtered, remaining rows:", nrow(filtered)), type = "message")
-
-      # 保存结果
+      # Save results
       save_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
       sample_info <- rv$sample_info
       expression_matrix <- rv$expression_matrix
@@ -159,27 +161,21 @@ MaxQuant_server <- function(id, shared_state) {
       base::save(sample_info, expression_matrix, expression_matrix_filtered, file = save_path)
       shiny::showNotification("✅ Saved to Step2_remove_unreliable_peptide.rda", type = "message")
     })
-
     # Display report results
     shiny::observeEvent(input$report, {
       shiny::req(rv$expression_matrix_filtered, rv$expression_matrix)
       filtered <- rv$expression_matrix
-
       n_oibs <- if("Only identified by site" %in% colnames(filtered)) {
         nrow(dplyr::filter(filtered, !base::is.na(`Only identified by site`)))
       } else {0}
-
       n_r <- if("Reverse" %in% colnames(filtered)) {
         nrow(dplyr::filter(filtered, !base::is.na(`Reverse`)))
       } else {0}
-
       n_pc <- if("Potential contaminant" %in% colnames(filtered)) {
         nrow(dplyr::filter(filtered, !base::is.na(`Potential contaminant`)))
       } else {0}
-
       rep_id <- (filtered$`Protein IDs` %>% stringr::str_split(";", 2, TRUE))[, 1]
       removed_protein_group <- base::setdiff(base::sort(rep_id), base::sort(rv$expression_matrix_filtered$ID))
-
       result_df <- base::data.frame(
         Metric = c("Only identified by site", "Reverse", "Potential contaminant", "Removed protein groups count"),
         Count = c(n_oibs, n_r, n_pc, length(removed_protein_group)),

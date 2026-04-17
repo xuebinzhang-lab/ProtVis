@@ -2,22 +2,24 @@
 % Please edit documentation in R/data_imputation.R
 \name{data_imputation_ui}
 \alias{data_imputation_ui}
-\title{Data Imputation UI Module
-This function creates the UI for the data imputation module.
-It includes controls for loading data, visualizing missing values,
-selecting imputation methods, and viewing imputed results.}
+\title{Data Imputation UI Module}
 \usage{
 data_imputation_ui(id)
 }
 \arguments{
-\item{id}{Module ID used to namespace the UI elements.}
+\item{id}{Character string. Module ID used for namespacing the UI elements.}
 }
 \value{
-A Shiny UI element containing sidebar controls and main panel tabs.
+A Shiny UI object containing the complete layout for the
+  data imputation module.
 }
 \description{
-Data Imputation UI Module
-This function creates the UI for the data imputation module.
-It includes controls for loading data, visualizing missing values,
-selecting imputation methods, and viewing imputed results.
+Creates the user interface for the data imputation module.
+The module supports:
+- loading transformed data from the previous step
+- viewing sample information and expression matrix
+- visualizing missing-value patterns
+- selecting an imputation method
+- running imputation
+- downloading missing-value visualization plots
 }
