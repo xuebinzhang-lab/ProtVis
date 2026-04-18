@@ -13,6 +13,5 @@ DEP_analysis_ui(id)
 A Shiny UI tagList containing all UI elements for the DEP analysis module
 }
 \description{
-Creates the user interface for the Differential Expression Protein (DEP) analysis module.
-This module allows users to load data, specify comparison groups, and view analysis results.
+DEP Analysis UI Module
 }
