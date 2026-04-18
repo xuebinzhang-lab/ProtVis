@@ -2,13 +2,7 @@
 % Please edit documentation in R/correct_noise.R
 \name{correct_noise_server}
 \alias{correct_noise_server}
-\title{Server Logic for Noise Correction Module
-Handles the server-side processing for the noise correction module including:
-- Loading input data
-- Column renaming
-- Noise correction calculations
-- Data previews
-- Export functionality}
+\title{Server Logic for Noise Correction Module}
 \usage{
 correct_noise_server(id, shared_state)
 }
@@ -22,10 +16,4 @@ Server logic for the noise correction module
 }
 \description{
 Server Logic for Noise Correction Module
-Handles the server-side processing for the noise correction module including:
-- Loading input data
-- Column renaming
-- Noise correction calculations
-- Data previews
-- Export functionality
 }

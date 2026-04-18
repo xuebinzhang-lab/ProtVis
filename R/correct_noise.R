@@ -14,33 +14,41 @@
 #' @name correct_values
 #' @export
 #'
-utils::globalVariables(c("ID", "sample_id", "value", "value_fix", "sample_group", "."))
+utils::globalVariables(c("ID", "sample_id", "value", "value_fix", "sample_group", ".", "tag", "tag_sum"))
+
 correct_values <- function(raw_mat) {
   clean_mat <- raw_mat
 
-  rep1 <- dplyr::select(clean_mat, ID, dplyr::contains('_1')) %>%
+  rep1 <- dplyr::select(clean_mat, ID, dplyr::contains("_1")) %>%
     dplyr::rowwise() %>%
     dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
     dplyr::ungroup()
-  rep2 <- dplyr::select(clean_mat, ID, dplyr::contains('_2')) %>%
+
+  rep2 <- dplyr::select(clean_mat, ID, dplyr::contains("_2")) %>%
     dplyr::rowwise() %>%
     dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
     dplyr::ungroup()
-  rep3 <- dplyr::select(clean_mat, ID, dplyr::contains('_3')) %>%
+
+  rep3 <- dplyr::select(clean_mat, ID, dplyr::contains("_3")) %>%
     dplyr::rowwise() %>%
-    dplyr::filter(any(dplyr::c_across(-ID) != 0)) %>%
+    dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
     dplyr::ungroup()
+
   mv_mat <- dplyr::full_join(rep1, rep2, by = "ID") %>%
-    dplyr::full_join(., rep3, by = "ID")
-  long_df <- tidyr::pivot_longer(mv_mat,
-                                 cols = -ID,
-                                 names_to = "sample",
-                                 values_to = "value") %>%
+    dplyr::full_join(rep3, by = "ID")
+
+  long_df <- tidyr::pivot_longer(
+    mv_mat,
+    cols = -ID,
+    names_to = "sample",
+    values_to = "value"
+  ) %>%
     dplyr::mutate(value = tidyr::replace_na(value, 0)) %>%
     dplyr::mutate(
       sample_group = stringr::str_sub(sample, 1, -3),
       tag = dplyr::if_else(value > 0, 1L, 0L)
     )
+
   value_fix_df <- long_df %>%
     dplyr::group_by(ID, sample_group) %>%
     dplyr::mutate(
@@ -54,108 +62,140 @@ correct_values <- function(raw_mat) {
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(ID, sample, value_fix)
-  final_mat <- tidyr::pivot_wider(value_fix_df,
-                                  names_from = sample,
-                                  values_from = value_fix) %>%
-    dplyr::mutate(dplyr::across(-ID, ~dplyr::na_if(., 0)))
+
+  final_mat <- tidyr::pivot_wider(
+    value_fix_df,
+    names_from = sample,
+    values_from = value_fix
+  ) %>%
+    dplyr::mutate(dplyr::across(-ID, ~ dplyr::na_if(., 0)))
+
   return(final_mat)
 }
 
 #' UI for Noise Correction Module
-#' Creates the user interface for the noise correction module which includes:
-#' - Data loading controls
-#' - Column renaming options
-#' - Noise correction options
-#' - Preview tabs for different processing steps
-#' - Export functionality
 #' @param id Character string module ID for namespacing
 #' @return A Shiny UI layout with sidebar controls and main display area
 #' @import shiny
 #' @import bslib
-#' @importFrom shinyWidgets switchInput
+#' @importFrom shinyWidgets switchInput progressBar updateProgressBar
 #' @importFrom bsicons bs_icon
 #' @name correct_noise_ui
 #' @export
 #'
 correct_noise_ui <- function(id) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
+
   bslib::layout_sidebar(
     sidebar = bslib::sidebar(
       width = 300,
-      shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
+
+      shiny::actionButton(
+        ns("load_data"),
+        "LOAD DATA",
+        class = "btn btn-light fw-bold"
+      ),
       shiny::uiOutput(ns("load_status_panel")),
+      shinyWidgets::progressBar(
+        id = ns("load_progress"),
+        value = 0,
+        total = 100,
+        display_pct = TRUE,
+        striped = TRUE,
+        status = "success",
+        title = "Load progress"
+      ),
+
       bslib::accordion(
         bslib::accordion_panel(
           title = "Step1 Rename Columns",
           icon = bsicons::bs_icon("tools"),
-          tagList(
-            shinyWidgets::switchInput(
-              inputId = ns("rename_columns"),
-              label = "Rename Columns",
-              value = FALSE,
-              onLabel = "✔",
-              offLabel = "✘",
-              size = "small",
-              labelWidth = "120px",
-              handleWidth = 60
-            )
+          shinyWidgets::switchInput(
+            inputId = ns("rename_columns"),
+            label = "Rename Columns",
+            value = FALSE,
+            onLabel = "✔",
+            offLabel = "✘",
+            size = "small",
+            labelWidth = "120px",
+            handleWidth = 60
           )
         ),
         bslib::accordion_panel(
           title = "Step2 Correct Noise",
           icon = bsicons::bs_icon("tools"),
-          tagList(
-            shinyWidgets::switchInput(
-              inputId = ns("correct_noise"),
-              label = "Correct Noise",
-              value = FALSE,
-              onLabel = "✔",
-              offLabel = "✘",
-              size = "small",
-              labelWidth = "120px",
-              handleWidth = 60
-            )
+          shinyWidgets::switchInput(
+            inputId = ns("correct_noise"),
+            label = "Correct Noise",
+            value = FALSE,
+            onLabel = "✔",
+            offLabel = "✘",
+            size = "small",
+            labelWidth = "120px",
+            handleWidth = 60
+          ),
+          shinyWidgets::progressBar(
+            id = ns("noise_progress"),
+            value = 0,
+            total = 100,
+            display_pct = TRUE,
+            striped = TRUE,
+            status = "warning",
+            title = "Noise correction progress"
+          )
+        )
+      ),
+
+      shiny::tags$br(),
+
+      shiny::actionButton(
+        ns("export_correct_noise"),
+        "EXPORT DATA",
+        class = "btn btn-light fw-bold"
+      ),
+      shiny::uiOutput(ns("export_correct_noise_status_panel")),
+      shinyWidgets::progressBar(
+        id = ns("export_progress"),
+        value = 0,
+        total = 100,
+        display_pct = TRUE,
+        striped = TRUE,
+        status = "info",
+        title = "Export progress"
+      )
+    ),
+
+    bslib::card(
+      bslib::card_header("Preview the data processing process"),
+      bslib::card_body(
+        fill = TRUE,
+        bslib::navset_tab(
+          id = ns("Expression_Matrix"),
+          header = NULL,
+          bslib::nav_panel(
+            "Sample info",
+            shiny::uiOutput(ns("sample_info_ui"))
+          ),
+          bslib::nav_panel(
+            "Expression Matrix",
+            shiny::htmlOutput(ns("matrix_check")),
+            DT::DTOutput(ns("expression_matrix_filtered"))
+          ),
+          bslib::nav_panel(
+            "Rename Columns",
+            DT::DTOutput(ns("tbl_rename_columns"))
+          ),
+          bslib::nav_panel(
+            "Correct Noise",
+            DT::DTOutput(ns("tbl_correct_noise"))
           )
         )
       )
-    ),
-    div(
-      bslib::card(
-        bslib::card_header("Preview the data processing process"),
-        bslib::card_body(
-          fill = TRUE,
-          bslib::navset_tab(
-            id = ns("Expression_Matrix"),
-            header = NULL,
-            bslib::nav_panel("Sample info",
-                             shiny::uiOutput(ns("sample_info_ui"))
-            ),
-            bslib::nav_panel("Expression Matrix",
-                             shiny::htmlOutput(ns("matrix_check")),
-                      DT::DTOutput(ns("expression_matrix_filtered"))
-            ),
-            bslib::nav_panel("Rename Columns",
-                      DT::DTOutput(ns("tbl_rename_columns"))
-            ),
-            bslib::nav_panel("Correct Noise",
-                      DT::DTOutput(ns("tbl_correct_noise"))
-            )
-          )
-        )
-      )
-    ),
-    shiny::actionButton(ns("export_correct_noise"), "export data", class = "btn btn-light fw-bold"),
-    shiny::uiOutput(ns("export_correct_noise_status_panel"))
+    )
   )
 }
 
 #' Server Logic for Noise Correction Module
-#' Handles the server-side processing for the noise correction module including:
-#' - Loading input data
-#' - Column renaming
-#' - Noise correction calculations
-#' - Data previews
-#' - Export functionality
 #' @param id Character string module ID for namespacing
 #' @param shared_state Reactive values list for sharing data between modules
 #' @return Server logic for the noise correction module
@@ -163,33 +203,74 @@ correct_noise_ui <- function(id) {
 #' @importFrom dplyr left_join pull
 #' @importFrom DT renderDT datatable
 #' @importFrom tibble column_to_rownames rownames_to_column
+#' @importFrom shinyWidgets updateProgressBar
 #' @name correct_noise_server
 #' @export
 #'
-
 correct_noise_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    rv <- shiny::reactiveValues(load_success = FALSE)
+
+    rv <- shiny::reactiveValues(
+      load_success = FALSE,
+      export_success = FALSE
+    )
+
+    shiny::observe({
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "load_progress",
+        value = 0,
+        total = 100
+      )
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "noise_progress",
+        value = 0,
+        total = 100
+      )
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "export_progress",
+        value = 0,
+        total = 100
+      )
+    })
+
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
+
+      shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)
       rda_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+
       if (base::file.exists(rda_path)) {
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 35)
+
         e <- base::new.env()
         base::load(rda_path, envir = e)
+
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 65)
+
         if (base::exists("sample_info", envir = e)) {
           shared_state$sample_info <- e$sample_info
         }
+
         if (base::exists("expression_matrix_filtered", envir = e)) {
           shared_state$expression_matrix_filtered <- e$expression_matrix_filtered
           shared_state$rename_result <- NULL
           shared_state$correct_noise_result <- NULL
         }
+
         rv$load_success <- TRUE
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 100)
         shiny::showNotification("✅ Step2 data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        shiny::showNotification("❌ Step2_remove_unreliable_peptide.rda not found in working directory.", type = "error")
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 0)
+        shiny::showNotification(
+          "❌ Step2_remove_unreliable_peptide.rda not found in working directory.",
+          type = "error"
+        )
       }
     })
 
@@ -198,6 +279,14 @@ correct_noise_server <- function(id, shared_state) {
         shiny::span("✅ Data loaded", style = "color: green;")
       } else {
         shiny::span("❌ Data not loaded", style = "color: red;")
+      }
+    })
+
+    output$export_correct_noise_status_panel <- shiny::renderUI({
+      if (rv$export_success) {
+        shiny::span("✅ Data exported", style = "color: green;")
+      } else {
+        shiny::span("Waiting for export", style = "color: #666;")
       }
     })
 
@@ -213,21 +302,27 @@ correct_noise_server <- function(id, shared_state) {
 
     output$expression_matrix_filtered <- DT::renderDT({
       shiny::req(shared_state$expression_matrix_filtered)
-      DT::datatable(shared_state$expression_matrix_filtered, options = list(scrollX = TRUE, pageLength = 10))
+      DT::datatable(
+        shared_state$expression_matrix_filtered,
+        options = list(scrollX = TRUE, pageLength = 10)
+      )
     })
 
     correct_noise_step1 <- shiny::reactive({
       shiny::req(shared_state$expression_matrix_filtered, shared_state$sample_info)
+
       new_name <- dplyr::left_join(
         base::data.frame(maxquant_id = base::colnames(shared_state$expression_matrix_filtered)[-1]),
-        shared_state$sample_info
-      ) %>% dplyr::pull(sample_id)
+        shared_state$sample_info,
+        by = "maxquant_id"
+      ) %>%
+        dplyr::pull(sample_id)
 
       shared_state$expression_matrix_filtered %>%
         stats::setNames(c("ID", new_name))
     })
 
-    observe({
+    shiny::observe({
       shiny::req(shared_state$expression_matrix_filtered)
 
       if (isTRUE(input$rename_columns)) {
@@ -237,21 +332,35 @@ correct_noise_server <- function(id, shared_state) {
       }
     })
 
-    observe({
+    shiny::observeEvent(input$correct_noise, {
       if (isTRUE(input$correct_noise)) {
         shiny::req(correct_noise_step1())
-        shared_state$correct_noise_result <- correct_values(correct_noise_step1())
+
+        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 15)
+
+        dat <- correct_noise_step1()
+
+        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 45)
+
+        result <- correct_values(dat)
+
+        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 100)
+
+        shared_state$correct_noise_result <- result
+        shiny::showNotification("✅ Noise correction completed.", type = "message")
       } else {
         shared_state$correct_noise_result <- NULL
+        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 0)
       }
     })
 
     output$tbl_rename_columns <- DT::renderDT({
       if (isTRUE(input$rename_columns)) {
         shiny::req(shared_state$rename_result)
-        DT::datatable(shared_state$rename_result, options = base::list(scrollX = TRUE, pageLength = 10))
-      } else {
-        NULL
+        DT::datatable(
+          shared_state$rename_result,
+          options = list(scrollX = TRUE, pageLength = 10)
+        )
       }
     })
 
@@ -261,15 +370,16 @@ correct_noise_server <- function(id, shared_state) {
         DT::datatable(
           shared_state$correct_noise_result %>%
             tibble::column_to_rownames("ID"),
-          options = base::list(scrollX = TRUE, pageLength = 10)
+          options = list(scrollX = TRUE, pageLength = 10)
         )
-      } else {
-        NULL
       }
     })
 
-    observeEvent(input$export_correct_noise, {
+    shiny::observeEvent(input$export_correct_noise, {
       shiny::req(rv$load_success, shared_state$workdir, shared_state$sample_info)
+
+      rv$export_success <- FALSE
+      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 10)
 
       export_data <- NULL
 
@@ -281,6 +391,8 @@ correct_noise_server <- function(id, shared_state) {
         export_data <- shared_state$expression_matrix_filtered
       }
 
+      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 45)
+
       save_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
       sample_info <- shared_state$sample_info
 
@@ -289,7 +401,13 @@ correct_noise_server <- function(id, shared_state) {
         { . * 10000000 } %>%
         tibble::rownames_to_column("ID")
 
+      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 75)
+
       base::save(sample_info, correct_noise_result, file = save_path)
+
+      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 100)
+
+      rv$export_success <- TRUE
       shiny::showNotification(paste0("✅ Saved to ", save_path), type = "message")
     })
   })
