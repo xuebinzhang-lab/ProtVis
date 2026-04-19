@@ -3,15 +3,17 @@
 \name{enrichment_analysis_server}
 \alias{enrichment_analysis_server}
 \title{Enrichment Analysis Module Server}
+\usage{
+enrichment_analysis_server(id, shared_state)
+}
 \arguments{
 \item{id}{The namespace identifier for the module}
 
 \item{shared_state}{A reactive values list for sharing state between modules}
 }
 \value{
-A module server function that handles enrichment analysis operations
+A module server function
 }
 \description{
 This function provides the server-side logic for the enrichment analysis module.
-It handles data loading, file validation, enrichment analysis execution, and result visualization.
 }
