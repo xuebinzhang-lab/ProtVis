@@ -19,7 +19,7 @@ golem_add_external_resources <- function() {
     shiny::tags$link(
       rel = "icon",
       type = "image/x-icon",
-      href = "www/ProtVis_ico.ico"
+      href = "https://raw.githubusercontent.com/xuebinzhang-lab/ProtVis/dev/app/www/ProtVis_ico.ico"
     ),
     golem::bundle_resources(
       path = app_sys("app/www"),
@@ -517,7 +517,7 @@ app_ui <- function(request) {
               shiny::div(class = "footer-title", "ProtVis"),
               shiny::p(
                 class = "footer-text",
-                "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics exploration, and downstream visualization."
+                "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and downstream visualization."
               )
             ),
 
@@ -525,7 +525,7 @@ app_ui <- function(request) {
               shiny::div(class = "footer-title", "Developer"),
               shiny::p(
                 class = "footer-text",
-                shiny::strong("Fei Liang"),
+                shiny::strong("Fei Liang & Xiao Wang"),
                 shiny::br(),
                 "State Key Laboratory of Crop Stress Adaptation and Improvement,",
                 shiny::br(),
@@ -580,14 +580,14 @@ app_ui <- function(request) {
                   shiny::div(class = "protvis-title", "ProtVis"),
                   shiny::p(
                     class = "protvis-subtitle",
-                    "ProtVis integrates proteomics processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics exploration, and figure generation in one platform."
+                    "ProtVis integrates proteomics processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and figure generation in one platform."
                   ),
                   shiny::div(
                     class = "protvis-badge-wrap",
                     shiny::span(class = "protvis-badge", "End-to-End"),
                     shiny::span(class = "protvis-badge", "Protein 3D"),
                     shiny::span(class = "protvis-badge", "PTM visualization"),
-                    shiny::span(class = "protvis-badge", "Flexible input"),
+                    shiny::span(class = "protvis-badge", "Multi-omics"),
                     shiny::span(class = "protvis-badge", "Modular")
                   )
                 ),
@@ -641,11 +641,11 @@ app_ui <- function(request) {
 
                 shiny::div(
                   class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "Multi-format"),
-                  shiny::div(class = "protvis-stat-label", "Flexible input"),
+                  shiny::div(class = "protvis-stat-value", "Multi-omics"),
+                  shiny::div(class = "protvis-stat-label", "Integrated analysis"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "Compatible with common proteomics tables."
+                    "Supports multi-omics analysis and cross-layer exploration."
                   )
                 )
               )
@@ -659,7 +659,7 @@ app_ui <- function(request) {
               class = "protvis-panel",
               shiny::h4("Platform Overview"),
               shiny::p(
-                "ProtVis streamlines proteomics analysis by integrating preprocessing, differential analysis, functional interpretation, protein 3D structure visualization, PTM visualization, and downstream visualization in a unified Shiny-based environment."
+                "ProtVis streamlines proteomics analysis by integrating preprocessing, differential analysis, functional interpretation, protein 3D structure visualization, PTM visualization, multi-omics analysis, and downstream visualization in a unified Shiny-based environment."
               ),
               shiny::p(
                 "It supports both routine and exploratory workflows, helping users perform efficient and interpretable analyses with reduced technical barriers."
@@ -673,8 +673,8 @@ app_ui <- function(request) {
                 shiny::tags$li("End-to-End proteomics workflow"),
                 shiny::tags$li("2D and 3D visualization of key proteins"),
                 shiny::tags$li("PTM visualization"),
-                shiny::tags$li("Flexible support for multiple input formats"),
-                shiny::tags$li("Multi-omics extension modules")
+                shiny::tags$li("Multi-omics analysis"),
+                shiny::tags$li("Modular extension and downstream visualization")
               )
             )
           ),
@@ -769,9 +769,9 @@ app_ui <- function(request) {
             shiny::div(
               class = "protvis-flow-card",
               shiny::div(class = "protvis-step-badge", "6"),
-              shiny::h5("Multi-omics & Toolkits"),
+              shiny::h5("Multi-omics Analysis & Toolkits"),
               shiny::p(
-                "Extend analysis with multi-omics modules and additional visualization utilities."
+                "Support multi-omics analysis with dedicated modules and additional visualization utilities."
               )
             ),
 
@@ -817,10 +817,12 @@ app_ui <- function(request) {
                   " to define the project and metadata, then proceed to ",
                   shiny::strong("Data input"),
                   " and the pre-processing modules before entering downstream analysis. ",
+                  shiny::strong("Multi-omics"),
+                  ", ",
                   shiny::strong("Protein Structure"),
-                  " and ",
+                  ", and ",
                   shiny::strong("PTM"),
-                  " are provided as dedicated modules for structure- and modification-oriented exploration."
+                  " are provided as dedicated modules for extended biological exploration."
                 ),
                 shiny::p(
                   "The modular design of ProtVis supports stepwise analysis while maintaining flexibility and interpretability throughout the workflow."
