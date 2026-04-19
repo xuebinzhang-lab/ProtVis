@@ -77,16 +77,15 @@ golem_add_external_resources <- function() {
         width: 100%;
         max-width: 520px;
         min-height: 320px;
-        border-radius: 24px;
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.16);
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
-        backdrop-filter: blur(10px);
-        overflow: hidden;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        overflow: visible;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 14px;
+        padding: 0;
       }
 
       .protvis-hero-figure {
@@ -96,6 +95,7 @@ golem_add_external_resources <- function() {
         object-fit: contain;
         border-radius: 18px;
         display: block;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
       }
 
       .protvis-kicker {
@@ -565,7 +565,7 @@ app_ui <- function(request) {
                   shiny::div(
                     class = "protvis-hero-image-card",
                     shiny::tags$img(
-                      src = "protvis_homepage_bg_clean.png",
+                      src = "https://raw.githubusercontent.com/xuebinzhang-lab/ProtVis/dev/app/www/protvis_homepage_bg_clean.png",
                       class = "protvis-hero-figure",
                       alt = "ProtVis homepage illustration"
                     )
