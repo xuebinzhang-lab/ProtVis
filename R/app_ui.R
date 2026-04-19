@@ -5,7 +5,7 @@
 #' for static files within the `app/www` directory.
 #'
 #' @import shiny
-#' @importFrom golem favicon bundle_resources
+#' @importFrom golem bundle_resources
 #' @name golem_add_external_resources
 #' @export
 #'
@@ -16,7 +16,11 @@ golem_add_external_resources <- function() {
   )
 
   shiny::tags$head(
-    golem::favicon(),
+    shiny::tags$link(
+      rel = "icon",
+      type = "image/x-icon",
+      href = "www/ProtVis_ico.ico"
+    ),
     golem::bundle_resources(
       path = app_sys("app/www"),
       app_title = "ProtVis"
@@ -582,8 +586,8 @@ app_ui <- function(request) {
                     class = "protvis-badge-wrap",
                     shiny::span(class = "protvis-badge", "End-to-End"),
                     shiny::span(class = "protvis-badge", "Protein 3D"),
-                    shiny::span(class = "protvis-badge", "PTM Visualization"),
-                    shiny::span(class = "protvis-badge", "Flexible Input"),
+                    shiny::span(class = "protvis-badge", "PTM visualization"),
+                    shiny::span(class = "protvis-badge", "Flexible input"),
                     shiny::span(class = "protvis-badge", "Modular")
                   )
                 ),
@@ -607,7 +611,7 @@ app_ui <- function(request) {
 
                 shiny::div(
                   class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "End-to-end"),
+                  shiny::div(class = "protvis-stat-value", "End-to-End"),
                   shiny::div(class = "protvis-stat-label", "Integrated workflow"),
                   shiny::div(
                     class = "protvis-stat-note",
@@ -666,7 +670,7 @@ app_ui <- function(request) {
               class = "protvis-panel",
               shiny::h4("At a Glance"),
               shiny::tags$ul(
-                shiny::tags$li("End-to-end proteomics workflow"),
+                shiny::tags$li("End-to-End proteomics workflow"),
                 shiny::tags$li("2D and 3D visualization of key proteins"),
                 shiny::tags$li("PTM visualization"),
                 shiny::tags$li("Flexible support for multiple input formats"),
