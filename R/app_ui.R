@@ -24,63 +24,62 @@ golem_add_external_resources <- function() {
     shiny::tags$style(shiny::HTML("
       body {
         background: #eef1f4;
-        padding-bottom: 270px;
+        padding-bottom: 250px;
       }
 
       .protvis-page {
         max-width: 1450px;
         margin: 0 auto;
-        padding: 10px 6px 100px 6px;
+        padding: 8px 6px 90px 6px;
       }
 
       .protvis-hero {
         position: relative;
         overflow: hidden;
-        border-radius: 30px;
-        min-height: 720px;
-        margin: 22px auto 26px auto;
+        border-radius: 28px;
+        min-height: 620px;
+        margin: 18px auto 22px auto;
         background:
           radial-gradient(circle at top right, rgba(255,255,255,0.10) 0, rgba(255,255,255,0.04) 20%, transparent 40%),
           radial-gradient(circle at bottom left, rgba(255,255,255,0.06) 0, transparent 28%),
           linear-gradient(135deg, #1f2937 0%, #4b5563 45%, #9ca3af 100%);
         color: white;
-        box-shadow: 0 18px 42px rgba(31, 41, 55, 0.18);
+        box-shadow: 0 16px 36px rgba(31, 41, 55, 0.16);
       }
 
       .protvis-hero-inner {
         width: 100%;
-        padding: 56px 52px 44px 52px;
+        padding: 38px 42px 28px 42px;
       }
 
       .protvis-hero-top {
         display: flex;
-        align-items: stretch;
+        align-items: center;
         justify-content: space-between;
-        gap: 36px;
+        gap: 28px;
       }
 
       .protvis-hero-content {
         flex: 1 1 58%;
-        max-width: 760px;
-        padding-top: 6px;
+        max-width: 700px;
+        padding-top: 0;
       }
 
       .protvis-hero-image-wrap {
-        flex: 0 0 40%;
+        flex: 0 0 38%;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 360px;
+        min-height: 260px;
       }
 
       .protvis-hero-image-card {
         width: 100%;
-        max-width: 520px;
-        min-height: 320px;
+        max-width: 460px;
+        min-height: 250px;
         background: transparent;
         border: none;
         box-shadow: none;
-        backdrop-filter: none;
         overflow: visible;
         display: flex;
         align-items: center;
@@ -91,167 +90,181 @@ golem_add_external_resources <- function() {
       .protvis-hero-figure {
         width: 100%;
         height: auto;
-        max-height: 100%;
+        max-height: 290px;
         object-fit: contain;
-        border-radius: 18px;
+        border-radius: 16px;
         display: block;
-        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
       }
 
       .protvis-kicker {
         display: inline-block;
-        font-size: 0.90rem;
+        font-size: 0.82rem;
         font-weight: 800;
-        letter-spacing: 0.09em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: rgba(255,255,255,0.88);
-        margin-bottom: 18px;
+        margin-bottom: 12px;
       }
 
       .protvis-title {
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 900;
         line-height: 1.02;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         letter-spacing: -0.02em;
       }
 
       .protvis-subtitle {
-        font-size: 1.08rem;
-        line-height: 1.9;
-        max-width: 720px;
+        font-size: 1rem;
+        line-height: 1.72;
+        max-width: 650px;
         color: rgba(255,255,255,0.94);
-        margin-bottom: 24px;
+        margin-bottom: 16px;
       }
 
       .protvis-badge-wrap {
-        margin-top: 6px;
+        margin-top: 2px;
       }
 
       .protvis-badge {
         display: inline-block;
         border-radius: 999px;
-        padding: 8px 16px;
-        margin-right: 10px;
-        margin-bottom: 10px;
+        padding: 7px 13px;
+        margin-right: 8px;
+        margin-bottom: 8px;
         background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.16);
+        border: 1px solid rgba(255,255,255,0.15);
         color: white;
-        font-size: 0.94rem;
+        font-size: 0.88rem;
         font-weight: 600;
         backdrop-filter: blur(4px);
       }
 
       .protvis-stat-grid {
-        margin-top: 34px;
+        margin-top: 20px;
+        align-items: stretch;
+        gap: 10px 0;
+      }
+
+      .protvis-stat-grid > div {
+        display: flex;
       }
 
       .protvis-stat-card {
         background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 20px;
-        padding: 18px 20px;
-        min-height: 126px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 18px;
+        padding: 16px 16px;
+        min-height: 145px;
+        width: 100%;
+        height: 100%;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
       }
 
       .protvis-stat-value {
-        font-size: 2rem;
+        font-size: 1.7rem;
         font-weight: 900;
         line-height: 1.1;
-        margin-bottom: 8px;
-      }
-
-      .protvis-stat-label {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: rgba(255,255,255,0.94);
         margin-bottom: 6px;
       }
 
+      .protvis-stat-label {
+        font-size: 0.91rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.94);
+        margin-bottom: 7px;
+      }
+
       .protvis-stat-note {
-        font-size: 0.88rem;
-        line-height: 1.7;
+        font-size: 0.84rem;
+        line-height: 1.58;
         color: rgba(255,255,255,0.82);
+        margin-bottom: 0;
       }
 
       .protvis-section-title {
-        font-size: 1.55rem;
+        font-size: 1.45rem;
         font-weight: 900;
         color: #111827;
-        margin-top: 12px;
-        margin-bottom: 18px;
+        margin-top: 8px;
+        margin-bottom: 16px;
       }
 
       .protvis-panel {
         background: white;
         border: 1px solid #e5e7eb;
-        border-radius: 22px;
-        padding: 26px 26px;
-        box-shadow: 0 10px 28px rgba(31, 41, 55, 0.06);
-        margin-bottom: 22px;
+        border-radius: 20px;
+        padding: 22px 22px;
+        box-shadow: 0 8px 24px rgba(31, 41, 55, 0.05);
+        margin-bottom: 18px;
+        height: 100%;
       }
 
       .protvis-panel h4 {
-        font-size: 1.18rem;
-        font-weight: 850;
-        color: #111827;
-        margin-bottom: 14px;
-      }
-
-      .protvis-panel p,
-      .protvis-panel li {
-        color: #4b5563;
-        line-height: 1.82;
-        font-size: 0.98rem;
-      }
-
-      .protvis-panel ul {
-        padding-left: 20px;
-        margin-bottom: 0;
-      }
-
-      .protvis-feature-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 22px;
-        padding: 24px 22px;
-        min-height: 220px;
-        box-shadow: 0 10px 24px rgba(31, 41, 55, 0.05);
-        margin-bottom: 18px;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
-      }
-
-      .protvis-feature-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 14px 30px rgba(31, 41, 55, 0.09);
-      }
-
-      .protvis-feature-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
-        color: #374151;
-        font-size: 1.25rem;
-        font-weight: 900;
-        margin-bottom: 16px;
-      }
-
-      .protvis-feature-card h4 {
         font-size: 1.10rem;
         font-weight: 850;
         color: #111827;
         margin-bottom: 12px;
       }
 
+      .protvis-panel p,
+      .protvis-panel li {
+        color: #4b5563;
+        line-height: 1.72;
+        font-size: 0.95rem;
+      }
+
+      .protvis-panel ul {
+        padding-left: 18px;
+        margin-bottom: 0;
+      }
+
+      .protvis-feature-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        padding: 20px 18px;
+        min-height: 190px;
+        height: 100%;
+        box-shadow: 0 8px 20px rgba(31, 41, 55, 0.05);
+        margin-bottom: 16px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .protvis-feature-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(31, 41, 55, 0.08);
+      }
+
+      .protvis-feature-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+        color: #374151;
+        font-size: 1.15rem;
+        font-weight: 900;
+        margin-bottom: 14px;
+      }
+
+      .protvis-feature-card h4 {
+        font-size: 1.03rem;
+        font-weight: 850;
+        color: #111827;
+        margin-bottom: 10px;
+      }
+
       .protvis-feature-card p {
-        font-size: 0.97rem;
-        line-height: 1.8;
+        font-size: 0.94rem;
+        line-height: 1.68;
         color: #4b5563;
         margin-bottom: 0;
       }
@@ -259,10 +272,11 @@ golem_add_external_resources <- function() {
       .protvis-flow-card {
         background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
         border: 1px solid #e5e7eb;
-        border-radius: 20px;
-        padding: 20px 18px;
-        min-height: 180px;
-        box-shadow: 0 8px 22px rgba(31, 41, 55, 0.05);
+        border-radius: 18px;
+        padding: 16px 15px;
+        min-height: 150px;
+        height: 100%;
+        box-shadow: 0 7px 18px rgba(31, 41, 55, 0.04);
         position: relative;
       }
 
@@ -270,26 +284,26 @@ golem_add_external_resources <- function() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 38px;
-        height: 38px;
+        width: 34px;
+        height: 34px;
         border-radius: 999px;
         background: #4b5563;
         color: white;
-        font-size: 0.95rem;
+        font-size: 0.88rem;
         font-weight: 900;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
 
       .protvis-flow-card h5 {
-        font-size: 1rem;
+        font-size: 0.98rem;
         font-weight: 850;
         color: #111827;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
 
       .protvis-flow-card p {
-        font-size: 0.95rem;
-        line-height: 1.75;
+        font-size: 0.90rem;
+        line-height: 1.62;
         color: #4b5563;
         margin-bottom: 0;
       }
@@ -297,31 +311,33 @@ golem_add_external_resources <- function() {
       .protvis-support-box {
         background: linear-gradient(180deg, #f3f4f6 0%, #f9fafb 100%);
         border: 1px solid #d1d5db;
-        border-radius: 20px;
-        padding: 20px 22px;
+        border-radius: 18px;
+        padding: 18px 20px;
         min-height: 100%;
+        height: 100%;
+      }
+
+      .protvis-support-box p,
+      .protvis-support-box li {
+        font-size: 0.94rem;
+        line-height: 1.72;
+        color: #374151;
       }
 
       .protvis-support-box ul {
         margin-bottom: 0;
-        padding-left: 20px;
-      }
-
-      .protvis-support-box li {
-        font-size: 0.97rem;
-        line-height: 1.82;
-        color: #374151;
+        padding-left: 18px;
       }
 
       .protvis-note {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         color: #6b7280;
-        line-height: 1.8;
-        margin-top: 10px;
+        line-height: 1.7;
+        margin-top: 8px;
       }
 
       .protvis-home-bottom {
-        margin-bottom: 90px;
+        margin-bottom: 72px;
       }
 
       .protvis-site-footer {
@@ -332,7 +348,7 @@ golem_add_external_resources <- function() {
         z-index: 1050;
         background: #111827;
         color: rgba(255,255,255,0.92);
-        padding: 18px 0 12px 0;
+        padding: 16px 0 10px 0;
         border-top: 1px solid rgba(255,255,255,0.08);
         box-shadow: 0 -6px 20px rgba(0,0,0,0.18);
       }
@@ -344,29 +360,33 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-site-footer .footer-title {
-        font-size: 1rem;
+        font-size: 0.98rem;
         font-weight: 850;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
       }
 
       .protvis-site-footer .footer-text {
-        font-size: 0.90rem;
-        line-height: 1.7;
+        font-size: 0.88rem;
+        line-height: 1.65;
         color: rgba(255,255,255,0.80);
         margin-bottom: 0;
       }
 
       .protvis-site-footer .footer-small {
-        margin-top: 10px;
-        padding-top: 10px;
+        margin-top: 8px;
+        padding-top: 8px;
         border-top: 1px solid rgba(255,255,255,0.10);
-        font-size: 0.84rem;
+        font-size: 0.82rem;
         color: rgba(255,255,255,0.68);
       }
 
       @media (max-width: 1200px) {
         .protvis-title {
-          font-size: 3rem;
+          font-size: 2.7rem;
+        }
+
+        .protvis-hero {
+          min-height: 580px;
         }
 
         .protvis-hero-image-wrap {
@@ -376,27 +396,30 @@ golem_add_external_resources <- function() {
 
       @media (max-width: 992px) {
         body {
-          padding-bottom: 320px;
+          padding-bottom: 310px;
         }
 
         .protvis-page {
-          padding-bottom: 120px;
+          padding-bottom: 110px;
         }
 
         .protvis-home-bottom {
-          margin-bottom: 120px;
+          margin-bottom: 110px;
         }
 
         .protvis-hero {
           min-height: auto;
+          border-radius: 24px;
         }
 
         .protvis-hero-inner {
-          padding: 42px 28px 32px 28px;
+          padding: 32px 24px 24px 24px;
         }
 
         .protvis-hero-top {
           flex-direction: column;
+          align-items: flex-start;
+          gap: 20px;
         }
 
         .protvis-hero-content {
@@ -410,10 +433,15 @@ golem_add_external_resources <- function() {
 
         .protvis-hero-image-card {
           max-width: 100%;
+          min-height: auto;
+        }
+
+        .protvis-hero-figure {
+          max-height: 260px;
         }
 
         .protvis-title {
-          font-size: 2.6rem;
+          font-size: 2.35rem;
         }
 
         .protvis-subtitle {
@@ -423,36 +451,32 @@ golem_add_external_resources <- function() {
 
       @media (max-width: 768px) {
         body {
-          padding-bottom: 380px;
+          padding-bottom: 360px;
         }
 
         .protvis-page {
-          padding-bottom: 140px;
+          padding-bottom: 130px;
         }
 
         .protvis-home-bottom {
-          margin-bottom: 140px;
-        }
-
-        .protvis-hero {
-          border-radius: 24px;
+          margin-bottom: 130px;
         }
 
         .protvis-hero-inner {
-          padding: 34px 22px 28px 22px;
+          padding: 26px 18px 22px 18px;
         }
 
         .protvis-title {
-          font-size: 2.15rem;
+          font-size: 2rem;
         }
 
         .protvis-subtitle {
-          font-size: 1rem;
-          line-height: 1.8;
+          font-size: 0.96rem;
+          line-height: 1.72;
         }
 
         .protvis-stat-value {
-          font-size: 1.7rem;
+          font-size: 1.55rem;
         }
       }
     "))
@@ -483,13 +507,13 @@ app_ui <- function(request) {
         shiny::div(
           class = "footer-inner",
           bslib::layout_columns(
-            col_widths = c(5, 4, 3),
+            col_widths = c(4, 5, 3),
 
             shiny::div(
               shiny::div(class = "footer-title", "ProtVis"),
               shiny::p(
                 class = "footer-text",
-                "ProtVis is an integrated and user-friendly platform for proteomics data processing, statistical analysis, biological interpretation, multi-omics integration, and publication-ready visualization."
+                "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics exploration, and downstream visualization."
               )
             ),
 
@@ -499,9 +523,13 @@ app_ui <- function(request) {
                 class = "footer-text",
                 shiny::strong("Fei Liang"),
                 shiny::br(),
-                "State Key Laboratory of Crop Stress Adaptation and Improvement",
+                "State Key Laboratory of Crop Stress Adaptation and Improvement,",
                 shiny::br(),
-                "Henan University"
+                "Henan Joint International Laboratory for Crop Multi‐Omics Research,",
+                shiny::br(),
+                "School of Life Sciences, Henan University,",
+                shiny::br(),
+                "Kaifeng 475004, China"
               )
             ),
 
@@ -543,20 +571,20 @@ app_ui <- function(request) {
                   class = "protvis-hero-content",
                   shiny::div(
                     class = "protvis-kicker",
-                    "Proteomics Analysis and Visualization Platform"
+                    "Integrated Proteomics Analysis Platform"
                   ),
                   shiny::div(class = "protvis-title", "ProtVis"),
                   shiny::p(
                     class = "protvis-subtitle",
-                    "A publication-ready, modular, and user-friendly platform for comprehensive proteomics data processing, statistical analysis, biological interpretation, multi-omics integration, and high-quality figure generation."
+                    "ProtVis integrates proteomics processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics exploration, and figure generation in one platform."
                   ),
                   shiny::div(
                     class = "protvis-badge-wrap",
-                    shiny::span(class = "protvis-badge", "One-stop workflow"),
-                    shiny::span(class = "protvis-badge", "Interactive exploration"),
-                    shiny::span(class = "protvis-badge", "Multi-source compatibility"),
-                    shiny::span(class = "protvis-badge", "Publication-ready export"),
-                    shiny::span(class = "protvis-badge", "Modular architecture")
+                    shiny::span(class = "protvis-badge", "End-to-End"),
+                    shiny::span(class = "protvis-badge", "Protein 3D"),
+                    shiny::span(class = "protvis-badge", "PTM Visualization"),
+                    shiny::span(class = "protvis-badge", "Flexible Input"),
+                    shiny::span(class = "protvis-badge", "Modular")
                   )
                 ),
 
@@ -583,37 +611,37 @@ app_ui <- function(request) {
                   shiny::div(class = "protvis-stat-label", "Integrated workflow"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "From project setup and preprocessing to biological interpretation and final visualization."
+                    "From setup to interpretation and visualization."
+                  )
+                ),
+
+                shiny::div(
+                  class = "protvis-stat-card",
+                  shiny::div(class = "protvis-stat-value", "Protein 3D"),
+                  shiny::div(class = "protvis-stat-label", "Structure visualization"),
+                  shiny::div(
+                    class = "protvis-stat-note",
+                    "Supports structure-aware protein exploration."
+                  )
+                ),
+
+                shiny::div(
+                  class = "protvis-stat-card",
+                  shiny::div(class = "protvis-stat-value", "PTM"),
+                  shiny::div(class = "protvis-stat-label", "Modification visualization"),
+                  shiny::div(
+                    class = "protvis-stat-note",
+                    "Enables PTM-centered interpretation and display."
                   )
                 ),
 
                 shiny::div(
                   class = "protvis-stat-card",
                   shiny::div(class = "protvis-stat-value", "Multi-format"),
-                  shiny::div(class = "protvis-stat-label", "Flexible input support"),
+                  shiny::div(class = "protvis-stat-label", "Flexible input"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "Compatible with multiple proteomics result tables generated from common upstream pipelines."
-                  )
-                ),
-
-                shiny::div(
-                  class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "Interactive"),
-                  shiny::div(class = "protvis-stat-label", "Exploration and analysis"),
-                  shiny::div(
-                    class = "protvis-stat-note",
-                    "Supports dynamic data exploration, customizable figures, and modular downstream analysis."
-                  )
-                ),
-
-                shiny::div(
-                  class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "SCI-ready"),
-                  shiny::div(class = "protvis-stat-label", "Figure export"),
-                  shiny::div(
-                    class = "protvis-stat-note",
-                    "Produces publication-quality results for scientific communication and further figure refinement."
+                    "Compatible with common proteomics tables."
                   )
                 )
               )
@@ -627,10 +655,10 @@ app_ui <- function(request) {
               class = "protvis-panel",
               shiny::h4("Platform Overview"),
               shiny::p(
-                "ProtVis was developed to address major challenges in proteomics analysis, including fragmented workflows, low tool integration, limited interactivity, and insufficient support for reproducible, publication-grade visualization. The platform integrates preprocessing, statistical analysis, functional interpretation, and downstream figure generation into a unified Shiny-based environment."
+                "ProtVis streamlines proteomics analysis by integrating preprocessing, differential analysis, functional interpretation, protein 3D structure visualization, PTM visualization, and downstream visualization in a unified Shiny-based environment."
               ),
               shiny::p(
-                "It supports both routine proteomics analysis and advanced exploratory workflows, enabling users with different levels of computational experience to perform standardized and interpretable data analysis in a more efficient manner."
+                "It supports both routine and exploratory workflows, helping users perform efficient and interpretable analyses with reduced technical barriers."
               )
             ),
 
@@ -638,11 +666,11 @@ app_ui <- function(request) {
               class = "protvis-panel",
               shiny::h4("At a Glance"),
               shiny::tags$ul(
-                shiny::tags$li("Integrated end-to-end proteomics workflow"),
-                shiny::tags$li("Support for multiple input formats"),
-                shiny::tags$li("Interactive downstream analysis"),
-                shiny::tags$li("Multi-omics extension modules"),
-                shiny::tags$li("High-quality export for figures")
+                shiny::tags$li("End-to-end proteomics workflow"),
+                shiny::tags$li("2D and 3D visualization of key proteins"),
+                shiny::tags$li("PTM visualization"),
+                shiny::tags$li("Flexible support for multiple input formats"),
+                shiny::tags$li("Multi-omics extension modules")
               )
             )
           ),
@@ -654,41 +682,42 @@ app_ui <- function(request) {
             shiny::div(
               class = "protvis-feature-card",
               shiny::div(class = "protvis-feature-icon", "01"),
-              shiny::h4("Integrated Full Workflow"),
+              shiny::h4("Integrated Workflow"),
               shiny::p(
-                "ProtVis connects project initialization, metadata management, data import, correction, transformation, imputation, normalization, DEP analysis, enrichment interpretation, and downstream visualization in one coherent analytical environment."
+                "ProtVis integrates data import, preprocessing, differential analysis, biological interpretation, and downstream visualization into a streamlined workflow."
               )
             ),
 
             shiny::div(
               class = "protvis-feature-card",
               shiny::div(class = "protvis-feature-icon", "02"),
-              shiny::h4("Flexible Data Compatibility"),
+              shiny::h4("2D and 3D Visualization of Key Proteins"),
               shiny::p(
-                "The platform is compatible with multiple commonly used proteomics outputs, allowing users to analyze data from diverse software pipelines without rebuilding the workflow from scratch."
+                "ProtVis supports intuitive 2D and 3D visualization of key proteins to facilitate structure-aware exploration and result interpretation."
               )
             ),
 
             shiny::div(
               class = "protvis-feature-card",
               shiny::div(class = "protvis-feature-icon", "03"),
-              shiny::h4("Publication-Oriented Visualization"),
+              shiny::h4("PTM Visualization"),
               shiny::p(
-                "ProtVis supports high-quality figure generation for heatmaps, volcano plots, dimensionality reduction, enrichment, pathway display, and multi-omics exploration, with outputs suitable for scientific publication and post-editing."
+                "ProtVis provides dedicated PTM visualization for modification-centric analysis, enabling clearer presentation of phosphorylation and other PTM-related results."
               )
             )
           ),
 
           shiny::h3(class = "protvis-section-title", "Workflow Overview"),
+
           bslib::layout_columns(
-            col_widths = c(2, 2, 2, 2, 2, 2),
+            col_widths = c(3, 3, 3, 3),
 
             shiny::div(
               class = "protvis-flow-card",
               shiny::div(class = "protvis-step-badge", "1"),
               shiny::h5("Project Initialization"),
               shiny::p(
-                "Create the project environment and configure sample metadata for downstream analysis."
+                "Set up the project environment and configure sample metadata."
               )
             ),
 
@@ -697,7 +726,7 @@ app_ui <- function(request) {
               shiny::div(class = "protvis-step-badge", "2"),
               shiny::h5("Data Input"),
               shiny::p(
-                "Import proteomics result tables from supported software outputs and user-defined matrices."
+                "Import supported proteomics tables and user-defined matrices."
               )
             ),
 
@@ -706,7 +735,7 @@ app_ui <- function(request) {
               shiny::div(class = "protvis-step-badge", "3"),
               shiny::h5("Pre-processing"),
               shiny::p(
-                "Perform correction, transformation, missing-value imputation, and normalization for robust analysis."
+                "Perform correction, transformation, imputation, and normalization."
               )
             ),
 
@@ -715,16 +744,21 @@ app_ui <- function(request) {
               shiny::div(class = "protvis-step-badge", "4"),
               shiny::h5("Overview & DEP"),
               shiny::p(
-                "Conduct exploratory analysis, summary statistics, differential expression analysis, and pattern discovery."
+                "Run exploratory analysis, summary statistics, and differential analysis."
               )
-            ),
+            )
+          ),
+
+          bslib::layout_columns(
+            class = "mt-3",
+            col_widths = c(4, 4, 4),
 
             shiny::div(
               class = "protvis-flow-card",
               shiny::div(class = "protvis-step-badge", "5"),
               shiny::h5("Biological Interpretation"),
               shiny::p(
-                "Perform enrichment analysis, GSEA, and pathway-level interpretation for functional insights."
+                "Interpret results through enrichment analysis, GSEA, pathways, and functional exploration."
               )
             ),
 
@@ -733,7 +767,16 @@ app_ui <- function(request) {
               shiny::div(class = "protvis-step-badge", "6"),
               shiny::h5("Multi-omics & Toolkits"),
               shiny::p(
-                "Extend analysis through multi-omics integration modules and additional visualization utilities."
+                "Extend analysis with multi-omics modules and additional visualization utilities."
+              )
+            ),
+
+            shiny::div(
+              class = "protvis-flow-card",
+              shiny::div(class = "protvis-step-badge", "7"),
+              shiny::h5("Protein 3D & PTM Visualization"),
+              shiny::p(
+                "Explore key proteins through 3D structure and PTM visualization in dedicated modules."
               )
             )
           ),
@@ -746,12 +789,15 @@ app_ui <- function(request) {
               shiny::h3(class = "protvis-section-title", "Supported Data Types"),
               shiny::div(
                 class = "protvis-support-box",
+                shiny::p(
+                  "ProtVis supports multiple proteomics data tables and customizable matrix inputs for downstream analysis and visualization."
+                ),
                 shiny::tags$ul(
                   shiny::tags$li("MaxQuant output tables"),
                   shiny::tags$li("Proteome Discoverer output tables"),
                   shiny::tags$li("Skyline-based quantitative datasets"),
                   shiny::tags$li("Mascot and OpenMS compatible tabular inputs"),
-                  shiny::tags$li("User-defined matrices for customized downstream visualization")
+                  shiny::tags$li("User-defined matrices")
                 )
               )
             ),
@@ -762,18 +808,22 @@ app_ui <- function(request) {
                 class = "protvis-panel",
                 shiny::h4("Recommended Navigation"),
                 shiny::p(
-                  "Start with the ",
+                  "Begin with ",
                   shiny::strong("Project init"),
-                  " tab to initialize the project and configure metadata. Then proceed to ",
+                  " to define the project and metadata, then proceed to ",
                   shiny::strong("Data input"),
-                  ", followed by the pre-processing modules before entering downstream analysis."
+                  " and the pre-processing modules before entering downstream analysis. ",
+                  shiny::strong("Protein Structure"),
+                  " and ",
+                  shiny::strong("PTM"),
+                  " are provided as dedicated modules for structure- and modification-oriented exploration."
                 ),
                 shiny::p(
-                  "The modular architecture of ProtVis allows users to complete analyses step by step while maintaining flexibility, transparency, and reproducibility throughout the workflow."
+                  "The modular design of ProtVis supports stepwise analysis while maintaining flexibility and interpretability throughout the workflow."
                 ),
                 shiny::p(
                   class = "protvis-note",
-                  "Suggested path: Project init → Data input → Pre-processing → Downstream analysis → Multi-omics / Toolkits."
+                  "Suggested path: Project init → Data input → Pre-processing → Downstream analysis → Multi-omics / Toolkits → Protein Structure / PTM."
                 )
               )
             )
@@ -862,10 +912,11 @@ app_ui <- function(request) {
           style = "max-width: 1100px; margin: 30px auto; padding: 10px 20px;",
           shiny::h2("Help & Documentation", align = "center"),
           shiny::p(
-            "ProtVis provides a modular framework for proteomics data analysis. Users are encouraged to proceed through the workflow sequentially: Project initialization → Data input → Pre-processing → Downstream analysis."
+            "ProtVis provides a modular workflow for proteomics data analysis. Users are encouraged to proceed sequentially: Project initialization → Data input → Pre-processing → Downstream analysis. Protein structure visualization is available as a standalone module."
           ),
           shiny::tags$ul(
             shiny::tags$li("Use 'Project init' to define project metadata."),
+            shiny::tags$li("Use 'Protein Structure' for structure-oriented exploration."),
             shiny::tags$li("Use 'Data input' to upload experimental and expression data."),
             shiny::tags$li("Use pre-processing modules to prepare high-quality matrices."),
             shiny::tags$li("Use downstream analysis modules for DEP, enrichment, GSEA, and pathway interpretation."),
