@@ -10,12 +10,13 @@
 A Shiny server module function.
 }
 \description{
-Server logic for generating Venn diagrams with automatic
-  detection of set count to choose appropriate visualization method.
+Server logic for generating Venn diagrams or UpSet plots
+  with automatic or manual plot type selection.
+  Uses Venn for <= 6 sets and UpSet for > 6 sets in Auto mode.
 }
 \details{
 Venn Diagram Server Module
-Server-side logic for the Venn diagram module. Handles CSV file processing,
-dynamic color selection, Venn diagram generation (using ggvenn for ≤4 sets
-or venn package for 5+ sets), and PDF download functionality.
+Server-side logic for the Venn/UpSet module. Handles CSV file processing,
+dynamic color selection, plot generation, processed table display,
+and PDF download functionality.
 }

@@ -10,15 +10,14 @@ venn_ui(id)
 \item{id}{A unique identifier for the Shiny namespace.}
 }
 \value{
-A Shiny UI nav_panel containing the Venn diagram interface.
+A Shiny UI nav_panel containing the Venn/UpSet interface.
 }
 \description{
-Venn diagram visualization UI with file upload, color customization,
-  and plot download capabilities.
+Venn/UpSet visualization UI with file upload, plot type selection,
+  color customization, processed table display, and plot download.
 }
 \details{
 Venn Diagram UI Module
-Creates a user interface for generating Venn diagrams from uploaded CSV data.
-Supports both traditional Venn diagrams (up to 4 sets) and UpSet-style diagrams
-(5+ sets), with customizable colors and download functionality.
+Creates a user interface for generating Venn diagrams or UpSet plots
+from uploaded CSV data, with table display and download functionality.
 }
