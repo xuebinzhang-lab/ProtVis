@@ -5,7 +5,7 @@
 \title{Implements the server-side logic for the Nine-Quadrant Plot module.
 This includes reading uploaded files, dynamically generating UI for numeric column selection,
 previewing uploaded data, classifying points into quadrants, customizing colors,
-rendering the plot, and providing PDF download.}
+rendering the plot, providing PDF download, and showing per-quadrant tables with per-quadrant CSV downloads.}
 \arguments{
 \item{id}{A character string specifying the namespace of the module.}
 }
@@ -16,5 +16,5 @@ A Shiny module server that manages the Nine-Quadrant Plot interactivity.
 Implements the server-side logic for the Nine-Quadrant Plot module.
 This includes reading uploaded files, dynamically generating UI for numeric column selection,
 previewing uploaded data, classifying points into quadrants, customizing colors,
-rendering the plot, and providing PDF download.
+rendering the plot, providing PDF download, and showing per-quadrant tables with per-quadrant CSV downloads.
 }
