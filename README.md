@@ -4,8 +4,9 @@
 [![](https://img.shields.io/badge/platform-all-brightgreen.svg)](https://github.com/xuebinzhang-lab/ProtVis)
 [![](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/LICENSE)
 
-
 # ProtVis
+
+<img src="https://github.com/xuebinzhang-lab/ProtVis/blob/dev/app/www/ProtVis_ico.png?raw=true" alt="ProtVis Logo" align="right" width="180"/>
 
 **ProtVis: Simplifying proteomics data exploration with interactive visualization**
 
@@ -13,9 +14,7 @@ ProtVis is an interactive R/Shiny-based platform developed for proteomics data e
 
 ProtVis supports interactive data exploration and a variety of downstream analyses, helping users efficiently move from raw data inspection to biological interpretation.
 
-<p align="right">
-  <img src="https://github.com/xuebinzhang-lab/ProtVis/blob/dev/app/www/ProtVis_ico.png?raw=true" alt="ProtVis Logo" width="180"/>
-</p>
+<br clear="right"/>
 
 ---
 
