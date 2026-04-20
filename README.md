@@ -1,10 +1,6 @@
-[![](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![](https://img.shields.io/badge/GitHub-ProtVis-blue.svg)](https://github.com/xuebinzhang-lab/ProtVis)
-[![](https://img.shields.io/badge/R-Shiny-orange.svg)](https://github.com/xuebinzhang-lab/ProtVis)
-[![](https://img.shields.io/badge/platform-all-brightgreen.svg)](https://github.com/xuebinzhang-lab/ProtVis)
-[![](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/LICENSE)
-
 # ProtVis
+
+[![](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![](https://img.shields.io/badge/GitHub-ProtVis-blue.svg)](https://github.com/xuebinzhang-lab/ProtVis) [![](https://img.shields.io/badge/R-Shiny-orange.svg)](https://github.com/xuebinzhang-lab/ProtVis) [![](https://img.shields.io/badge/platform-all-brightgreen.svg)](https://github.com/xuebinzhang-lab/ProtVis) [![](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/LICENSE)
 
 <img src="https://github.com/xuebinzhang-lab/ProtVis/blob/dev/app/www/ProtVis_ico.png?raw=true" alt="ProtVis Logo" align="right" width="180"/>
 
@@ -16,17 +12,17 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 
 <br clear="right"/>
 
----
+------------------------------------------------------------------------
 
 ## Features
 
-- Interactive proteomics data exploration
-- High-quality visualization for publication and presentation
-- Support for protein-level data interpretation
-- Integrated Shiny-based graphical user interface
-- Easy-to-use workflow for researchers without extensive programming experience
+-   Interactive proteomics data exploration
+-   High-quality visualization for publication and presentation
+-   Support for protein-level data interpretation
+-   Integrated Shiny-based graphical user interface
+-   Easy-to-use workflow for researchers without extensive programming experience
 
----
+------------------------------------------------------------------------
 
 ## Installation
 
@@ -34,7 +30,7 @@ Before installing ProtVis, please make sure the required dependencies are instal
 
 ### Install required packages
 
-```r
+``` r
 install.packages("BiocManager")
 
 BiocManager::install("limma")
@@ -57,17 +53,17 @@ install.packages("devtools")
 
 ### Install ProtVis from GitHub
 
-```r
+``` r
 devtools::install_github("xuebinzhang-lab/ProtVis")
 ```
 
----
+------------------------------------------------------------------------
 
 ## Run ProtVis
 
 After installation, load the required libraries and launch ProtVis with:
 
-```r
+``` r
 library(shiny)
 library(plotly)
 library(bio3d)
@@ -77,48 +73,58 @@ library(ProtVis)
 run_ProtVis()
 ```
 
----
+------------------------------------------------------------------------
 
 ## Usage
 
 ProtVis launches as an interactive Shiny application in your R session. Once opened, users can explore proteomics datasets through an intuitive graphical interface and generate informative visualizations for downstream analysis and presentation.
 
----
+------------------------------------------------------------------------
 
 ## Requirements
 
-ProtVis is developed in R and relies on several CRAN and Bioconductor packages.  
+ProtVis is developed in R and relies on several CRAN and Bioconductor packages.\
 It is recommended to use an up-to-date version of R for the best compatibility.
 
----
+------------------------------------------------------------------------
 
+## Cookbook
+
+Cookbook
+
+------------------------------------------------------------------------
+## Demo
+
+Demo
+
+------------------------------------------------------------------------
 ## Getting Help
 
 If you encounter installation issues or package dependency conflicts, please first ensure that:
 
-- Bioconductor is correctly installed
-- All required packages are installed successfully
-- Your R version is compatible with the package dependencies
+-   Bioconductor is correctly installed
+-   All required packages are installed successfully
+-   Your R version is compatible with the package dependencies
 
 For additional support, please open an issue in this repository.
 
----
+------------------------------------------------------------------------
 
 ## Citation
 
 If you use ProtVis in your research, please cite the corresponding publication when available.
 
----
+------------------------------------------------------------------------
 
 ## Author
 
-**Fei Liang & Xiao Wang**  
-State Key Laboratory of Crop Stress Adaptation and Improvement  
-Henan Joint International Laboratory for Crop Multi-Omics Research  
-School of Life Sciences, Henan University  
+**Fei Liang & Xiao Wang**\
+State Key Laboratory of Crop Stress Adaptation and Improvement\
+Henan Joint International Laboratory for Crop Multi-Omics Research\
+School of Life Sciences, Henan University\
 Kaifeng 475004, China
 
----
+------------------------------------------------------------------------
 
 ## License
 

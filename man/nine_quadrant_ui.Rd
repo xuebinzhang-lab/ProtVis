@@ -4,7 +4,7 @@
 \alias{nine_quadrant_ui}
 \title{Creates the user interface for the Nine-Quadrant Plot module.
 This module allows users to upload a CSV/XLSX file, select numeric columns for X/Y axes,
-set cutoffs, customize colors for each quadrant, and download the plot as a PDF.}
+set cutoffs, customize colors for each quadrant, preview uploaded data, and download the plot as a PDF.}
 \usage{
 nine_quadrant_ui(id)
 }
@@ -17,5 +17,5 @@ A Shiny UI tagList containing the sidebar layout with input controls and main pl
 \description{
 Creates the user interface for the Nine-Quadrant Plot module.
 This module allows users to upload a CSV/XLSX file, select numeric columns for X/Y axes,
-set cutoffs, customize colors for each quadrant, and download the plot as a PDF.
+set cutoffs, customize colors for each quadrant, preview uploaded data, and download the plot as a PDF.
 }

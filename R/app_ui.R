@@ -28,13 +28,12 @@ golem_add_external_resources <- function() {
     shiny::tags$style(shiny::HTML("
       body {
         background: #eef1f4;
-        padding-bottom: 250px;
       }
 
       .protvis-page {
         max-width: 1450px;
         margin: 0 auto;
-        padding: 8px 6px 90px 6px;
+        padding: 8px 6px 280px 6px;
       }
 
       .protvis-hero {
@@ -341,7 +340,7 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-home-bottom {
-        margin-bottom: 72px;
+        margin-bottom: 24px;
       }
 
       .protvis-site-footer {
@@ -399,16 +398,12 @@ golem_add_external_resources <- function() {
       }
 
       @media (max-width: 992px) {
-        body {
-          padding-bottom: 310px;
-        }
-
         .protvis-page {
-          padding-bottom: 110px;
+          padding-bottom: 340px;
         }
 
         .protvis-home-bottom {
-          margin-bottom: 110px;
+          margin-bottom: 18px;
         }
 
         .protvis-hero {
@@ -454,16 +449,12 @@ golem_add_external_resources <- function() {
       }
 
       @media (max-width: 768px) {
-        body {
-          padding-bottom: 360px;
-        }
-
         .protvis-page {
-          padding-bottom: 130px;
+          padding-bottom: 390px;
         }
 
         .protvis-home-bottom {
-          margin-bottom: 130px;
+          margin-bottom: 14px;
         }
 
         .protvis-hero-inner {
@@ -505,57 +496,6 @@ app_ui <- function(request) {
     bslib::page_navbar(
       title = "ProtVis",
       theme = bslib::bs_theme(bootswatch = "lumen"),
-
-      footer = shiny::tags$footer(
-        class = "protvis-site-footer",
-        shiny::div(
-          class = "footer-inner",
-          bslib::layout_columns(
-            col_widths = c(4, 5, 3),
-
-            shiny::div(
-              shiny::div(class = "footer-title", "ProtVis"),
-              shiny::p(
-                class = "footer-text",
-                "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and downstream visualization."
-              )
-            ),
-
-            shiny::div(
-              shiny::div(class = "footer-title", "Developer"),
-              shiny::p(
-                class = "footer-text",
-                shiny::strong("Fei Liang & Xiao Wang"),
-                shiny::br(),
-                "State Key Laboratory of Crop Stress Adaptation and Improvement,",
-                shiny::br(),
-                "Henan Joint International Laboratory for Crop Multi‐Omics Research,",
-                shiny::br(),
-                "School of Life Sciences, Henan University,",
-                shiny::br(),
-                "Kaifeng 475004, China"
-              )
-            ),
-
-            shiny::div(
-              shiny::div(class = "footer-title", "Contact"),
-              shiny::p(
-                class = "footer-text",
-                "Email: fyliangfei@163.com",
-                shiny::br(),
-                "Platform: ProtVis",
-                shiny::br(),
-                "For research and visualization use"
-              )
-            )
-          ),
-
-          shiny::div(
-            class = "footer-small",
-            "© 2026 ProtVis. All rights reserved."
-          )
-        )
-      ),
 
       bslib::nav_panel(
         "Homepage",
@@ -833,6 +773,57 @@ app_ui <- function(request) {
                 )
               )
             )
+          ),
+
+          shiny::tags$footer(
+            class = "protvis-site-footer",
+            shiny::div(
+              class = "footer-inner",
+              bslib::layout_columns(
+                col_widths = c(4, 5, 3),
+
+                shiny::div(
+                  shiny::div(class = "footer-title", "ProtVis"),
+                  shiny::p(
+                    class = "footer-text",
+                    "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and downstream visualization."
+                  )
+                ),
+
+                shiny::div(
+                  shiny::div(class = "footer-title", "Developer"),
+                  shiny::p(
+                    class = "footer-text",
+                    shiny::strong("Fei Liang & Xiao Wang"),
+                    shiny::br(),
+                    "State Key Laboratory of Crop Stress Adaptation and Improvement,",
+                    shiny::br(),
+                    "Henan Joint International Laboratory for Crop Multi‐Omics Research,",
+                    shiny::br(),
+                    "School of Life Sciences, Henan University,",
+                    shiny::br(),
+                    "Kaifeng 475004, China"
+                  )
+                ),
+
+                shiny::div(
+                  shiny::div(class = "footer-title", "Contact"),
+                  shiny::p(
+                    class = "footer-text",
+                    "Email: fyliangfei@163.com",
+                    shiny::br(),
+                    "Platform: ProtVis",
+                    shiny::br(),
+                    "For research and visualization use"
+                  )
+                )
+              ),
+
+              shiny::div(
+                class = "footer-small",
+                "© 2026 ProtVis. All rights reserved."
+              )
+            )
           )
         )
       ),
@@ -911,29 +902,7 @@ app_ui <- function(request) {
         bslib::nav_panel("DEG Analyse", DEG_ui("DEG"))
       ),
 
-      bslib::nav_panel(
-        "Help",
-        icon = bsicons::bs_icon("question-circle"),
-        shiny::div(
-          style = "max-width: 1100px; margin: 30px auto; padding: 10px 20px;",
-          shiny::h2("Help & Documentation", align = "center"),
-          shiny::p(
-            "ProtVis provides a modular workflow for proteomics data analysis. Users are encouraged to proceed sequentially: Project initialization → Data input → Pre-processing → Downstream analysis. Protein structure visualization is available as a standalone module."
-          ),
-          shiny::tags$ul(
-            shiny::tags$li("Use 'Project init' to define project metadata."),
-            shiny::tags$li("Use 'Protein Structure' for structure-oriented exploration."),
-            shiny::tags$li("Use 'Data input' to upload experimental and expression data."),
-            shiny::tags$li("Use pre-processing modules to prepare high-quality matrices."),
-            shiny::tags$li("Use downstream analysis modules for DEP, enrichment, GSEA, and pathway interpretation."),
-            shiny::tags$li("Use Toolkits for additional visualization and utility functions.")
-          ),
-          shiny::br(),
-          shiny::p(
-            "This page can be further extended to include tutorials, workflow examples, FAQ content, and downloadable user documentation."
-          )
-        )
-      )
+      help_ui()
     )
   )
 }
