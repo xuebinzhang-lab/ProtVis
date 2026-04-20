@@ -1,62 +1,60 @@
 #' Venn Diagram UI Module
-#' Creates a user interface for generating Venn diagrams from uploaded CSV data.
-#' Supports both traditional Venn diagrams (up to 4 sets) and UpSet-style diagrams
-#' (5+ sets), with customizable colors and download functionality.
-#' @description Venn diagram visualization UI with file upload, color customization,
-#'   and plot download capabilities.
+#' Creates a user interface for generating Venn diagrams or UpSet plots
+#' from uploaded CSV data, with table display and download functionality.
+#' @description Venn/UpSet visualization UI with file upload, plot type selection,
+#'   color customization, processed table display, and plot download.
 #' @param id A unique identifier for the Shiny namespace.
 #' @title venn_ui
-#' @return A Shiny UI nav_panel containing the Venn diagram interface.
+#' @return A Shiny UI nav_panel containing the Venn/UpSet interface.
 #' @import shiny
 #' @import bslib
 #' @importFrom bsicons bs_icon
+#' @importFrom DT DTOutput
 #' @name venn_ui
 #' @export
 #'
-venn_ui <- function(id){
+venn_ui <- function(id) {
   ns <- shiny::NS(id)
+
   bslib::nav_panel(
-    title = 'Venn',
+    title = "Venn",
     icon = bsicons::bs_icon("play-circle"),
     bslib::layout_sidebar(
-      sidebar = bslib::accordion(
-        bslib::accordion_panel(
-          title = "File Upload",
-          icon = bsicons::bs_icon("upload"),
-          shiny::fileInput(
-            inputId = ns('file'),
-            label = 'File',
-            multiple = FALSE,
-            accept = '.csv'
-          )
-        )
+      sidebar = bslib::sidebar(
+        width = 300,
+        shiny::fileInput(
+          inputId = ns("file"),
+          label = "File",
+          multiple = FALSE,
+          accept = ".csv"
+        ),
+        shiny::radioButtons(
+          inputId = ns("plot_type"),
+          label = "Choose plot type",
+          choices = c("Auto" = "auto", "Venn" = "venn", "UpSet" = "upset"),
+          selected = "auto"
+        ),
+        shiny::uiOutput(ns("colorSelectors")),
+        shiny::actionButton(ns("run"), "Run"),
+        shiny::br(),
+        shiny::br(),
+        shiny::downloadButton(ns("downloadPlot"), "Download")
       ),
       bslib::page_fluid(
-        bslib::layout_column_wrap(
-          width = 1,
-          height = 600,
-          bslib::navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            title = "Venn plot",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Parameter',
-                shiny::uiOutput(ns("colorSelectors"))
-              ),
-              bslib::accordion_panel(
-                title = 'Run',
-                shiny::actionButton(ns("run"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Download',
-                shiny::downloadButton(ns("downloadPlot"), "Download")
-              )
-            ),
-            shiny::mainPanel(
-              shiny::plotOutput(ns("venn_plot"))
-            )
+        shiny::uiOutput(ns("plot_notice")),
+        bslib::card(
+          full_screen = TRUE,
+          style = "margin-bottom: 20px;",
+          bslib::card_header("Venn / UpSet Plot"),
+          bslib::card_body(
+            shiny::plotOutput(ns("venn_plot"), height = "500px")
+          )
+        ),
+        bslib::card(
+          full_screen = TRUE,
+          bslib::card_header("Processed Table"),
+          bslib::card_body(
+            DT::DTOutput(ns("processed_table"))
           )
         )
       )
@@ -65,11 +63,12 @@ venn_ui <- function(id){
 }
 
 #' Venn Diagram Server Module
-#' Server-side logic for the Venn diagram module. Handles CSV file processing,
-#' dynamic color selection, Venn diagram generation (using ggvenn for ≤4 sets
-#' or venn package for 5+ sets), and PDF download functionality.
-#' @description Server logic for generating Venn diagrams with automatic
-#'   detection of set count to choose appropriate visualization method.
+#' Server-side logic for the Venn/UpSet module. Handles CSV file processing,
+#' dynamic color selection, plot generation, processed table display,
+#' and PDF download functionality.
+#' @description Server logic for generating Venn diagrams or UpSet plots
+#'   with automatic or manual plot type selection.
+#'   Uses Venn for <= 6 sets and UpSet for > 6 sets in Auto mode.
 #' @title venn_server
 #' @param id Standard shiny server identifier.
 #' @return A Shiny server module function.
@@ -81,6 +80,7 @@ venn_ui <- function(id){
 #' @importFrom tibble column_to_rownames
 #' @importFrom ggplot2 ggsave
 #' @importFrom grDevices pdf dev.off colors
+#' @importFrom DT renderDT datatable
 #' @name venn_server
 #' @export
 #'
@@ -89,58 +89,203 @@ utils::globalVariables(c("Name", "Set", "everything", "across"))
 
 venn_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-    reactive_data <- shiny::reactiveValues()
-    shiny::observeEvent(input$file, {
+    rv <- shiny::reactiveValues(
+      set_list = NULL,
+      upset_data = NULL,
+      upset_table = NULL,
+      colors = NULL,
+      plot_mode = NULL
+    )
+
+    parsed_data <- shiny::reactive({
       shiny::req(input$file)
-      data <- utils::read.csv(input$file$datapath)
+
+      df <- utils::read.csv(
+        file = input$file$datapath,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+
+      df[] <- lapply(df, function(x) {
+        x <- as.character(x)
+        x <- trimws(x)
+        x[x == ""] <- NA
+        x
+      })
+
+      set_list <- lapply(df, function(x) unique(stats::na.omit(x)))
+
+      long_df <- df %>%
+        tidyr::pivot_longer(
+          cols = tidyr::everything(),
+          names_to = "Set",
+          values_to = "Name"
+        ) %>%
+        dplyr::distinct(Name, Set) %>%
+        dplyr::mutate(
+          Name = trimws(as.character(Name)),
+          Set = trimws(as.character(Set))
+        )
+
+      long_df <- long_df[!is.na(long_df$Name) & long_df$Name != "", , drop = FALSE]
+
+      bin_df <- long_df %>%
+        tidyr::pivot_wider(
+          names_from = Set,
+          values_from = Set,
+          values_fill = list(Set = "0")
+        ) %>%
+        dplyr::mutate(
+          dplyr::across(-Name, ~ ifelse(. == "0", 0, 1))
+        )
+
+      row_mat <- bin_df %>%
+        tibble::column_to_rownames("Name")
+
+      list(
+        set_list = set_list,
+        bin_df = bin_df,
+        row_mat = row_mat
+      )
+    })
+
+    shiny::observeEvent(input$file, {
+      dat <- parsed_data()
+
       output$colorSelectors <- shiny::renderUI({
-        base::lapply(base::seq_along(base::colnames(data)), function(i) {
+        lapply(seq_along(names(dat$set_list)), function(i) {
           colourpicker::colourInput(
-            inputId = ns(base::paste0("color_", i)),
-            label = base::paste("Select Color for", base::colnames(data)[i]),
-            value = base::sample(grDevices::colors(), 1)
+            inputId = session$ns(paste0("color_", i)),
+            label = paste("Select Color for", names(dat$set_list)[i]),
+            value = sample(grDevices::colors(), 1)
           )
         })
       })
     })
-    shiny::observeEvent(input$run, {
-      shiny::req(input$file)
-      data <- utils::read.csv(input$file$datapath)
-      # Prepare data for plotting
-      long_df <- data %>%
-        tidyr::pivot_longer(cols = tidyr::everything(), names_to = "Set", values_to = "Name") %>%
-        dplyr::distinct(Name, Set) %>%
-        tidyr::pivot_wider(names_from = Set, values_from = Set, values_fill = base::list(Set = "0")) %>%
-        dplyr::mutate(dplyr::across(-Name, ~base::ifelse(. == "0", 0, 1))) %>%
-        tibble::column_to_rownames("Name")
-      # Save reactive data
-      reactive_data$set_list <- base::as.list(data)
-      reactive_data$upset_data <- long_df
-      reactive_data$colors <- base::sapply(base::seq_along(base::colnames(data)), function(i) input[[base::paste0("color_", i)]])
-      # Render plot based on color count
-      output$venn_plot <- shiny::renderPlot({
-        if (base::length(reactive_data$colors) <= 4) {
-          ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors)
+
+    get_plot_mode <- shiny::reactive({
+      dat <- parsed_data()
+      n_sets <- length(dat$set_list)
+
+      if (input$plot_type == "auto") {
+        if (n_sets <= 6) {
+          "venn"
         } else {
-          venn::venn(
-            reactive_data$upset_data,
-            ilabels = TRUE, box = FALSE, ilcs = 1, sncs = 1.2,
-            lwd = 4, lty = 1, col = reactive_data$colors, zcolor = reactive_data$colors
-          )
+          "upset"
         }
-      })
+      } else {
+        input$plot_type
+      }
     })
+
+    shiny::observeEvent(input$run, {
+      dat <- parsed_data()
+
+      rv$set_list <- dat$set_list
+      rv$upset_data <- dat$row_mat
+      rv$upset_table <- dat$bin_df
+      rv$colors <- sapply(seq_along(names(dat$set_list)), function(i) {
+        input[[paste0("color_", i)]]
+      })
+      rv$plot_mode <- get_plot_mode()
+    })
+
+    output$plot_notice <- shiny::renderUI({
+      shiny::req(input$file)
+
+      dat <- parsed_data()
+      n_sets <- length(dat$set_list)
+
+      if (input$plot_type == "venn" && n_sets > 6) {
+        shiny::div(
+          style = "padding:10px 14px; margin-bottom:12px; background:#fff3cd; color:#856404; border-radius:8px;",
+          "Current dataset contains more than 6 sets. Please use Auto or UpSet."
+        )
+      } else {
+        shiny::div(
+          style = "padding:8px 12px; margin-bottom:12px; background:#f8f9fa; color:#495057; border-radius:8px;",
+          paste("Detected", n_sets, "sets. Current mode:", toupper(get_plot_mode()))
+        )
+      }
+    })
+
+    output$venn_plot <- shiny::renderPlot({
+      shiny::req(input$run > 0)
+      shiny::req(rv$set_list, rv$upset_data, rv$colors, rv$plot_mode)
+
+      if (rv$plot_mode == "venn") {
+        shiny::validate(
+          shiny::need(
+            length(rv$set_list) <= 6,
+            "More than 6 sets detected. Please switch to Auto or UpSet."
+          )
+        )
+
+        ggvenn::ggvenn(
+          data = rv$set_list,
+          fill_color = rv$colors
+        )
+      } else {
+        shiny::validate(
+          shiny::need(
+            ncol(rv$upset_data) >= 1,
+            "No valid set data available for UpSet plot."
+          )
+        )
+
+        UpSetR::upset(
+          data = as.data.frame(rv$upset_data),
+          sets = colnames(rv$upset_data),
+          keep.order = TRUE,
+          order.by = "freq"
+        )
+      }
+    })
+
+    output$processed_table <- DT::renderDT({
+      shiny::req(input$run > 0)
+      shiny::req(rv$upset_table)
+
+      DT::datatable(
+        rv$upset_table,
+        rownames = FALSE,
+        extensions = "Buttons",
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          dom = "Bfrtip",
+          buttons = c("copy", "csv", "excel")
+        )
+      )
+    })
+
     output$downloadPlot <- shiny::downloadHandler(
-      filename = function() base::paste("venn_plot", base::Sys.Date(), ".pdf", sep = ""),
+      filename = function() {
+        paste0("venn_upset_plot_", Sys.Date(), ".pdf")
+      },
       content = function(file) {
-        if (base::length(reactive_data$colors) <= 4) {
-          ggplot2::ggsave(file, plot = ggvenn::ggvenn(reactive_data$set_list, fill_color = reactive_data$colors),
-                          width = 8, height = 6, dpi = 300, device = "pdf")
+        shiny::req(rv$set_list, rv$upset_data, rv$colors, rv$plot_mode)
+
+        if (rv$plot_mode == "venn") {
+          ggplot2::ggsave(
+            filename = file,
+            plot = ggvenn::ggvenn(
+              data = rv$set_list,
+              fill_color = rv$colors
+            ),
+            width = 8,
+            height = 6,
+            dpi = 300,
+            device = "pdf"
+          )
         } else {
-          grDevices::pdf(file, width = 8, height = 6)
-          venn::venn(reactive_data$upset_data, ilabels = TRUE, box = FALSE, ilcs = 1, sncs = 1.2,
-                     lwd = 4, lty = 1, col = reactive_data$colors, zcolor = reactive_data$colors)
+          grDevices::pdf(file, width = 10, height = 7)
+          UpSetR::upset(
+            data = as.data.frame(rv$upset_data),
+            sets = colnames(rv$upset_data),
+            keep.order = TRUE,
+            order.by = "freq"
+          )
           grDevices::dev.off()
         }
       }
