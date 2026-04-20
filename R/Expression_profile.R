@@ -37,12 +37,11 @@ Expression_profile_ui <- function(id) {
       shiny::conditionalPanel(
         condition = "input.dropdown == 'Kmeans'",
         ns = ns,
-        # 👇 👇 只改这里：删掉了 page_fluid，警告直接消失
         bslib::layout_column_wrap(
           width = 1,
-          height = 600,
+          height = 800,
           bslib::navset_card_tab(
-            height = 600,
+            height = 800,
             full_screen = TRUE,
             title = "Kmeans",
             sidebar = bslib::accordion(
@@ -142,8 +141,8 @@ Expression_profile_server <- function(id) {
             ggplot2::geom_line(show.legend = FALSE) +
             ggplot2::labs(x = "", y = "Standardised value") +
             ggplot2::labs(title = df$Cluster)+
-            # scale_color_manual(values = color_vector) +  # 使用自定义的颜色向量
-            ggplot2::scale_color_manual(values = input$color_select) +  # 使用自定义的颜色向量
+            # scale_color_manual(values = color_vector) +
+            ggplot2::scale_color_manual(values = input$color_select) +
             ggplot2::theme_bw() +
             ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) +
             ggplot2::theme(panel.grid = ggplot2::element_blank()) +
@@ -205,8 +204,8 @@ Expression_profile_server <- function(id) {
               ggplot2::geom_line(show.legend = FALSE) +
               ggplot2::labs(x = "", y = "Standardised value") +
               ggplot2::labs(title = df$Cluster)+
-              # scale_color_manual(values = color_vector) +  # 使用自定义的颜色向量
-              ggplot2::scale_color_manual(values = input$color_select) +  # 使用自定义的颜色向量
+              # scale_color_manual(values = color_vector) +
+              ggplot2::scale_color_manual(values = input$color_select) +
               ggplot2::theme_bw() +
               ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) +
               ggplot2::theme(panel.grid = ggplot2::element_blank()) +
