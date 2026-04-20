@@ -1,6 +1,7 @@
 #' Creates the user interface for the Nine-Quadrant Plot module.
 #' This module allows users to upload a CSV/XLSX file, select numeric columns for X/Y axes,
 #' set cutoffs, customize colors for each quadrant, preview uploaded data, and download the plot as a PDF.
+#' Below the plot, expandable panels are provided for all nine quadrants, each with its own data table and download button.
 #' @param id A character string specifying the namespace of the module.
 #' @return A Shiny UI tagList containing the sidebar layout with input controls and main plot area.
 #' @import shiny
@@ -12,6 +13,29 @@
 #'
 nine_quadrant_ui <- function(id) {
   ns <- NS(id)
+
+  quadrant_names <- c(
+    "Up_Up", "Up_NS", "Up_Down",
+    "NS_Up", "NS_NS", "NS_Down",
+    "Down_Up", "Down_NS", "Down_Down"
+  )
+
+  quadrant_panels <- lapply(quadrant_names, function(q) {
+    pretty_title <- gsub("_", " / ", q)
+
+    bslib::accordion_panel(
+      title = pretty_title,
+      shiny::div(
+        style = "margin-bottom: 12px;",
+        shiny::downloadButton(
+          ns(paste0("download_", q)),
+          paste("Download", q),
+          class = "btn-success btn-sm"
+        )
+      ),
+      DT::DTOutput(ns(paste0("table_", q)))
+    )
+  })
 
   bslib::layout_sidebar(
     sidebar = bslib::sidebar(
@@ -129,7 +153,9 @@ nine_quadrant_ui <- function(id) {
           )
         ),
         bslib::card_body(
-          shiny::uiOutput(ns("plot_ui"), height = "700px")
+          shiny::uiOutput(ns("plot_ui"), height = "700px"),
+          shiny::tags$hr(style = "margin: 18px 0;"),
+          shiny::uiOutput(ns("quadrant_tables_ui"))
         )
       )
     )
@@ -139,15 +165,15 @@ nine_quadrant_ui <- function(id) {
 #' Implements the server-side logic for the Nine-Quadrant Plot module.
 #' This includes reading uploaded files, dynamically generating UI for numeric column selection,
 #' previewing uploaded data, classifying points into quadrants, customizing colors,
-#' rendering the plot, and providing PDF download.
+#' rendering the plot, providing PDF download, and showing per-quadrant tables with per-quadrant CSV downloads.
 #' @param id A character string specifying the namespace of the module.
 #' @return A Shiny module server that manages the Nine-Quadrant Plot interactivity.
 #' @import shiny
 #' @importFrom shinyjs disable enable
 #' @importFrom tools file_ext
-#' @importFrom utils read.csv
+#' @importFrom utils read.csv write.csv
 #' @importFrom readxl read_xlsx
-#' @importFrom dplyr mutate case_when group_by summarise n
+#' @importFrom dplyr mutate case_when group_by summarise n filter
 #' @importFrom ggplot2 ggplot aes geom_hline geom_vline geom_point scale_color_manual
 #' @importFrom ggplot2 theme_bw labs coord_cartesian geom_label scale_fill_manual
 #' @importFrom grDevices cairo_pdf pdf dev.off
@@ -161,7 +187,14 @@ nine_quadrant_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    quadrant_names <- c(
+      "Up_Up", "Up_NS", "Up_Down",
+      "NS_Up", "NS_NS", "NS_Down",
+      "Down_Up", "Down_NS", "Down_Down"
+    )
+
     shinyjs::disable("download_pdf")
+    lapply(quadrant_names, function(q) shinyjs::disable(paste0("download_", q)))
 
     data <- shiny::reactive({
       shiny::req(input$file)
@@ -353,6 +386,7 @@ nine_quadrant_server <- function(id) {
 
     shiny::observeEvent(input$run_plot, {
       shinyjs::enable("download_pdf")
+      lapply(quadrant_names, function(q) shinyjs::enable(paste0("download_", q)))
     })
 
     colors <- shiny::reactive({
@@ -512,6 +546,108 @@ nine_quadrant_server <- function(id) {
       shiny::req(input$run_plot > 0)
       create_plot()
     })
+
+    output$quadrant_tables_ui <- shiny::renderUI({
+      if (is.null(input$file)) {
+        return(
+          shiny::div(
+            style = paste(
+              "padding: 18px 20px;",
+              "border: 1px solid #e5e7eb;",
+              "border-radius: 12px;",
+              "background: #f8fafc;",
+              "color: #4b5563;"
+            ),
+            "Please upload a file first to view quadrant tables."
+          )
+        )
+      }
+
+      if (is.null(input$run_plot) || input$run_plot == 0) {
+        return(
+          shiny::div(
+            style = paste(
+              "padding: 18px 20px;",
+              "border: 1px solid #e5e7eb;",
+              "border-radius: 12px;",
+              "background: #f8fafc;",
+              "color: #4b5563;"
+            ),
+            "Quadrant tables will appear here after clicking Run."
+          )
+        )
+      }
+
+      bslib::accordion(
+        id = ns("quadrant_accordion"),
+        multiple = TRUE,
+        open = FALSE,
+        !!!lapply(quadrant_names, function(q) {
+          pretty_title <- gsub("_", " / ", q)
+
+          bslib::accordion_panel(
+            title = pretty_title,
+            shiny::div(
+              style = "margin-bottom: 12px;",
+              shiny::downloadButton(
+                ns(paste0("download_", q)),
+                paste("Download", q),
+                class = "btn-success btn-sm"
+              )
+            ),
+            DT::DTOutput(ns(paste0("table_", q)))
+          )
+        })
+      )
+    })
+
+    quadrant_data_list <- shiny::reactive({
+      shiny::req(input$run_plot > 0)
+      df <- processed()
+      out <- stats::setNames(vector("list", length(quadrant_names)), quadrant_names)
+
+      for (q in quadrant_names) {
+        out[[q]] <- dplyr::filter(df, Quadrant == q)
+      }
+      out
+    })
+
+    for (q in quadrant_names) {
+      local({
+        quadrant <- q
+
+        output[[paste0("table_", quadrant)]] <- DT::renderDT({
+          shiny::req(input$run_plot > 0)
+          df_q <- quadrant_data_list()[[quadrant]]
+
+          DT::datatable(
+            df_q,
+            rownames = FALSE,
+            filter = "top",
+            options = list(
+              pageLength = 10,
+              lengthMenu = c(10, 25, 50, 100),
+              scrollX = TRUE,
+              autoWidth = TRUE
+            )
+          )
+        })
+
+        output[[paste0("download_", quadrant)]] <- shiny::downloadHandler(
+          filename = function() {
+            paste0(quadrant, "_", Sys.Date(), ".csv")
+          },
+          content = function(file) {
+            shiny::req(input$run_plot > 0)
+            utils::write.csv(
+              quadrant_data_list()[[quadrant]],
+              file,
+              row.names = FALSE
+            )
+          }
+        )
+      })
+    }
 
     output$download_pdf <- shiny::downloadHandler(
       filename = function() {
