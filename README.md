@@ -1,16 +1,29 @@
-# ProtVis
+[![](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![](https://img.shields.io/badge/GitHub-ProtVis-blue.svg)](https://github.com/xuebinzhang-lab/ProtVis)
+[![](https://img.shields.io/badge/R-Shiny-orange.svg)](https://github.com/xuebinzhang-lab/ProtVis)
+[![](https://img.shields.io/badge/platform-all-brightgreen.svg)](https://github.com/xuebinzhang-lab/ProtVis)
+[![](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/LICENSE)
 
-<img 
-  src="https://github.com/xuebinzhang-lab/ProtVis/blob/dev/app/www/ProtVis_ico.png?raw=true" 
-  alt="ProtVis Logo"
-  style="max-width: 200px; height: auto; float: right; margin-left: 20px;"
-/>
+<table>
+  <tr>
+    <td valign="top">
+
+# ProtVis
 
 **ProtVis: Simplifying proteomics data exploration with interactive visualization**
 
 ProtVis is an interactive R/Shiny-based platform developed for proteomics data exploration, visualization, and interpretation. It is designed to provide a user-friendly and integrated environment for researchers to analyze proteomics datasets with high-quality, publication-ready visual outputs.
 
 ProtVis supports interactive data exploration and a variety of downstream analyses, helping users efficiently move from raw data inspection to biological interpretation.
+
+    </td>
+    <td align="right" valign="top" width="220">
+
+<img src="https://github.com/xuebinzhang-lab/ProtVis/blob/dev/app/www/ProtVis_ico.png?raw=true" alt="ProtVis Logo" width="180"/>
+
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -109,9 +122,10 @@ If you use ProtVis in your research, please cite the corresponding publication w
 ## Author
 
 **Fei Liang & Xiao Wang**  
-State Key Laboratory of Crop Stress Adaptation and Improvement,  
-Henan Joint International Laboratory for Crop Multi-Omics Research,  
-School of Life Sciences, Henan University, Kaifeng 475004, China
+State Key Laboratory of Crop Stress Adaptation and Improvement  
+Henan Joint International Laboratory for Crop Multi-Omics Research  
+School of Life Sciences, Henan University  
+Kaifeng 475004, China
 
 ---
 
