@@ -3,19 +3,17 @@
 \name{protein_extract_server}
 \alias{protein_extract_server}
 \title{Protein Extract Server Module
-Server-side logic for protein extraction module that handles FASTA file processing,
-protein ID matching, and result generation.}
+Server for protein sequence extraction from FASTA by protein IDs.}
 \usage{
 protein_extract_server(id)
 }
 \arguments{
-\item{id}{The namespace identifier for the module}
+\item{id}{Module id}
 }
 \value{
-A reactive list containing matched sequences and summary statistics
+Reactive list
 }
 \description{
 Protein Extract Server Module
-Server-side logic for protein extraction module that handles FASTA file processing,
-protein ID matching, and result generation.
+Server for protein sequence extraction from FASTA by protein IDs.
 }

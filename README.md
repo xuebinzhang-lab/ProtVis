@@ -62,7 +62,9 @@ install.packages("devtools")
 ### Install ProtVis from GitHub
 
 ``` r
-devtools::install_github("xuebinzhang-lab/ProtVis")
+# devtools::install_github("xuebinzhang-lab/ProtVis")
+install.packages("pak")
+pak::pak("xuebinzhang-lab/ProtVis")
 ```
 
 ------------------------------------------------------------------------
