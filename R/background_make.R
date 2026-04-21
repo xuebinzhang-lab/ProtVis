@@ -3,8 +3,9 @@
 #' Creates the user interface for the background generation module
 #' that processes EggNOG output files to create GO and KEGG backgrounds.
 #'
-#' @param id Character string specifying the namespace id for the module
-#' @return A shiny tagList
+#' @param id Character string specifying the namespace id for the module.
+#'
+#' @return A shiny tagList.
 #' @import shiny
 #' @export
 background_make_ui <- function(id) {
@@ -38,28 +39,51 @@ background_make_ui <- function(id) {
             bslib::accordion_panel(
               title = "File Upload",
               value = "upload",
+
               shiny::fileInput(
                 ns("eggnog_output"),
                 "Upload EggNOG Output File",
                 accept = c(".csv", ".xlsx", ".xls"),
                 buttonLabel = "Browse..."
               ),
+
               shiny::div(
-                style = "font-size: 13px; color: #6c757d; margin-top: 8px;",
-                shiny::tags$b("Required columns: "),
-                "query, GOs, KEGG_Pathway"
-              )
+                style = paste(
+                  "margin-top: 10px; padding: 10px 12px; border-radius: 10px;",
+                  "background: #f8f9fa; border: 1px solid #e9ecef; font-size: 13px;"
+                ),
+                shiny::div(
+                  style = "font-weight: 600; color: #495057; margin-bottom: 4px;",
+                  "Required columns"
+                ),
+                shiny::tags$ul(
+                  style = "padding-left: 18px; margin-bottom: 6px; color: #6c757d;",
+                  shiny::tags$li("query"),
+                  shiny::tags$li("GOs"),
+                  shiny::tags$li("KEGG_Pathway")
+                ),
+                shiny::div(
+                  style = "color: #6c757d;",
+                  "Supported formats: .csv, .xlsx, .xls"
+                )
+              ),
+
+              shiny::br(),
+
+              shiny::uiOutput(ns("upload_info_ui"))
             ),
 
             bslib::accordion_panel(
               title = "Parameters",
               value = "params",
+
               shiny::textInput(
                 inputId = ns("separator"),
                 label = "Gene ID Separator",
                 value = "_",
                 placeholder = "Example: _"
               ),
+
               shiny::div(
                 style = "font-size: 13px; color: #6c757d;",
                 "Used to extract gene IDs from the query column."
@@ -69,6 +93,7 @@ background_make_ui <- function(id) {
             bslib::accordion_panel(
               title = "Actions",
               value = "actions",
+
               shiny::div(
                 class = "d-grid gap-2",
 
@@ -92,7 +117,7 @@ background_make_ui <- function(id) {
 
                 shiny::downloadButton(
                   ns("download_demo"),
-                  "Download Demo Data",
+                  "Example Data",
                   class = "btn btn-outline-info fw-bold"
                 )
               )
@@ -104,7 +129,7 @@ background_make_ui <- function(id) {
           fillable = TRUE,
 
           bslib::layout_column_wrap(
-            width = 1/3,
+            width = 1 / 3,
 
             bslib::card(
               class = "shadow-sm border-0",
@@ -146,7 +171,7 @@ background_make_ui <- function(id) {
           shiny::br(),
 
           bslib::layout_column_wrap(
-            width = 1/2,
+            width = 1 / 2,
 
             bslib::card(
               full_screen = TRUE,
@@ -184,33 +209,32 @@ background_make_ui <- function(id) {
   )
 }
 
+utils::globalVariables(c(
+  "query", "GOs", "NAME", "TERM", "KEGG_Pathway",
+  "name", "ko", "GENE"
+))
+
 #' Background Maker Module Server
 #'
 #' Server-side logic for the background generation module that processes
 #' EggNOG output files to create GO and KEGG pathway backgrounds.
 #'
-#' @param id Character string specifying the namespace id for the module
-#' @return A shiny module server
-#' @export
-#' @importFrom shiny moduleServer observeEvent req reactiveVal renderUI renderText showNotification downloadHandler
+#' @param id Character string specifying the namespace id for the module.
+#'
+#' @return A shiny module server.
+#' @importFrom shiny moduleServer observeEvent req reactiveVal renderUI showNotification downloadHandler
 #' @importFrom dplyr select filter mutate rename distinct left_join pull
 #' @importFrom tidyr separate_rows
 #' @importFrom stringr str_extract str_detect
 #' @importFrom GO.db GOTERM
 #' @importFrom AnnotationDbi Term
 #' @importFrom clusterProfiler ko2name
-#' @importFrom openxlsx write.xlsx createWorkbook addWorksheet writeData saveWorkbook
+#' @importFrom openxlsx createWorkbook addWorksheet writeData saveWorkbook
 #' @importFrom tools file_ext
 #' @importFrom readxl read_excel
 #' @importFrom DT renderDT datatable DTOutput
 #' @importFrom tibble rownames_to_column
 #' @export
-
-utils::globalVariables(c(
-  "query", "GOs", "NAME", "TERM", "KEGG_Pathway",
-  "name", "ko", "GENE"
-))
-
 background_make_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
 
@@ -243,6 +267,60 @@ background_make_server <- function(id) {
       }
 
       df
+    }
+
+    safe_ko2name <- function(map_ids) {
+      map_ids <- unique(stats::na.omit(map_ids))
+      map_ids <- map_ids[map_ids != ""]
+
+      if (length(map_ids) == 0) {
+        return(data.frame(
+          ko = character(0),
+          name = character(0),
+          stringsAsFactors = FALSE
+        ))
+      }
+
+      res <- tryCatch(
+        {
+          clusterProfiler::ko2name(map_ids)
+        },
+        error = function(e) {
+          NULL
+        },
+        warning = function(w) {
+          invokeRestart("muffleWarning")
+        }
+      )
+
+      if (is.null(res) || !is.data.frame(res) || nrow(res) == 0) {
+        return(data.frame(
+          ko = map_ids,
+          name = map_ids,
+          stringsAsFactors = FALSE
+        ))
+      }
+
+      if (!"ko" %in% colnames(res)) {
+        res$ko <- map_ids[seq_len(min(length(map_ids), nrow(res)))]
+      }
+      if (!"name" %in% colnames(res)) {
+        res$name <- res$ko
+      }
+
+      missing_ids <- setdiff(map_ids, res$ko)
+      if (length(missing_ids) > 0) {
+        res <- rbind(
+          res,
+          data.frame(
+            ko = missing_ids,
+            name = missing_ids,
+            stringsAsFactors = FALSE
+          )
+        )
+      }
+
+      res
     }
 
     summary_df <- function() {
@@ -297,7 +375,7 @@ background_make_server <- function(id) {
       }
 
       required_cols <- c("query", "GOs", "KEGG_Pathway")
-      missing_cols <- base::setdiff(required_cols, base::colnames(df))
+      missing_cols <- setdiff(required_cols, colnames(df))
 
       if (length(missing_cols) > 0) {
         checked_msg(
@@ -368,7 +446,7 @@ background_make_server <- function(id) {
         dplyr::pull(KEGG_Pathway) |>
         unique()
 
-      result <- clusterProfiler::ko2name(map_list)
+      result <- safe_ko2name(map_list)
 
       kegg_background <- df |>
         dplyr::select(query, KEGG_Pathway) |>
@@ -378,7 +456,7 @@ background_make_server <- function(id) {
         dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) |>
         dplyr::select(query, ko = KEGG_Pathway) |>
         dplyr::left_join(result, by = "ko") |>
-        dplyr::filter(!is.na(name), name != "NA") |>
+        dplyr::mutate(name = ifelse(is.na(name) | name == "", ko, name)) |>
         dplyr::mutate(query = stringr::str_extract(query, "^[^.]+")) |>
         dplyr::distinct() |>
         dplyr::select(GENE = query, TERM = ko, NAME = name)
@@ -390,6 +468,27 @@ background_make_server <- function(id) {
       shiny::showNotification(
         "Background generation completed successfully.",
         type = "message"
+      )
+    })
+
+    output$upload_info_ui <- shiny::renderUI({
+      shiny::div(
+        style = paste(
+          "padding: 10px 12px; border-radius: 10px;",
+          "background: #fcfdff; border: 1px solid #e9ecef; font-size: 13px;"
+        ),
+        shiny::div(
+          style = "font-weight: 600; color: #495057; margin-bottom: 6px;",
+          "Uploaded file info"
+        ),
+        shiny::div(
+          style = "color: #6c757d;",
+          shiny::tags$b("File: "), uploaded_name()
+        ),
+        shiny::div(
+          style = "color: #6c757d; margin-top: 4px;",
+          shiny::tags$b("Status: "), checked_msg()
+        )
       )
     })
 
@@ -548,16 +647,11 @@ background_make_server <- function(id) {
 
     output$download_demo <- shiny::downloadHandler(
       filename = function() {
-        "background_maker_demo.csv"
+        "background_maker_example_data.csv"
       },
       content = function(file) {
         demo_df <- data.frame(
-          query = c(
-            "GeneA_1",
-            "GeneB_1",
-            "GeneC_1",
-            "GeneD_1"
-          ),
+          query = c("GeneA_1", "GeneB_1", "GeneC_1", "GeneD_1"),
           GOs = c(
             "GO:0008150,GO:0003674",
             "GO:0009987",
