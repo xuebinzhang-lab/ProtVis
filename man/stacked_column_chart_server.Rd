@@ -2,17 +2,18 @@
 % Please edit documentation in R/stacked_column_chart.R
 \name{stacked_column_chart_server}
 \alias{stacked_column_chart_server}
-\title{Stacked Bar Chart Server Module
-Server-side logic for the stacked bar chart module. Processes uploaded CSV data,
-generates customizable stacked bar charts using ggplot2, and handles plot downloads.}
+\title{Stacked Column Chart Server Module}
+\usage{
+stacked_column_chart_server(id)
+}
 \arguments{
-\item{id}{A unique identifier for the Shiny namespace.}
+\item{id}{A unique module id.}
 }
 \value{
-A Shiny server module function.
+A Shiny module server function.
 }
 \description{
-Stacked Bar Chart Server Module
-Server-side logic for the stacked bar chart module. Processes uploaded CSV data,
-generates customizable stacked bar charts using ggplot2, and handles plot downloads.
+Server module for generating a ProtVis-style stacked column chart from
+uploaded CSV data or demo data. Supports controlled rendering via a Run
+button, dynamic category colors, data preview, and multi-format export.
 }
