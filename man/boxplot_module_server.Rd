@@ -10,11 +10,8 @@ boxplot_module_server(id)
 \item{id}{Module namespace ID}
 }
 \value{
-A list containing reactive plot object
+A list containing reactive plot object and statistics
 }
 \description{
-Server logic for the Boxplot module.
-Handles file upload, data processing, long-format conversion,
-dynamic color input generation, multi-group comparison,
-plotting, and PDF download.
+Boxplot Module Server
 }
