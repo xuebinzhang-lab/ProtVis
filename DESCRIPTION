@@ -14,6 +14,7 @@ LazyData: true
 RoxygenNote: 7.3.3
 Imports:
     AnnotationDbi,
+    WGCNA,
     Biostrings,
     ComplexHeatmap,
     DESeq2,
@@ -23,6 +24,7 @@ Imports:
     PCAtools,
     RColorBrewer,
     Rtsne,
+    ape,
     bio3d,
     bsicons,
     bslib,
@@ -33,6 +35,7 @@ Imports:
     corrplot,
     data.table,
     dplyr,
+    edgeR,
     fs,
     ggplot2,
     ggprism,
