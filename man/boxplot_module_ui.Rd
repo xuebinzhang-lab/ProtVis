@@ -10,11 +10,8 @@ boxplot_module_ui(id)
 \item{id}{Module namespace ID}
 }
 \value{
-UI elements for the Boxplot module
+Shiny UI for boxplot module
 }
 \description{
-Creates the user interface for the Boxplot module.
-Includes file upload, group selection, color and style options,
-theme selection, and download options. All parameters are placed
-in a sidebar using bslib accordion.
+Boxplot Module UI
 }
