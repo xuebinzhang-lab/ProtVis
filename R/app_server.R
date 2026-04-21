@@ -41,6 +41,8 @@ app_server <- function(input, output, session) {
   background_make_server("background_make")
   protein_links_server("prot_links")
   Expression_profile_server("Expression_profile")
+  wgcna_server("wgcna", rv)
+  co_enrichment_server("co_enrichment")
   nine_quadrant_server("nine")
   venn_server("venn")
   protein_structure_server("protein_structure")

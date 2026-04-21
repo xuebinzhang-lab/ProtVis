@@ -870,7 +870,15 @@ app_ui <- function(request) {
           "Expression Profile",
           Expression_profile_ui("Expression_profile")
         ),
+        bslib::nav_panel(
+          "WGCNA",
+          wgcna_ui("wgcna")
+        ),
         bslib::nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
+        bslib::nav_panel(
+          title = "Co-enrichment",
+          co_enrichment_ui("co_enrichment")
+        ),
         bslib::nav_panel("Venn", venn_ui("venn"))
       ),
 
