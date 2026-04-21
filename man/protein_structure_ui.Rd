@@ -11,6 +11,8 @@ protein_structure_ui(id)
 }
 \description{
 Protein Structure Analysis UI Module
+}
+\details{
 Creates a user interface for protein secondary structure analysis using
 bio3d package to perform Normal Mode Analysis (NMA) on PDB files.
 }

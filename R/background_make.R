@@ -225,10 +225,9 @@ utils::globalVariables(c(
 #' @importFrom shiny moduleServer observeEvent req reactiveVal renderUI showNotification downloadHandler
 #' @importFrom dplyr select filter mutate rename distinct left_join pull
 #' @importFrom tidyr separate_rows
-#' @importFrom stringr str_extract str_detect
+#' @importFrom stringr str_extract str_detect str_replace
 #' @importFrom GO.db GOTERM
 #' @importFrom AnnotationDbi Term
-#' @importFrom clusterProfiler ko2name
 #' @importFrom openxlsx createWorkbook addWorksheet writeData saveWorkbook
 #' @importFrom tools file_ext
 #' @importFrom readxl read_excel
@@ -269,8 +268,46 @@ background_make_server <- function(id) {
       df
     }
 
-    safe_ko2name <- function(map_ids) {
+    safe_read_kegg_pathway_map <- function() {
+      pathway_url <- "https://rest.kegg.jp/list/pathway"
+
+      txt <- tryCatch(
+        {
+          readLines(pathway_url, warn = FALSE, encoding = "UTF-8")
+        },
+        error = function(e) {
+          NULL
+        }
+      )
+
+      if (is.null(txt) || length(txt) == 0) {
+        return(data.frame(
+          ko = character(0),
+          name = character(0),
+          stringsAsFactors = FALSE
+        ))
+      }
+
+      parts <- strsplit(txt, "\t", fixed = TRUE)
+
+      pathway_df <- data.frame(
+        ko = vapply(parts, function(x) if (length(x) >= 1) x[1] else "", character(1)),
+        name = vapply(parts, function(x) if (length(x) >= 2) x[2] else "", character(1)),
+        stringsAsFactors = FALSE
+      )
+
+      pathway_df$ko <- sub("^path:", "", pathway_df$ko)
+      pathway_df$name <- sub(" - .*?$", "", pathway_df$name)
+
+      pathway_df <- pathway_df[pathway_df$ko != "", , drop = FALSE]
+      pathway_df <- unique(pathway_df)
+
+      pathway_df
+    }
+
+    safe_kegg_name_map <- function(map_ids) {
       map_ids <- unique(stats::na.omit(map_ids))
+      map_ids <- as.character(map_ids)
       map_ids <- map_ids[map_ids != ""]
 
       if (length(map_ids) == 0) {
@@ -281,19 +318,9 @@ background_make_server <- function(id) {
         ))
       }
 
-      res <- tryCatch(
-        {
-          clusterProfiler::ko2name(map_ids)
-        },
-        error = function(e) {
-          NULL
-        },
-        warning = function(w) {
-          invokeRestart("muffleWarning")
-        }
-      )
+      pathway_df <- safe_read_kegg_pathway_map()
 
-      if (is.null(res) || !is.data.frame(res) || nrow(res) == 0) {
+      if (nrow(pathway_df) == 0) {
         return(data.frame(
           ko = map_ids,
           name = map_ids,
@@ -301,26 +328,20 @@ background_make_server <- function(id) {
         ))
       }
 
-      if (!"ko" %in% colnames(res)) {
-        res$ko <- map_ids[seq_len(min(length(map_ids), nrow(res)))]
-      }
-      if (!"name" %in% colnames(res)) {
-        res$name <- res$ko
-      }
+      result <- merge(
+        data.frame(ko = map_ids, stringsAsFactors = FALSE),
+        pathway_df,
+        by = "ko",
+        all.x = TRUE,
+        sort = FALSE
+      )
 
-      missing_ids <- setdiff(map_ids, res$ko)
-      if (length(missing_ids) > 0) {
-        res <- rbind(
-          res,
-          data.frame(
-            ko = missing_ids,
-            name = missing_ids,
-            stringsAsFactors = FALSE
-          )
-        )
-      }
+      result$name[is.na(result$name) | result$name == ""] <-
+        result$ko[is.na(result$name) | result$name == ""]
 
-      res
+      result <- unique(result)
+
+      result
     }
 
     summary_df <- function() {
@@ -442,18 +463,18 @@ background_make_server <- function(id) {
         dplyr::select(query, KEGG_Pathway) |>
         tidyr::separate_rows(KEGG_Pathway, sep = ",") |>
         dplyr::filter(!is.na(KEGG_Pathway), KEGG_Pathway != "-") |>
-        dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) |>
+        dplyr::filter(stringr::str_detect(KEGG_Pathway, "^map[0-9]{5}$")) |>
         dplyr::pull(KEGG_Pathway) |>
         unique()
 
-      result <- safe_ko2name(map_list)
+      result <- safe_kegg_name_map(map_list)
 
       kegg_background <- df |>
         dplyr::select(query, KEGG_Pathway) |>
         dplyr::mutate(query = stringr::str_extract(query, pattern)) |>
         tidyr::separate_rows(KEGG_Pathway, sep = ",") |>
         dplyr::filter(!is.na(KEGG_Pathway), KEGG_Pathway != "-") |>
-        dplyr::filter(stringr::str_detect(KEGG_Pathway, "map")) |>
+        dplyr::filter(stringr::str_detect(KEGG_Pathway, "^map[0-9]{5}$")) |>
         dplyr::select(query, ko = KEGG_Pathway) |>
         dplyr::left_join(result, by = "ko") |>
         dplyr::mutate(name = ifelse(is.na(name) | name == "", ko, name)) |>
