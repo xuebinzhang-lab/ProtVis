@@ -7,10 +7,10 @@
 background_make_ui(id)
 }
 \arguments{
-\item{id}{Character string specifying the namespace id for the module}
+\item{id}{Character string specifying the namespace id for the module.}
 }
 \value{
-A shiny tagList
+A shiny tagList.
 }
 \description{
 Creates the user interface for the background generation module
