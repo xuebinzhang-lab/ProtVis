@@ -899,6 +899,7 @@ app_ui <- function(request) {
           "Stacked Column Diagram",
           stacked_column_chart_ui("stacked_column_chart")
         ),
+        bslib::nav_panel("Correlation chord", correlation_chord_ui("correlation_chord")),
         bslib::nav_panel("DEG Analyse", DEG_ui("DEG"))
       ),
 
