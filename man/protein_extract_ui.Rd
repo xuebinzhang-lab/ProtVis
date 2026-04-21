@@ -3,19 +3,17 @@
 \name{protein_extract_ui}
 \alias{protein_extract_ui}
 \title{Protein Extract UI Module
-Creates the user interface for protein extraction module that allows users to
-upload FASTA files, input target protein IDs, and extract matching sequences.}
+UI for protein sequence extraction from FASTA by protein IDs.}
 \usage{
 protein_extract_ui(id)
 }
 \arguments{
-\item{id}{The namespace identifier for the module}
+\item{id}{Module id}
 }
 \value{
-A Shiny UI tagList containing all UI elements
+Shiny UI
 }
 \description{
 Protein Extract UI Module
-Creates the user interface for protein extraction module that allows users to
-upload FASTA files, input target protein IDs, and extract matching sequences.
+UI for protein sequence extraction from FASTA by protein IDs.
 }

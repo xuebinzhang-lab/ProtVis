@@ -214,6 +214,14 @@ co_enrichment_ui <- function(id) {
               value = "#08519c"
             ),
 
+            shiny::radioButtons(
+              inputId = ns("download_format"),
+              label = "Plot download format",
+              choices = c("PDF" = "pdf", "PNG" = "png"),
+              selected = "pdf",
+              inline = TRUE
+            ),
+
             shiny::numericInput(
               inputId = ns("plot_width"),
               label = "Download width (inch)",
@@ -253,74 +261,96 @@ co_enrichment_ui <- function(id) {
               class = "btn-primary"
             ),
 
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::br(),
 
             shiny::downloadButton(
               outputId = ns("download_two_demo"),
-              label = "Download Two-omics Demo"
+              label = "Download Two-omics Demo",
+              width = "100%"
             ),
 
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::br(),
 
             shiny::downloadButton(
               outputId = ns("download_three_demo"),
-              label = "Download Three-omics Demo"
+              label = "Download Three-omics Demo",
+              width = "100%"
             ),
 
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::br(),
 
             shiny::downloadButton(
               outputId = ns("download_summary"),
-              label = "Download Summary Table"
+              label = "Download Summary Table",
+              width = "100%"
             ),
 
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::br(),
 
             shiny::downloadButton(
               outputId = ns("download_shared"),
-              label = "Download Pathway Table"
+              label = "Download Pathway Table",
+              width = "100%"
             ),
 
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::tags$hr(),
 
-            shiny::downloadButton(
-              outputId = ns("download_summary_pdf"),
-              label = "Download Summary Plot (PDF)"
+            shiny::div(
+              style = "font-weight: 600; margin-bottom: 8px;",
+              "Plot Downloads"
             ),
 
-            shiny::br(), shiny::br(),
-
-            shiny::downloadButton(
-              outputId = ns("download_summary_png"),
-              label = "Download Summary Plot (PNG)"
+            shiny::conditionalPanel(
+              condition = "input.download_format === 'pdf'",
+              ns = ns,
+              shiny::downloadButton(
+                outputId = ns("download_summary_pdf"),
+                label = "Download Summary Plot",
+                width = "100%"
+              ),
+              shiny::br(),
+              shiny::br(),
+              shiny::downloadButton(
+                outputId = ns("download_upset_pdf"),
+                label = "Download UpSet Plot",
+                width = "100%"
+              ),
+              shiny::br(),
+              shiny::br(),
+              shiny::downloadButton(
+                outputId = ns("download_bubble_pdf"),
+                label = "Download Bubble Plot",
+                width = "100%"
+              )
             ),
 
-            shiny::br(), shiny::br(),
-
-            shiny::downloadButton(
-              outputId = ns("download_upset_pdf"),
-              label = "Download UpSet Plot (PDF)"
-            ),
-
-            shiny::br(), shiny::br(),
-
-            shiny::downloadButton(
-              outputId = ns("download_upset_png"),
-              label = "Download UpSet Plot (PNG)"
-            ),
-
-            shiny::br(), shiny::br(),
-
-            shiny::downloadButton(
-              outputId = ns("download_bubble_pdf"),
-              label = "Download Bubble Plot (PDF)"
-            ),
-
-            shiny::br(), shiny::br(),
-
-            shiny::downloadButton(
-              outputId = ns("download_bubble_png"),
-              label = "Download Bubble Plot (PNG)"
+            shiny::conditionalPanel(
+              condition = "input.download_format === 'png'",
+              ns = ns,
+              shiny::downloadButton(
+                outputId = ns("download_summary_png"),
+                label = "Download Summary Plot",
+                width = "100%"
+              ),
+              shiny::br(),
+              shiny::br(),
+              shiny::downloadButton(
+                outputId = ns("download_upset_png"),
+                label = "Download UpSet Plot",
+                width = "100%"
+              ),
+              shiny::br(),
+              shiny::br(),
+              shiny::downloadButton(
+                outputId = ns("download_bubble_png"),
+                label = "Download Bubble Plot",
+                width = "100%"
+              )
             )
           )
         )
@@ -423,7 +453,6 @@ co_enrichment_ui <- function(id) {
     )
   )
 }
-
 #' Co-enrichment Visualization Server Module
 #'
 #' Server logic for the ProtVis co-enrichment visualization module.
