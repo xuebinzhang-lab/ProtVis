@@ -215,7 +215,8 @@ data_imputation_server <- function(id, shared_state) {
         if (base::exists("transformed", envir = e)) {
           rv$expression_matrix <- base::as.data.frame(
             e$transformed,
-            stringsAsFactors = FALSE
+            stringsAsFactors = FALSE,
+            check.names = FALSE
           )
         } else {
           rv$expression_matrix <- NULL
@@ -262,7 +263,11 @@ data_imputation_server <- function(id, shared_state) {
     expression_matrix_display <- shiny::reactive({
       shiny::req(rv$expression_matrix)
 
-      df <- base::as.data.frame(rv$expression_matrix, stringsAsFactors = FALSE)
+      df <- base::as.data.frame(
+        rv$expression_matrix,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
 
       if ("ID" %in% base::colnames(df)) {
         ids <- df$ID
@@ -293,9 +298,12 @@ data_imputation_server <- function(id, shared_state) {
       })
 
       output$originalPlot <- shiny::renderPlot({
-        shiny::req(rv$expression_matrix)
+        shiny::req(expression_matrix_display())
 
-        visdat::vis_dat(base::data.frame(rv$expression_matrix)) +
+        plot_df <- expression_matrix_display() %>%
+          tibble::rownames_to_column(var = "ID")
+
+        visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -313,7 +321,8 @@ data_imputation_server <- function(id, shared_state) {
 
       df <- base::as.data.frame(
         rv$expression_matrix,
-        stringsAsFactors = FALSE
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
 
       if ("ID" %in% base::colnames(df)) {
@@ -328,8 +337,13 @@ data_imputation_server <- function(id, shared_state) {
         base::lapply(df_num, function(x) {
           base::as.numeric(base::as.character(x))
         }),
-        stringsAsFactors = FALSE
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
+
+      if (!base::is.null(id_col) && length(id_col) == base::nrow(df_num)) {
+        base::rownames(df_num) <- id_col
+      }
 
       df_num[] <- base::lapply(df_num, function(x) {
         x[base::is.nan(x) | base::is.infinite(x)] <- NA
@@ -444,9 +458,13 @@ data_imputation_server <- function(id, shared_state) {
 
       shiny::req(!base::is.null(result))
 
-      result <- base::as.data.frame(result, stringsAsFactors = FALSE)
+      result <- base::as.data.frame(
+        result,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
 
-      if (!base::is.null(id_col)) {
+      if (!base::is.null(id_col) && length(id_col) == base::nrow(result)) {
         base::rownames(result) <- id_col
       }
 
@@ -466,7 +484,11 @@ data_imputation_server <- function(id, shared_state) {
       shiny::req(imputed_data(), rv$sample_info, shared_state$workdir)
 
       sample_info <- rv$sample_info
-      imputed_df <- base::as.data.frame(imputed_data(), stringsAsFactors = FALSE)
+      imputed_df <- base::as.data.frame(
+        imputed_data(),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
 
       base::save(
         sample_info,
@@ -506,7 +528,10 @@ data_imputation_server <- function(id, shared_state) {
         base::paste0("original_data_plot_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
-        g <- visdat::vis_dat(base::data.frame(rv$expression_matrix)) +
+        plot_df <- expression_matrix_display() %>%
+          tibble::rownames_to_column(var = "ID")
+
+        g <- visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",

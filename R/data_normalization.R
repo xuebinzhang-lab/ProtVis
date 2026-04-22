@@ -214,7 +214,8 @@ data_normalization_server <- function(id, shared_state) {
         if (base::exists("imputed_df", envir = e)) {
           rv$expression_matrix <- base::as.data.frame(
             e$imputed_df,
-            stringsAsFactors = FALSE
+            stringsAsFactors = FALSE,
+            check.names = FALSE
           )
         } else {
           rv$expression_matrix <- NULL
@@ -265,7 +266,11 @@ data_normalization_server <- function(id, shared_state) {
     original_matrix_numeric <- shiny::reactive({
       shiny::req(rv$expression_matrix)
 
-      df <- base::as.data.frame(rv$expression_matrix, stringsAsFactors = FALSE)
+      df <- base::as.data.frame(
+        rv$expression_matrix,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
 
       if ("ID" %in% base::colnames(df)) {
         ids <- df$ID
@@ -277,10 +282,11 @@ data_normalization_server <- function(id, shared_state) {
 
       mat <- base::as.data.frame(
         base::lapply(mat, function(x) base::as.numeric(base::as.character(x))),
-        stringsAsFactors = FALSE
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
 
-      if (base::is.null(ids)) {
+      if (base::is.null(ids) || length(ids) != base::nrow(mat)) {
         ids <- base::as.character(base::seq_len(base::nrow(mat)))
       }
 
@@ -302,14 +308,15 @@ data_normalization_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_normalization, {
-      shiny::req(rv$expression_matrix)
+      shiny::req(original_matrix_numeric(), shared_state$workdir)
 
       expr_df <- original_matrix_numeric()
 
       normalized_data <- sample_subtract(expr_df)
       normalized_data <- base::as.data.frame(
         normalized_data,
-        stringsAsFactors = FALSE
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
 
       if (!base::is.null(base::rownames(expr_df))) {
