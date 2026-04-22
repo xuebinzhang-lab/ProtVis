@@ -195,6 +195,7 @@ correct_noise_ui <- function(id) {
   )
 }
 
+
 #' Server Logic for Noise Correction Module
 #' @param id Character string module ID for namespacing
 #' @param shared_state Reactive values list for sharing data between modules
@@ -383,9 +384,9 @@ correct_noise_server <- function(id, shared_state) {
 
       export_data <- NULL
 
-      if (isTRUE(input$correct_noise) && !is.null(shared_state$correct_noise_result)) {
+      if (isTRUE(input$correct_noise) && !base::is.null(shared_state$correct_noise_result)) {
         export_data <- shared_state$correct_noise_result
-      } else if (isTRUE(input$rename_columns) && !is.null(shared_state$rename_result)) {
+      } else if (isTRUE(input$rename_columns) && !base::is.null(shared_state$rename_result)) {
         export_data <- shared_state$rename_result
       } else {
         export_data <- shared_state$expression_matrix_filtered
@@ -398,8 +399,7 @@ correct_noise_server <- function(id, shared_state) {
 
       correct_noise_result <- export_data %>%
         tibble::column_to_rownames("ID") %>%
-        { . * 10000000 } %>%
-        tibble::rownames_to_column("ID")
+        { . * 10000000 }
 
       shinyWidgets::updateProgressBar(session, id = "export_progress", value = 75)
 

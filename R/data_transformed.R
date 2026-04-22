@@ -180,7 +180,8 @@ data_transformed_server <- function(id, shared_state) {
       sample_info = NULL,
       load_success = FALSE,
       transformed = NULL,
-      transformation_done = FALSE
+      transformation_done = FALSE,
+      export_success = FALSE
     )
 
     shiny::observeEvent(input$load_data, {
@@ -202,11 +203,13 @@ data_transformed_server <- function(id, shared_state) {
 
         rv$transformed <- NULL
         rv$transformation_done <- FALSE
+        rv$export_success <- FALSE
         rv$load_success <- TRUE
 
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
+        rv$export_success <- FALSE
         shiny::showNotification("❌ Step3_correct_noise.rda not found.", type = "error")
       }
     })
@@ -230,19 +233,42 @@ data_transformed_server <- function(id, shared_state) {
       }
     })
 
-    original_matrix <- shiny::reactive({
-      shiny::req(rv$correct_noise_result)
-      rv$correct_noise_result
+    output$export_transformed_data_status_panel <- shiny::renderUI({
+      if (isTRUE(rv$export_success)) {
+        shiny::span("✅ Data exported", style = "color: green;")
+      } else {
+        shiny::span("Waiting for export", style = "color: #666666;")
+      }
     })
 
     original_matrix_numeric <- shiny::reactive({
       shiny::req(rv$correct_noise_result)
-      rv$correct_noise_result %>%
-        tibble::column_to_rownames("ID")
+
+      mat <- rv$correct_noise_result
+
+      if (base::is.data.frame(mat) && "ID" %in% base::colnames(mat)) {
+        mat <- tibble::column_to_rownames(mat, "ID")
+      }
+
+      mat <- as.data.frame(mat, check.names = FALSE)
+
+      num_df <- base::as.data.frame(
+        lapply(mat, function(x) base::as.numeric(as.character(x))),
+        check.names = FALSE,
+        row.names = base::rownames(mat)
+      )
+
+      num_df
+    })
+
+    original_matrix_show <- shiny::reactive({
+      shiny::req(original_matrix_numeric())
+      original_matrix_numeric() %>%
+        tibble::rownames_to_column("ID")
     })
 
     shiny::observeEvent(input$run_transformation, {
-      shiny::req(rv$correct_noise_result)
+      shiny::req(original_matrix_numeric())
 
       df_mat <- original_matrix_numeric()
 
@@ -259,6 +285,12 @@ data_transformed_server <- function(id, shared_state) {
         df_mat
       )
 
+      rv$transformed <- as.data.frame(
+        rv$transformed,
+        check.names = FALSE,
+        row.names = base::rownames(df_mat)
+      )
+
       rv$transformation_done <- TRUE
 
       shiny::showNotification(
@@ -268,9 +300,9 @@ data_transformed_server <- function(id, shared_state) {
     })
 
     output$originalData <- DT::renderDT({
-      shiny::req(original_matrix())
+      shiny::req(original_matrix_show())
       DT::datatable(
-        original_matrix(),
+        original_matrix_show(),
         options = list(scrollX = TRUE, pageLength = 10)
       )
     })
@@ -278,12 +310,12 @@ data_transformed_server <- function(id, shared_state) {
     output$transformedData <- DT::renderDT({
       shiny::req(rv$load_success)
 
-      show_df <- if (!is.null(rv$transformed)) {
+      show_df <- if (!base::is.null(rv$transformed)) {
         rv$transformed %>%
-          as.data.frame() %>%
+          as.data.frame(check.names = FALSE) %>%
           tibble::rownames_to_column("ID")
       } else {
-        original_matrix()
+        original_matrix_show()
       }
 
       DT::datatable(
@@ -311,7 +343,7 @@ data_transformed_server <- function(id, shared_state) {
     output$transformedPlot <- shiny::renderPlot({
       shiny::req(rv$load_success)
 
-      plot_df <- if (!is.null(rv$transformed)) {
+      plot_df <- if (!base::is.null(rv$transformed)) {
         rv$transformed
       } else {
         original_matrix_numeric()
@@ -321,7 +353,7 @@ data_transformed_server <- function(id, shared_state) {
         plot_df,
         las = 2,
         col = input$transformed_boxplot_color,
-        main = if (!is.null(rv$transformed)) {
+        main = if (!base::is.null(rv$transformed)) {
           paste0("Transformed Data (", input$data_transformed, ")")
         } else {
           "Transformed Data"
@@ -370,7 +402,7 @@ data_transformed_server <- function(id, shared_state) {
           height = input$plot_height
         )
 
-        plot_df <- if (!is.null(rv$transformed)) {
+        plot_df <- if (!base::is.null(rv$transformed)) {
           rv$transformed
         } else {
           original_matrix_numeric()
@@ -380,7 +412,7 @@ data_transformed_server <- function(id, shared_state) {
           plot_df,
           las = 2,
           col = input$transformed_boxplot_color,
-          main = if (!is.null(rv$transformed)) {
+          main = if (!base::is.null(rv$transformed)) {
             paste0("Transformed Data (", input$data_transformed, ")")
           } else {
             "Transformed Data"
@@ -397,33 +429,27 @@ data_transformed_server <- function(id, shared_state) {
     shiny::observeEvent(input$export_transformed_data, {
       shiny::req(shared_state$workdir, rv$sample_info, rv$correct_noise_result)
 
-      export_data <- if (!is.null(rv$transformed)) {
-        rv$transformed %>%
-          as.data.frame() %>%
-          tibble::rownames_to_column("ID")
-      } else {
-        rv$correct_noise_result
-      }
-
       save_path <- base::file.path(shared_state$workdir, "Step4_data_transformed.rda")
 
       sample_info <- rv$sample_info
-      correct_noise_result <- rv$correct_noise_result
-      transformed <- export_data
+
+      correct_noise_result <- original_matrix_numeric()
+
+      transformed <- if (!base::is.null(rv$transformed)) {
+        rv$transformed %>%
+          as.data.frame(check.names = FALSE)
+      } else {
+        original_matrix_numeric()
+      }
 
       base::save(sample_info, correct_noise_result, transformed, file = save_path)
+
+      rv$export_success <- TRUE
 
       shiny::showNotification(
         paste0("✅ Exported to: ", save_path),
         type = "message"
       )
-
-      output$export_transformed_data_status_panel <- shiny::renderUI({
-        shiny::span(
-          paste0("✅ Data exported to: ", base::basename(save_path)),
-          style = "color: green;"
-        )
-      })
     })
 
     base::return(rv)
