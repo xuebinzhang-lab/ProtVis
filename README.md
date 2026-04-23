@@ -50,12 +50,7 @@ pak::pak("xuebinzhang-lab/ProtVis")
 After installation, load the required libraries and launch ProtVis with:
 
 ``` r
-library(shiny)
-library(plotly)
-library(bio3d)
-library(r3dmol)
 library(ProtVis)
-
 run_ProtVis()
 ```
 
