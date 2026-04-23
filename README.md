@@ -31,36 +31,15 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 
 ## Installation
 
-Before installing ProtVis, please make sure the required dependencies are installed.
-
-### Install required packages
-
-``` r
-install.packages("BiocManager")
-
-BiocManager::install("limma")
-BiocManager::install("textshaping")
-BiocManager::install("DOSE", force = TRUE)
-BiocManager::install("pathview", force = TRUE)
-BiocManager::install("DESeq2", force = TRUE)
-BiocManager::install("GO.db", force = TRUE)
-BiocManager::install("AnnotationDbi", force = TRUE)
-BiocManager::install("clusterProfiler", force = TRUE)
-
-install.packages("bio3d")
-install.packages("colourpicker")
-install.packages("rhandsontable")
-install.packages("plotly")
-install.packages("shiny")
-install.packages("r3dmol")
-install.packages("devtools")
-```
-
 ### Install ProtVis from GitHub
 
 ``` r
 # devtools::install_github("xuebinzhang-lab/ProtVis")
+options(repos = c(CRAN = "https://mirrors.tuna.tsinghua.edu.cn/CRAN/"))
 install.packages("pak")
+pak::pkg_install("pathview")
+pak::pkg_install("GseaVis")
+pak::pak("pryr")
 pak::pak("xuebinzhang-lab/ProtVis")
 ```
 

@@ -885,7 +885,12 @@ app_ui <- function(request) {
       bslib::nav_menu(
         "PTM",
         icon = bsicons::bs_icon("layers"),
-        bslib::nav_panel("PTM", PTM_ui("PTM"))
+        bslib::nav_panel("PTM", PTM_ui("PTM")),
+        bslib::nav_panel(
+          "PD Strict Spectrum",
+          icon = bsicons::bs_icon("activity"),
+          pd_strict_module_ui("pd_strict")
+        )
       ),
 
       bslib::nav_panel(
