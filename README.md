@@ -37,8 +37,8 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 # devtools::install_github("xuebinzhang-lab/ProtVis")
 options(repos = c(CRAN = "https://mirrors.tuna.tsinghua.edu.cn/CRAN/"))
 install.packages("pak")
+remotes::install_git("https://gitee.com/swcyo/GseaVis.git", upgrade = "never")
 pak::pkg_install("pathview")
-pak::pkg_install("GseaVis")
 pak::pak("pryr")
 pak::pak("xuebinzhang-lab/ProtVis")
 ```
@@ -71,7 +71,7 @@ It is recommended to use an up-to-date version of R for the best compatibility.
 
 ## Cookbook
 
-Cookbook
+ProtVis cookbook: [https://anhuikylin.github.io/ProtVis-cookbook/](https://anhuikylin.github.io/ProtVis-cookbook/)
 
 ------------------------------------------------------------------------
 ## Demo
