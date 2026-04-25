@@ -37,6 +37,7 @@ app_server <- function(input, output, session) {
   pd_strict_module_server("pd_strict")
   # protein_fun_server("protein_fun", shared_state)
   release_data_server("release_data1", shared_state)
+  stringdb_ppi_server("stringdb_ppi")
   # -------------------------------------------------------------------------
   protein_extract_server("protein_extract")
   background_make_server("background_make")

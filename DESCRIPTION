@@ -1,7 +1,7 @@
 Package: ProtVis
 Title: ProtVis Shiny App
 Version: 0.0.1
-Authors@R: 
+Authors@R:
     person(given = "Fei",
            family = "Liang",
            role = c("aut", "cre"),
@@ -24,6 +24,7 @@ Imports:
     PCAtools,
     RColorBrewer,
     Rtsne,
+    STRINGdb,
     ape,
     bio3d,
     bsicons,
@@ -45,6 +46,7 @@ Imports:
     grDevices,
     grid,
     gridExtra,
+    igraph,
     impute,
     jsonlite,
     limma,
@@ -76,7 +78,9 @@ Imports:
     umap,
     utils,
     vegan,
-    visdat
+    visdat,
+    ggraph,
+    graphlayouts
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
