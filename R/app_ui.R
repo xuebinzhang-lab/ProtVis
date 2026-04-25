@@ -909,6 +909,11 @@ app_ui <- function(request) {
         bslib::nav_panel("Boxplot", boxplot_module_ui("box1")),
         bslib::nav_panel("swissmodel", swissmodel_ui("swissmodel")),
         bslib::nav_panel(
+          "STRINGdb PPI",
+          icon = bsicons::bs_icon("diagram-3"),
+          stringdb_ppi_ui("stringdb_ppi")
+        ),
+        bslib::nav_panel(
           "Stacked Column Diagram",
           stacked_column_chart_ui("stacked_column_chart")
         ),
