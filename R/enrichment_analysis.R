@@ -1,4 +1,4 @@
-options(shiny.maxRequestSize = 100*1024^2)
+
 #' @importFrom circlize colorRamp2 circos.clear circos.genomicInitialize circos.trackPlotRegion
 #'   get.cell.meta.data circos.text get.all.sector.index circos.axis circos.genomicTrack
 #'   circos.genomicRect circos.genomicText
@@ -348,6 +348,7 @@ plot_enrichment_dot <- function(enrich_df, top_n = 10, point_color = "#2c7bb6", 
 #' @importFrom colourpicker colourInput
 #' @name enrichment_analysis_ui
 #' @export
+options(shiny.maxRequestSize = 100*1024^2)
 enrichment_analysis_ui <- function(id) {
   ns <- shiny::NS(id)
 

@@ -3,9 +3,6 @@
 \name{enrichment_analysis_ui}
 \alias{enrichment_analysis_ui}
 \title{Enrichment Analysis Module UI}
-\usage{
-enrichment_analysis_ui(id)
-}
 \arguments{
 \item{id}{The namespace identifier for the module}
 }
