@@ -22,7 +22,6 @@ app_server <- function(input, output, session) {
     data_source_reactive = reactive(shared_state$data_source),
     shared_state = shared_state
   )
-  MaxQuant_server("MaxQuant", shared_state = shared_state)
   data_imputation_server("data_imputation", shared_state = shared_state)
   correct_noise_server("correct_noise", shared_state = shared_state)
   data_transformed_server("data_transformed", shared_state = shared_state)
@@ -43,7 +42,7 @@ app_server <- function(input, output, session) {
   background_make_server("background_make")
   protein_links_server("prot_links")
   Expression_profile_server("Expression_profile")
-  wgcna_server("wgcna", rv)
+  wgcna_server("wgcna", shared_state)
   co_enrichment_server("co_enrichment")
   nine_quadrant_server("nine")
   venn_server("venn")

@@ -31,10 +31,30 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    source_modules <- base::list(
+      Raw = base::list(ui = Raw_ui, server = Raw_server, id = "Raw"),
+      MaxQuant = base::list(ui = MaxQuant_ui, server = MaxQuant_server, id = "MaxQuant"),
+      ProteomeDiscoverer = base::list(ui = PD_ui, server = PD_server, id = "PD"),
+      Skyline = base::list(ui = skyline_ui, server = skyline_server, id = "skyline"),
+      Mascot = base::list(ui = Mascot_ui, server = Mascot_server, id = "Mascot"),
+      OpenMS = base::list(ui = OpenMS_ui, server = OpenMS_server, id = "OpenMS")
+    )
+
+    register_data_source_server <- function(module) {
+      server_args <- base::names(base::formals(module$server))
+      if ("shared_state" %in% server_args) {
+        module$server(module$id, shared_state = shared_state)
+      } else {
+        module$server(module$id)
+      }
+    }
+
+    base::invisible(base::lapply(source_modules, register_data_source_server))
+
     output$dynamic_header <- shiny::renderUI({
       shiny::req(data_source_reactive())
-      tags$h4(
-        paste("Current Data Source:", data_source_reactive()),
+      shiny::tags$h4(
+        base::paste("Current Data Source:", data_source_reactive()),
         class = "text-primary",
         style = "margin-top: 20px; margin-bottom: 20px;"
       )
@@ -42,37 +62,17 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
 
     output$dynamic_ui <- shiny::renderUI({
       shiny::req(data_source_reactive())
-      tryCatch({
-        switch(
-          data_source_reactive(),
-          "Raw" = Raw_ui(ns("Raw")),
-          "MaxQuant" = MaxQuant_ui(ns("MaxQuant")),
-          "ProteomeDiscoverer" = PD_ui(ns("PD")),
-          "Skyline" = skyline_ui(ns("skyline")),
-          "Mascot" = Mascot_ui(ns("Mascot")),
-          "OpenMS" = OpenMS_ui(ns("OpenMS")),
-          tags$div(class = "alert alert-warning", "Unknown data source type")
-        )
-      }, error = function(e) {
-        tags$div(class = "alert alert-danger", paste("Module loading error:", e$message))
-      })
-    })
+      selected_source <- data_source_reactive()
+      module <- source_modules[[selected_source]]
 
-    shiny::observeEvent(data_source_reactive(), {
-      shiny::req(data_source_reactive())
-      tryCatch({
-        switch(
-          data_source_reactive(),
-          "Raw" = Raw_server("Raw", shared_state = shared_state),
-          "MaxQuant" = MaxQuant_server("MaxQuant", shared_state = shared_state),
-          "ProteomeDiscoverer" = PD_server("PD", shared_state = shared_state),
-          "Skyline" = skyline_server("skyline", shared_state = shared_state),
-          "Mascot" = Mascot_server("Mascot", shared_state = shared_state),
-          "OpenMS" = OpenMS_server("OpenMS", shared_state = shared_state)
-        )
-      }, error = function(e) {
-        shiny::showNotification(paste("Server module error:", e$message), type = "error")
-      })
+      if (base::is.null(module)) {
+        return(shiny::tags$div(
+          class = "alert alert-warning",
+          base::paste("Unknown data source type:", selected_source)
+        ))
+      }
+
+      module$ui(ns(module$id))
     })
   })
 }
