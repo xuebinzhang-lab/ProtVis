@@ -26,7 +26,7 @@ Raw_ui <- function(id) {
 #' @importFrom tools file_ext
 #' @name Raw_server
 #' @export
-Raw_server <- function(id) {
+Raw_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -38,12 +38,21 @@ Raw_server <- function(id) {
       base::cat("Type:", tools::file_ext(input$file$name), "\n")
     })
 
-    shiny::reactive({
+    file_data <- shiny::reactive({
       shiny::req(input$file)
       base::list(
         path = input$file$datapath,
         name = input$file$name
       )
     })
+
+    shiny::observeEvent(input$file, {
+      if (!base::is.null(shared_state)) {
+        shared_state$raw_file <- file_data()
+        shared_state$data_source <- "Raw"
+      }
+    })
+
+    file_data
   })
 }

@@ -24,14 +24,14 @@ project_init_ui <- function(id) {
       shiny::hr(),
       shiny::fileInput(
         inputId = ns("SampleInfo"),
-        label = 'Upload Sample Information (.csv, .xlsx, .xls)',
-        accept = c(".csv", ".xlsx", ".xls")
+        label = 'Upload Sample Information (.csv, .txt, .tsv, .xlsx, .xls)',
+        accept = c(".csv", ".txt", ".tsv", ".xlsx", ".xls")
       ),
       tags$small("Confirm sample information", style = "color: #6c757d"),
       shiny::fileInput(
         inputId = ns("expression_matrix"),
-        label = 'Upload Expression Matrix (.csv, .xlsx, .xls)',
-        accept = c(".csv", ".xlsx", ".xls")
+        label = 'Upload Expression Matrix (.csv, .txt, .tsv, .xlsx, .xls)',
+        accept = c(".csv", ".txt", ".tsv", ".xlsx", ".xls")
       ),
       tags$small("Confirm expression matrix", style = "color: #6c757d"),
       shiny::selectInput(
@@ -96,24 +96,14 @@ project_init_server <- function(id, shared_state) {
     # Upload and read sample info, then store it in shared_state
     shiny::observeEvent(input$SampleInfo, {
       shiny::req(input$SampleInfo)
-      ext <- tools::file_ext(input$SampleInfo$name)
-      sample_info <- if (ext == "csv") {
-        utils::read.csv(input$SampleInfo$datapath, stringsAsFactors = FALSE)
-      } else {
-        readxl::read_excel(input$SampleInfo$datapath)
-      }
+      sample_info <- .protvis_read_uploaded_table(input$SampleInfo)
       shared_state$sample_info <- sample_info
       shiny::showNotification("Sample info uploaded", type = "message")
     })
     # Upload and read expression matrix, then store it in shared_state
     shiny::observeEvent(input$expression_matrix, {
       shiny::req(input$expression_matrix)
-      ext <- tools::file_ext(input$expression_matrix$name)
-      expression_matrix <- if (ext == "csv") {
-        utils::read.csv(input$expression_matrix$datapath, stringsAsFactors = FALSE)
-      } else {
-        readxl::read_excel(input$expression_matrix$datapath)
-      }
+      expression_matrix <- .protvis_read_uploaded_table(input$expression_matrix)
       shared_state$expression_matrix <- expression_matrix
       shiny::showNotification("Expression matrix uploaded", type = "message")
     })

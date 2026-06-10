@@ -58,21 +58,14 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
       })
     })
 
-    shiny::observeEvent(data_source_reactive(), {
-      shiny::req(data_source_reactive())
-      tryCatch({
-        switch(
-          data_source_reactive(),
-          "Raw" = Raw_server("Raw", shared_state = shared_state),
-          "MaxQuant" = MaxQuant_server("MaxQuant", shared_state = shared_state),
-          "ProteomeDiscoverer" = PD_server("PD", shared_state = shared_state),
-          "Skyline" = skyline_server("skyline", shared_state = shared_state),
-          "Mascot" = Mascot_server("Mascot", shared_state = shared_state),
-          "OpenMS" = OpenMS_server("OpenMS", shared_state = shared_state)
-        )
-      }, error = function(e) {
-        shiny::showNotification(paste("Server module error:", e$message), type = "error")
-      })
-    })
+    # Register each source module once. The rendered UI switches dynamically,
+    # but Shiny module servers should not be re-registered every time the
+    # source selector changes.
+    Raw_server("Raw", shared_state = shared_state)
+    MaxQuant_server("MaxQuant", shared_state = shared_state)
+    PD_server("PD", shared_state = shared_state)
+    skyline_server("skyline", shared_state = shared_state)
+    Mascot_server("Mascot", shared_state = shared_state)
+    OpenMS_server("OpenMS", shared_state = shared_state)
   })
 }
