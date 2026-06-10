@@ -25,6 +25,7 @@ Imports:
     RColorBrewer,
     Rtsne,
     STRINGdb,
+    ShinyWGCNA,
     ape,
     bio3d,
     bsicons,
