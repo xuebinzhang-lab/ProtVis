@@ -74,3 +74,18 @@ PD_ui <- function(id) {
     )
   )
 }
+
+#' Proteome Discoverer Server Logic Module
+#'
+#' Registers placeholder outputs for the Proteome Discoverer data-source module
+#' until the dedicated processing workflow is implemented.
+#' @param id Character. Module ID used for namespacing server inputs/outputs.
+#' @param shared_state A reactiveValues object shared across modules.
+#' @return None. Called for side effects in the Shiny session.
+#' @import shiny
+#' @importFrom DT renderDT datatable
+#' @name PD_server
+#' @export
+PD_server <- function(id, shared_state = NULL) {
+  register_placeholder_analysis_server(id, "Proteome Discoverer", shared_state)
+}
