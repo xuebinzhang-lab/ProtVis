@@ -25,7 +25,6 @@ Imports:
     RColorBrewer,
     Rtsne,
     STRINGdb,
-    ShinyWGCNA,
     ape,
     bio3d,
     bsicons,
@@ -83,12 +82,9 @@ Imports:
     ggraph,
     graphlayouts
 Remotes:
-    github::junjunlab/GseaVis,
-    ShinyWGCNA=github::ShawnWx2019/WGCNAShinyFun@master,
-    github::hadley/pryr
     junjunlab/GseaVis,
-    ShawnWx2019/WGCNAShinyFun,
     hadley/pryr
 Suggests:
+    ShinyWGCNA,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

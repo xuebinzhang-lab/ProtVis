@@ -40,6 +40,12 @@ install.packages("pak")
 pak::pak("xuebinzhang-lab/ProtVis")
 ```
 
+The optional WGCNA module uses `ShinyWGCNA`, whose upstream GitHub repository is not currently resolvable by `pak` as an automatic hard dependency. Install it manually only if you need that module:
+
+``` r
+remotes::install_github("ShawnWx2019/WGCNAShinyFun", ref = "master")
+```
+
 ------------------------------------------------------------------------
 
 ## Run ProtVis
