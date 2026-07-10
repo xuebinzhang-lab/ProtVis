@@ -82,6 +82,10 @@ Imports:
     visdat,
     ggraph,
     graphlayouts
+Remotes:
+    junjunlab/GseaVis,
+    ShawnWx2019/WGCNAShinyFun,
+    hadley/pryr
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
