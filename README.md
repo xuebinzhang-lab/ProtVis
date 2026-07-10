@@ -24,6 +24,7 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 -   Interactive proteomics data exploration
 -   High-quality visualization for publication and presentation
 -   Support for protein-level data interpretation
+-   Metaproteomics demo module with taxonomy-function visualization
 -   Integrated Shiny-based graphical user interface
 -   Easy-to-use workflow for researchers without extensive programming experience
 
@@ -37,10 +38,13 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 # devtools::install_github("xuebinzhang-lab/ProtVis")
 options(repos = c(CRAN = "https://mirrors.tuna.tsinghua.edu.cn/CRAN/"))
 install.packages("pak")
-remotes::install_git("https://gitee.com/swcyo/GseaVis.git", upgrade = "never")
-pak::pkg_install("pathview")
-pak::pak("pryr")
 pak::pak("xuebinzhang-lab/ProtVis")
+```
+
+The optional WGCNA module uses `ShinyWGCNA`, whose upstream GitHub repository is not currently resolvable by `pak` as an automatic hard dependency. Install it manually only if you need that module:
+
+``` r
+remotes::install_github("ShawnWx2019/WGCNAShinyFun", ref = "master")
 ```
 
 ------------------------------------------------------------------------
