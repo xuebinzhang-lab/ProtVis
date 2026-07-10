@@ -82,6 +82,10 @@ Imports:
     visdat,
     ggraph,
     graphlayouts
+Remotes:
+    github::junjunlab/GseaVis,
+    ShinyWGCNA=github::ShawnWx2019/WGCNAShinyFun@master,
+    github::hadley/pryr
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
