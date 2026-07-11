@@ -49,7 +49,17 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
       }
     }
 
-    base::invisible(base::lapply(source_modules, register_data_source_server))
+    registered_sources <- shiny::reactiveVal(character())
+
+    shiny::observeEvent(data_source_reactive(), {
+      selected_source <- data_source_reactive()
+      module <- source_modules[[selected_source]]
+      if (base::is.null(module)) return(invisible(NULL))
+      if (!selected_source %in% registered_sources()) {
+        register_data_source_server(module)
+        registered_sources(base::c(registered_sources(), selected_source))
+      }
+    }, ignoreInit = FALSE)
 
     output$dynamic_header <- shiny::renderUI({
       shiny::req(data_source_reactive())
