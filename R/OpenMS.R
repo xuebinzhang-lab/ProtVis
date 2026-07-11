@@ -11,20 +11,18 @@
 #'
 OpenMS_ui <- function(id) {
   ns <- NS(id)
-  bslib::nav_panel(
-    title = 'OpenMS',
-    icon = bsicons::bs_icon("play-circle"),
-    bslib::layout_sidebar(
+  bslib::layout_sidebar(
       sidebar = bslib::accordion(
         bslib::accordion_panel(
           title = "File Upload",
           icon = bsicons::bs_icon("upload"),
           shiny::fileInput(
             inputId = ns('protein_file'),
-            label = 'Upload ProteinGroups (xlsx or csv)',
+            label = 'Upload OpenMS consensus/ProteinQuantifier table (csv, tsv, xlsx)',
             multiple = FALSE,
-            accept = c(".xlsx", ".xls", ".csv")
+            accept = c(".xlsx", ".xls", ".csv", ".tsv", ".txt")
           ),
+          shiny::actionButton(ns("load_data"), "Parse OpenMS Output", class = "btn btn-primary w-100"),
           shiny::fileInput(
             inputId = ns('sample_info'),
             label = 'Upload Sample Info (xlsx or csv)',
@@ -66,19 +64,18 @@ OpenMS_ui <- function(id) {
       ),
       # 👇 只改这里：删掉了多余的 mainPanel，直接放 tabsetPanel
       shiny::tabsetPanel(
-        shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
+        shiny::tabPanel("PCA", shiny::plotOutput(ns("umap_plot"))),
         shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
         shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
         shiny::tabPanel("DE Table", DT::DTOutput(ns("de_table")))
       )
     )
-  )
 }
 
 #' OpenMS Server Logic Module
 #'
-#' Registers placeholder outputs for the OpenMS data-source module until the
-#' dedicated processing workflow is implemented.
+#' Parses OpenMS consensus or ProteinQuantifier tables into a ProtVis expression
+#' matrix using protein accession and intensity/abundance columns.
 #' @param id Character. Module ID used for namespacing server inputs/outputs.
 #' @param shared_state A reactiveValues object shared across modules.
 #' @return None. Called for side effects in the Shiny session.
@@ -87,5 +84,5 @@ OpenMS_ui <- function(id) {
 #' @name OpenMS_server
 #' @export
 OpenMS_server <- function(id, shared_state = NULL) {
-  register_placeholder_analysis_server(id, "OpenMS", shared_state)
+  register_tabular_data_source_server(id, "OpenMS", parse_openms_output, shared_state)
 }
