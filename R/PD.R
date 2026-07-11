@@ -11,20 +11,18 @@
 #'
 PD_ui <- function(id) {
   ns <- NS(id)
-  bslib::nav_panel(
-    title = 'PD',
-    icon = bsicons::bs_icon("play-circle"),
-    bslib::layout_sidebar(
+  bslib::layout_sidebar(
       sidebar = bslib::accordion(
         bslib::accordion_panel(
           title = "File Upload",
           icon = bsicons::bs_icon("upload"),
           shiny::fileInput(
             inputId = ns('protein_file'),
-            label = 'Upload ProteinGroups (xlsx or csv)',
+            label = 'Upload Proteome Discoverer protein/peptide groups export (xlsx or csv)',
             multiple = FALSE,
             accept = c(".xlsx", ".xls", ".csv")
           ),
+          shiny::actionButton(ns("load_data"), "Parse Proteome Discoverer Output", class = "btn btn-primary w-100"),
           shiny::fileInput(
             inputId = ns('sample_info'),
             label = 'Upload Sample Info (xlsx or csv)',
@@ -66,19 +64,18 @@ PD_ui <- function(id) {
       ),
       # 👇 只改这里：删掉 mainPanel，直接放 tabsetPanel
       shiny::tabsetPanel(
-        shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
+        shiny::tabPanel("PCA", shiny::plotOutput(ns("umap_plot"))),
         shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
         shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
         shiny::tabPanel("DE Table", DT::DTOutput(ns("de_table")))
       )
     )
-  )
 }
 
 #' Proteome Discoverer Server Logic Module
 #'
-#' Registers placeholder outputs for the Proteome Discoverer data-source module
-#' until the dedicated processing workflow is implemented.
+#' Parses Proteome Discoverer protein or peptide group exports into a ProtVis
+#' expression matrix using accession and Abundance/Area columns.
 #' @param id Character. Module ID used for namespacing server inputs/outputs.
 #' @param shared_state A reactiveValues object shared across modules.
 #' @return None. Called for side effects in the Shiny session.
@@ -87,5 +84,5 @@ PD_ui <- function(id) {
 #' @name PD_server
 #' @export
 PD_server <- function(id, shared_state = NULL) {
-  register_placeholder_analysis_server(id, "Proteome Discoverer", shared_state)
+  register_tabular_data_source_server(id, "Proteome Discoverer", parse_proteome_discoverer_output, shared_state)
 }
