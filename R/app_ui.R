@@ -859,7 +859,7 @@ app_ui <- function(request) {
           enrichment_analysis_ui("enrichment_analysis")
         ),
         bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
-        bslib::nav_panel("Pathview", pathview_ui("pathview")),
+        bslib::nav_panel("Pathview", pathview_ui("pathview"))
         # bslib::nav_panel("Protein function", protein_fun_ui("protein_fun"))
       ),
 
@@ -921,6 +921,7 @@ app_ui <- function(request) {
           "Stacked Column Diagram",
           stacked_column_chart_ui("stacked_column_chart")
         ),
+        TMT_ui("TMT"),
         bslib::nav_panel("Correlation chord", correlation_chord_ui("correlation_chord")),
         bslib::nav_panel("DEG Analyse", DEG_ui("DEG"))
       ),
