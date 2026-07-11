@@ -25,6 +25,7 @@ ProtVis supports interactive data exploration and a variety of downstream analys
 -   High-quality visualization for publication and presentation
 -   Support for protein-level data interpretation
 -   Metaproteomics demo module with taxonomy-function visualization
+-   Data-source importers for Proteome Discoverer, Skyline, Mascot, and OpenMS tabular exports
 -   Integrated Shiny-based graphical user interface
 -   Easy-to-use workflow for researchers without extensive programming experience
 
