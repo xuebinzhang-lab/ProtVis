@@ -26,8 +26,153 @@ golem_add_external_resources <- function() {
       app_title = "ProtVis"
     ),
     shiny::tags$style(shiny::HTML("
+      :root {
+        --pv-bg: #f5f8fb;
+        --pv-surface: #ffffff;
+        --pv-surface-soft: #f8fbff;
+        --pv-border: #dbe8f3;
+        --pv-primary: #1787c9;
+        --pv-primary-soft: #e8f5fc;
+        --pv-text: #1f3447;
+        --pv-muted: #657789;
+        --pv-shadow: 0 12px 32px rgba(31, 52, 71, 0.08);
+      }
+
       body {
-        background: #eef1f4;
+        background:
+          radial-gradient(circle at top left, rgba(23, 135, 201, 0.08), transparent 32rem),
+          linear-gradient(180deg, #f8fbff 0%, var(--pv-bg) 100%);
+        color: var(--pv-text);
+      }
+
+      .navbar {
+        background: rgba(255, 255, 255, 0.94) !important;
+        border-bottom: 1px solid var(--pv-border);
+        box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
+        backdrop-filter: blur(12px);
+      }
+
+      .navbar-brand,
+      .navbar-nav .nav-link {
+        color: var(--pv-text) !important;
+      }
+
+      .navbar-nav .nav-link.active,
+      .navbar-nav .nav-link.show,
+      .navbar-nav .nav-link:focus,
+      .navbar-nav .nav-link:hover {
+        color: var(--pv-primary) !important;
+      }
+
+      .navbar-nav .nav-link.active {
+        border-bottom: 2px solid var(--pv-primary);
+        font-weight: 800;
+      }
+
+      .dropdown-menu {
+        border: 1px solid var(--pv-border);
+        border-radius: 16px;
+        box-shadow: var(--pv-shadow);
+        padding: 0.45rem;
+      }
+
+      .dropdown-item {
+        border-radius: 10px;
+        color: var(--pv-text);
+      }
+
+      .dropdown-item:hover,
+      .dropdown-item:focus,
+      .dropdown-item.active {
+        background: var(--pv-primary-soft);
+        color: var(--pv-primary);
+      }
+
+      .card,
+      .bslib-card,
+      .well,
+      .panel,
+      .accordion,
+      .accordion-item {
+        border-color: var(--pv-border) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 10px 26px rgba(31, 52, 71, 0.06);
+      }
+
+      .card,
+      .bslib-card,
+      .accordion-item {
+        background: var(--pv-surface);
+      }
+
+      .card-header,
+      .accordion-button {
+        background: var(--pv-surface-soft) !important;
+        color: var(--pv-text) !important;
+        font-weight: 750;
+      }
+
+      .accordion-button:not(.collapsed) {
+        background: var(--pv-primary-soft) !important;
+        color: var(--pv-primary) !important;
+        box-shadow: none;
+      }
+
+      .bslib-sidebar-layout > .sidebar,
+      .sidebar {
+        background: rgba(255, 255, 255, 0.92) !important;
+        border-color: var(--pv-border) !important;
+      }
+
+      .form-control,
+      .form-select,
+      .selectize-input,
+      .selectize-dropdown,
+      .shiny-input-container input,
+      .shiny-input-container select {
+        border-color: #cfe0ee !important;
+        border-radius: 12px !important;
+      }
+
+      .form-control:focus,
+      .form-select:focus,
+      .selectize-input.focus {
+        border-color: var(--pv-primary) !important;
+        box-shadow: 0 0 0 0.22rem rgba(23, 135, 201, 0.14) !important;
+      }
+
+      .btn {
+        border-radius: 12px;
+        font-weight: 700;
+      }
+
+      .btn-primary,
+      .btn-success {
+        border-color: var(--pv-primary) !important;
+        background: linear-gradient(135deg, #22a5df 0%, var(--pv-primary) 100%) !important;
+        box-shadow: 0 8px 18px rgba(23, 135, 201, 0.18);
+      }
+
+      .btn-outline-primary {
+        border-color: #9ccce8 !important;
+        color: var(--pv-primary) !important;
+        background: #ffffff !important;
+      }
+
+      .btn-outline-primary:hover {
+        color: #ffffff !important;
+        background: var(--pv-primary) !important;
+      }
+
+      table.dataTable {
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      table.dataTable thead th {
+        background: var(--pv-surface-soft);
+        color: var(--pv-text);
+        border-bottom: 1px solid var(--pv-border) !important;
       }
 
       .protvis-page {
@@ -43,11 +188,11 @@ golem_add_external_resources <- function() {
         min-height: 620px;
         margin: 18px auto 22px auto;
         background:
-          radial-gradient(circle at top right, rgba(255,255,255,0.10) 0, rgba(255,255,255,0.04) 20%, transparent 40%),
-          radial-gradient(circle at bottom left, rgba(255,255,255,0.06) 0, transparent 28%),
-          linear-gradient(135deg, #1f2937 0%, #4b5563 45%, #9ca3af 100%);
-        color: white;
-        box-shadow: 0 16px 36px rgba(31, 41, 55, 0.16);
+          radial-gradient(circle at top right, rgba(23, 135, 201, 0.13) 0, rgba(23, 135, 201, 0.05) 26%, transparent 44%),
+          linear-gradient(135deg, #ffffff 0%, #eef8ff 52%, #f8fbff 100%);
+        color: var(--pv-text);
+        border: 1px solid var(--pv-border);
+        box-shadow: var(--pv-shadow);
       }
 
       .protvis-hero-inner {
@@ -106,7 +251,7 @@ golem_add_external_resources <- function() {
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: rgba(255,255,255,0.88);
+        color: var(--pv-primary);
         margin-bottom: 12px;
       }
 
@@ -122,7 +267,7 @@ golem_add_external_resources <- function() {
         font-size: 1rem;
         line-height: 1.72;
         max-width: 650px;
-        color: rgba(255,255,255,0.94);
+        color: var(--pv-muted);
         margin-bottom: 16px;
       }
 
@@ -136,9 +281,9 @@ golem_add_external_resources <- function() {
         padding: 7px 13px;
         margin-right: 8px;
         margin-bottom: 8px;
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.15);
-        color: white;
+        background: var(--pv-primary-soft);
+        border: 1px solid #cde8f6;
+        color: var(--pv-primary);
         font-size: 0.88rem;
         font-weight: 600;
         backdrop-filter: blur(4px);
@@ -155,14 +300,14 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-stat-card {
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.86);
+        border: 1px solid var(--pv-border);
         border-radius: 18px;
         padding: 16px 16px;
         min-height: 145px;
         width: 100%;
         height: 100%;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        box-shadow: 0 8px 22px rgba(31, 52, 71, 0.06);
         backdrop-filter: blur(8px);
         display: flex;
         flex-direction: column;
@@ -179,31 +324,31 @@ golem_add_external_resources <- function() {
       .protvis-stat-label {
         font-size: 0.91rem;
         font-weight: 700;
-        color: rgba(255,255,255,0.94);
+        color: var(--pv-muted);
         margin-bottom: 7px;
       }
 
       .protvis-stat-note {
         font-size: 0.84rem;
         line-height: 1.58;
-        color: rgba(255,255,255,0.82);
+        color: var(--pv-muted);
         margin-bottom: 0;
       }
 
       .protvis-section-title {
         font-size: 1.45rem;
         font-weight: 900;
-        color: #111827;
+        color: var(--pv-text);
         margin-top: 8px;
         margin-bottom: 16px;
       }
 
       .protvis-panel {
-        background: white;
-        border: 1px solid #e5e7eb;
+        background: var(--pv-surface);
+        border: 1px solid var(--pv-border);
         border-radius: 20px;
         padding: 22px 22px;
-        box-shadow: 0 8px 24px rgba(31, 41, 55, 0.05);
+        box-shadow: 0 8px 24px rgba(31, 52, 71, 0.05);
         margin-bottom: 18px;
         height: 100%;
       }
@@ -211,13 +356,13 @@ golem_add_external_resources <- function() {
       .protvis-panel h4 {
         font-size: 1.10rem;
         font-weight: 850;
-        color: #111827;
+        color: var(--pv-text);
         margin-bottom: 12px;
       }
 
       .protvis-panel p,
       .protvis-panel li {
-        color: #4b5563;
+        color: var(--pv-muted);
         line-height: 1.72;
         font-size: 0.95rem;
       }
@@ -228,8 +373,8 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-feature-card {
-        background: white;
-        border: 1px solid #e5e7eb;
+        background: var(--pv-surface);
+        border: 1px solid var(--pv-border);
         border-radius: 20px;
         padding: 20px 18px;
         min-height: 190px;
@@ -261,14 +406,14 @@ golem_add_external_resources <- function() {
       .protvis-feature-card h4 {
         font-size: 1.03rem;
         font-weight: 850;
-        color: #111827;
+        color: var(--pv-text);
         margin-bottom: 10px;
       }
 
       .protvis-feature-card p {
         font-size: 0.94rem;
         line-height: 1.68;
-        color: #4b5563;
+        color: var(--pv-muted);
         margin-bottom: 0;
       }
 
@@ -300,14 +445,14 @@ golem_add_external_resources <- function() {
       .protvis-flow-card h5 {
         font-size: 0.98rem;
         font-weight: 850;
-        color: #111827;
+        color: var(--pv-text);
         margin-bottom: 8px;
       }
 
       .protvis-flow-card p {
         font-size: 0.90rem;
         line-height: 1.62;
-        color: #4b5563;
+        color: var(--pv-muted);
         margin-bottom: 0;
       }
 
@@ -349,11 +494,11 @@ golem_add_external_resources <- function() {
         bottom: 0;
         width: 100%;
         z-index: 1050;
-        background: #111827;
-        color: rgba(255,255,255,0.92);
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--pv-text);
         padding: 16px 0 10px 0;
-        border-top: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 -6px 20px rgba(0,0,0,0.18);
+        border-top: 1px solid var(--pv-border);
+        box-shadow: 0 -6px 20px rgba(31, 52, 71, 0.08);
       }
 
       .protvis-site-footer .footer-inner {
@@ -371,16 +516,16 @@ golem_add_external_resources <- function() {
       .protvis-site-footer .footer-text {
         font-size: 0.88rem;
         line-height: 1.65;
-        color: rgba(255,255,255,0.80);
+        color: var(--pv-muted);
         margin-bottom: 0;
       }
 
       .protvis-site-footer .footer-small {
         margin-top: 8px;
         padding-top: 8px;
-        border-top: 1px solid rgba(255,255,255,0.10);
+        border-top: 1px solid var(--pv-border);
         font-size: 0.82rem;
-        color: rgba(255,255,255,0.68);
+        color: var(--pv-muted);
       }
 
       @media (max-width: 1200px) {
@@ -495,7 +640,16 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     bslib::page_navbar(
       title = "ProtVis",
-      theme = bslib::bs_theme(bootswatch = "lumen"),
+      theme = bslib::bs_theme(
+        version = 5,
+        bootswatch = "lumen",
+        bg = "#f8fbff",
+        fg = "#1f3447",
+        primary = "#1787c9",
+        secondary = "#657789",
+        success = "#2fb176",
+        info = "#56b6d9"
+      ),
 
       bslib::nav_panel(
         "Homepage",
