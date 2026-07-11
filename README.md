@@ -168,7 +168,7 @@ If you use ProtVis in your research, please cite the corresponding publication w
 
 ## Author
 
-**Fei Liang & Xiao Wang**<br>
+**Fei Liang**<br>
 State Key Laboratory of Crop Stress Adaptation and Improvement<br>
 Henan Joint International Laboratory for Crop Multi-Omics Research<br>
 School of Life Sciences, Henan University<br>
