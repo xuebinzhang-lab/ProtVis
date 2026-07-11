@@ -4,12 +4,10 @@
 #'   DO NOT REMOVE.
 #'
 #' @import shiny
-#' @importFrom bslib bs_themer
 #' @name app_server
 #' @export
 #'
 app_server <- function(input, output, session) {
-  bslib::bs_themer()
   shared_state <- reactiveValues(
     workdir = NULL,
     sample_info = NULL,
