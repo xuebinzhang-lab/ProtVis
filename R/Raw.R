@@ -11,10 +11,32 @@
 Raw_ui <- function(id) {
   ns <- NS(id)
   shiny::tagList(
-    shiny::fileInput(ns("file"), "Upload Raw Data File"),
-    shiny::verbatimTextOutput(ns("file_info"))
+    protvis_data_input_style(),
+    bslib::layout_sidebar(
+      class = "pv-mq-shell",
+      sidebar = bslib::sidebar(
+        width = 320,
+        shiny::div(
+          class = "pv-sidebar-card",
+          shiny::fileInput(ns("file"), "Upload raw data file", multiple = FALSE),
+          shiny::div(class = "pv-status pv-status-empty", "Waiting for raw file")
+        )
+      ),
+      bslib::card(
+        class = "pv-preview-card",
+        bslib::card_header(
+          class = "pv-card-header",
+          shiny::div(
+            shiny::tags$h4("Raw data preview", class = "pv-card-title"),
+            shiny::tags$p("Check uploaded file metadata before continuing.", class = "pv-card-subtitle")
+          )
+        ),
+        bslib::card_body(shiny::verbatimTextOutput(ns("file_info")))
+      )
+    )
   )
 }
+
 #' Raw Data Upload Module Server
 #' @description
 #' Handles the server-side logic for raw data uploads. It renders file
