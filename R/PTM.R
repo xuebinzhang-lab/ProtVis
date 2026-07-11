@@ -102,7 +102,8 @@ PTM_ui <- function(id) {
         height = "500px",
         bslib::card_header("Protein Post-translational Modifications (PTMs) Visualization"),
         bslib::card_body(
-          shiny::textOutput(ns("status_message"))
+          shiny::textOutput(ns("status_message")),
+          shiny::plotOutput(ns("ptm_plot"), height = "360px")
         )
       )
     )
@@ -174,6 +175,11 @@ PTM_server <- function(id) {
         "Selected peptide:", input$Peptide,
         "Modification:", input$mod_type
       )
+    })
+
+    output$ptm_plot <- shiny::renderPlot({
+      shiny::req(input$visualize)
+      print(ptm_plot())
     })
 
     output$download_ptm_plot <- shiny::downloadHandler(
