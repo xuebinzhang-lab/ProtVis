@@ -2,7 +2,7 @@
 % Please edit documentation in R/DEP_visualize.R
 \name{DEP_visualize_server}
 \alias{DEP_visualize_server}
-\title{TMT Server Logic}
+\title{DEP Visualization Server Logic}
 \arguments{
 \item{input}{Shiny input values.}
 
@@ -11,6 +11,6 @@
 \item{session}{Shiny session object.}
 }
 \description{
-Defines the server-side logic for the TMT (Tandem Mass Tag) analysis section
-in a Shiny application, including plot generation based on user input.
+Defines the server-side logic for the DEP visualization section in a Shiny
+application, including plot generation based on user input.
 }
