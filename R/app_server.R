@@ -33,6 +33,7 @@ app_server <- function(input, output, session) {
   enrichment_analysis_server("enrichment_analysis", shared_state = shared_state)
   gsea_server("gsea")
   pathview_server("pathview")
+  PTM_server("PTM")
   pd_strict_module_server("pd_strict")
   # protein_fun_server("protein_fun", shared_state)
   release_data_server("release_data1", shared_state)
