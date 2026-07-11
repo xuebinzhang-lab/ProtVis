@@ -170,7 +170,8 @@ overview_ui <- function(id) {
             bslib::card_header("Proteomics missing values and distributions"),
             bslib::card_body(
               shiny::plotOutput(ns("qc_missing_rate_plot"), height = "250px"),
-              shiny::plotOutput(ns("qc_boxplot"), height = "250px")
+              shiny::plotOutput(ns("qc_boxplot"), height = "250px"),
+              shiny::plotOutput(ns("qc_density_plot"), height = "250px")
             )
           ),
           bslib::card(
@@ -907,6 +908,7 @@ overview_server <- function(id, shared_state) {
     output$qc_sample_total_plot <- shiny::renderPlot(print(qc_sample_total_plot()))
     output$qc_missing_rate_plot <- shiny::renderPlot(print(qc_missing_rate_plot()))
     output$qc_boxplot <- shiny::renderPlot(print(qc_boxplot()))
+    output$qc_density_plot <- shiny::renderPlot(print(qc_density_plot()))
     output$qc_pca_plot <- shiny::renderPlot(print(qc_pca_plot()))
     output$qc_cv_plot <- shiny::renderPlot(print(qc_cv_plot()))
 
