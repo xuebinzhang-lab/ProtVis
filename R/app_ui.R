@@ -874,6 +874,10 @@ app_ui <- function(request) {
           "WGCNA",
           wgcna_ui("wgcna")
         ),
+        bslib::nav_panel(
+          "Metaproteomics",
+          metaproteomics_ui("metaproteomics")
+        ),
         bslib::nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
         bslib::nav_panel(
           title = "Co-enrichment",

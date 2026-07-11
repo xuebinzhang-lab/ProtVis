@@ -296,6 +296,19 @@ wgcna_server <- function(id, rv = NULL) {
       identical(test, TRUE)
     }
 
+    require_shinywgcna <- function() {
+      if (base::requireNamespace("ShinyWGCNA", quietly = TRUE)) {
+        return(TRUE)
+      }
+
+      shiny::showNotification(
+        'The optional ShinyWGCNA package is required for the WGCNA module. Install it with remotes::install_github("ShawnWx2019/WGCNAShinyFun", ref = "master").',
+        type = "error",
+        duration = NULL
+      )
+      FALSE
+    }
+
     read_input_table <- function(path) {
       ext <- base::tolower(tools::file_ext(path))
       if (ext %in% c("csv")) {
@@ -383,6 +396,10 @@ wgcna_server <- function(id, rv = NULL) {
     mtd <- shiny::reactive(input$method1)
 
     shiny::observeEvent(input$action1, {
+      if (!require_shinywgcna()) {
+        return(NULL)
+      }
+
       shiny::req(data())
 
       if (base::length(base::which(base::is.na(data()))) != 0) {
