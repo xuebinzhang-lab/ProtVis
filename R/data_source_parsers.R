@@ -39,9 +39,13 @@ clean_sample_names <- function(x) {
 }
 
 guess_sample_info <- function(samples) {
+  groups <- ifelse(grepl("treat|case|disease|stim", samples, ignore.case = TRUE), "Treatment", "Control")
   data.frame(
+    sample_id = samples,
+    maxquant_id = samples,
+    group = groups,
     Sample = samples,
-    Group = ifelse(grepl("treat|case|disease|stim", samples, ignore.case = TRUE), "Treatment", "Control"),
+    Group = groups,
     stringsAsFactors = FALSE
   )
 }
@@ -49,18 +53,23 @@ guess_sample_info <- function(samples) {
 normalise_sample_info <- function(sample_info, samples) {
   if (base::is.null(sample_info)) return(guess_sample_info(samples))
   names(sample_info) <- base::make.names(names(sample_info), unique = TRUE)
-  sample_col <- first_matching_column(names(sample_info), c("^Sample$", "sample", "run", "file", "condition"))
-  group_col <- first_matching_column(names(sample_info), c("^Group$", "group", "condition", "treatment", "class"))
-  if (base::is.null(sample_col)) sample_col <- names(sample_info)[1]
+  maxquant_col <- first_matching_column(names(sample_info), c("^maxquant_id$", "maxquant", "raw.file", "file", "run", "sample"))
+  sample_col <- first_matching_column(names(sample_info), c("^sample_id$", "^Sample$", "sample", "condition", "run", "file"))
+  group_col <- first_matching_column(names(sample_info), c("^group$", "^Group$", "group", "condition", "treatment", "class"))
+  if (base::is.null(maxquant_col)) maxquant_col <- if (!base::is.null(sample_col)) sample_col else names(sample_info)[1]
+  if (base::is.null(sample_col)) sample_col <- maxquant_col
   if (base::is.null(group_col)) group_col <- sample_col
   out <- data.frame(
-    Sample = base::make.names(as.character(sample_info[[sample_col]]), unique = TRUE),
-    Group = as.character(sample_info[[group_col]]),
+    sample_id = base::make.names(as.character(sample_info[[sample_col]]), unique = TRUE),
+    maxquant_id = base::make.names(as.character(sample_info[[maxquant_col]]), unique = TRUE),
+    group = as.character(sample_info[[group_col]]),
     stringsAsFactors = FALSE
   )
-  out <- out[out$Sample %in% samples, , drop = FALSE]
-  missing_samples <- base::setdiff(samples, out$Sample)
-  if (base::length(missing_samples) > 0) out <- rbind(out, guess_sample_info(missing_samples))
+  out <- out[out$maxquant_id %in% samples, , drop = FALSE]
+  missing_samples <- base::setdiff(samples, out$maxquant_id)
+  if (base::length(missing_samples) > 0) out <- rbind(out, guess_sample_info(missing_samples)[, c("sample_id", "maxquant_id", "group")])
+  out$Sample <- out$sample_id
+  out$Group <- out$group
   out
 }
 
@@ -166,13 +175,19 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
       rv$note <- parsed$note
       if (!is.null(shared_state)) {
         shared_state$expression_matrix <- parsed$expression_matrix
+        shared_state$expression_matrix_filtered <- parsed$expression_matrix
         shared_state$sample_info <- sample_info
         shared_state$data_source <- source_name
         if (!is.null(shared_state$workdir)) {
-          save_path <- file.path(shared_state$workdir, paste0("Step1_", gsub("[^A-Za-z0-9]+", "_", source_name), "_import.rda"))
           expression_matrix <- parsed$expression_matrix
+          expression_matrix_filtered <- parsed$expression_matrix
           data_source <- source_name
-          base::save(sample_info, expression_matrix, data_source, file = save_path)
+          step1_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
+          step2_path <- file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+          source_path <- file.path(shared_state$workdir, paste0("Step1_", gsub("[^A-Za-z0-9]+", "_", source_name), "_import.rda"))
+          base::save(sample_info, expression_matrix, data_source, file = step1_path)
+          base::save(sample_info, expression_matrix, expression_matrix_filtered, file = step2_path)
+          base::save(sample_info, expression_matrix, expression_matrix_filtered, data_source, file = source_path)
         }
       }
       shiny::showNotification(paste(source_name, "file parsed successfully."), type = "message")
@@ -184,7 +199,17 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
       shiny::req(rv$expression_matrix)
       sample_info <- read_proteomics_table(input$sample_info$datapath)
       rv$sample_info <- normalise_sample_info(sample_info, names(rv$expression_matrix)[-1])
-      if (!is.null(shared_state)) shared_state$sample_info <- rv$sample_info
+      if (!is.null(shared_state)) {
+        shared_state$sample_info <- rv$sample_info
+        if (!is.null(shared_state$workdir)) {
+          sample_info <- rv$sample_info
+          expression_matrix <- rv$expression_matrix
+          expression_matrix_filtered <- rv$expression_matrix
+          data_source <- source_name
+          base::save(sample_info, expression_matrix, data_source, file = file.path(shared_state$workdir, "Step1_project_init.rda"))
+          base::save(sample_info, expression_matrix, expression_matrix_filtered, file = file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda"))
+        }
+      }
     }, ignoreInit = TRUE)
 
     output$group_select <- shiny::renderUI({
