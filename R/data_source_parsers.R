@@ -1,4 +1,4 @@
-utils::globalVariables(c("Sample", "Intensity", "Group", "PC1", "PC2"))
+utils::globalVariables(c("Sample", "Intensity", "Group", "PC1", "PC2", "sample_id", "maxquant_id", "group"))
 
 read_proteomics_table <- function(path) {
   ext <- base::tolower(tools::file_ext(path))
@@ -65,12 +65,16 @@ normalise_sample_info <- function(sample_info, samples) {
     group = as.character(sample_info[[group_col]]),
     stringsAsFactors = FALSE
   )
-  out <- out[out$maxquant_id %in% samples, , drop = FALSE]
-  missing_samples <- base::setdiff(samples, out$maxquant_id)
-  if (base::length(missing_samples) > 0) out <- rbind(out, guess_sample_info(missing_samples)[, c("sample_id", "maxquant_id", "group")])
-  out$Sample <- out$sample_id
-  out$Group <- out$group
-  out
+  matched <- out[out$maxquant_id %in% samples, , drop = FALSE]
+  if (nrow(matched) == 0 && nrow(out) == length(samples)) {
+    matched <- out
+    matched$maxquant_id <- samples
+  }
+  missing_samples <- base::setdiff(samples, matched$maxquant_id)
+  if (base::length(missing_samples) > 0) matched <- rbind(matched, guess_sample_info(missing_samples)[, c("sample_id", "maxquant_id", "group")])
+  matched$Sample <- matched$sample_id
+  matched$Group <- matched$group
+  matched
 }
 
 build_expression_matrix <- function(df, id_col, abundance_cols, sample_names = NULL) {
@@ -155,8 +159,10 @@ render_source_pca <- function(expression_matrix, sample_info) {
     graphics::plot.new(); graphics::text(0.5, 0.5, "Need at least two variable proteins for PCA."); return(invisible(NULL))
   }
   pca <- stats::prcomp(pca_input, scale. = TRUE)
-  plot_df <- data.frame(Sample = rownames(pca$x), PC1 = pca$x[, 1], PC2 = pca$x[, 2], stringsAsFactors = FALSE)
-  plot_df <- merge(plot_df, sample_info, by = "Sample", all.x = TRUE)
+  plot_df <- data.frame(maxquant_id = rownames(pca$x), PC1 = pca$x[, 1], PC2 = pca$x[, 2], stringsAsFactors = FALSE)
+  plot_df <- merge(plot_df, sample_info, by = "maxquant_id", all.x = TRUE)
+  plot_df$Sample <- ifelse(is.na(plot_df$sample_id), plot_df$maxquant_id, plot_df$sample_id)
+  plot_df$Group <- ifelse(is.na(plot_df$group), "Unknown", plot_df$group)
   print(ggplot2::ggplot(plot_df, ggplot2::aes(PC1, PC2, color = Group, label = Sample)) +
           ggplot2::geom_point(size = 3) +
           ggplot2::geom_text(vjust = -0.7, size = 3) +
