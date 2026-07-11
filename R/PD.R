@@ -11,10 +11,7 @@
 #'
 PD_ui <- function(id) {
   ns <- NS(id)
-  bslib::nav_panel(
-    title = 'PD',
-    icon = bsicons::bs_icon("play-circle"),
-    bslib::layout_sidebar(
+  bslib::layout_sidebar(
       sidebar = bslib::accordion(
         bslib::accordion_panel(
           title = "File Upload",
@@ -67,13 +64,12 @@ PD_ui <- function(id) {
       ),
       # 👇 只改这里：删掉 mainPanel，直接放 tabsetPanel
       shiny::tabsetPanel(
-        shiny::tabPanel("UMAP", shiny::plotOutput(ns("umap_plot"))),
+        shiny::tabPanel("PCA", shiny::plotOutput(ns("umap_plot"))),
         shiny::tabPanel("Heatmap", shiny::plotOutput(ns("heatmap_plot"))),
         shiny::tabPanel("Boxplot", shiny::plotOutput(ns("boxplot"))),
         shiny::tabPanel("DE Table", DT::DTOutput(ns("de_table")))
       )
     )
-  )
 }
 
 #' Proteome Discoverer Server Logic Module
