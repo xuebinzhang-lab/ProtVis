@@ -21,10 +21,11 @@ OpenMS_ui <- function(id) {
           icon = bsicons::bs_icon("upload"),
           shiny::fileInput(
             inputId = ns('protein_file'),
-            label = 'Upload ProteinGroups (xlsx or csv)',
+            label = 'Upload OpenMS consensus/ProteinQuantifier table (csv, tsv, xlsx)',
             multiple = FALSE,
-            accept = c(".xlsx", ".xls", ".csv")
+            accept = c(".xlsx", ".xls", ".csv", ".tsv", ".txt")
           ),
+          shiny::actionButton(ns("load_data"), "Parse OpenMS Output", class = "btn btn-primary w-100"),
           shiny::fileInput(
             inputId = ns('sample_info'),
             label = 'Upload Sample Info (xlsx or csv)',
@@ -77,8 +78,8 @@ OpenMS_ui <- function(id) {
 
 #' OpenMS Server Logic Module
 #'
-#' Registers placeholder outputs for the OpenMS data-source module until the
-#' dedicated processing workflow is implemented.
+#' Parses OpenMS consensus or ProteinQuantifier tables into a ProtVis expression
+#' matrix using protein accession and intensity/abundance columns.
 #' @param id Character. Module ID used for namespacing server inputs/outputs.
 #' @param shared_state A reactiveValues object shared across modules.
 #' @return None. Called for side effects in the Shiny session.
@@ -87,5 +88,5 @@ OpenMS_ui <- function(id) {
 #' @name OpenMS_server
 #' @export
 OpenMS_server <- function(id, shared_state = NULL) {
-  register_placeholder_analysis_server(id, "OpenMS", shared_state)
+  register_tabular_data_source_server(id, "OpenMS", parse_openms_output, shared_state)
 }
