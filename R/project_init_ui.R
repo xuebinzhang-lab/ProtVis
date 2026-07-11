@@ -125,8 +125,11 @@ project_init_server <- function(id, shared_state) {
     shiny::observeEvent(input$run_button, {
       shiny::req(shared_state$workdir, shared_state$sample_info, shared_state$expression_matrix, shared_state$data_source)
       # Assign reactiveValues contents to plain variables for saving
-      sample_info <- shared_state$sample_info
-      expression_matrix <- shared_state$expression_matrix
+      validated <- validate_protvis_data(shared_state$expression_matrix, shared_state$sample_info)
+      sample_info <- validated$sample_info
+      expression_matrix <- validated$expression_matrix
+      shared_state$sample_info <- sample_info
+      shared_state$expression_matrix <- expression_matrix
       data_source <- shared_state$data_source
       save_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
       tryCatch({

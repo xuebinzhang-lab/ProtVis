@@ -10,7 +10,7 @@
 #' @export
 #'
 TMT_ui <- function(id) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   bslib::nav_panel(
     title = 'TMT',
     icon = bsicons::bs_icon("play-circle"),
@@ -25,17 +25,14 @@ TMT_ui <- function(id) {
             multiple = FALSE,
             accept = '.csv'
           ),
-          shiny::selectInput(
-            inputId = ns("param_select"),
-            label = "Select Parameter",
-            choices = c("Parameter 1", "Parameter 2", "Parameter 3"),
-            selected = "Parameter 1"
-          ),
+          shiny::selectInput(ns("x_column"), "X-axis numeric column", choices = character(0)),
+          shiny::selectInput(ns("y_column"), "Y-axis numeric column", choices = character(0)),
+          shiny::selectInput(ns("color_column"), "Optional color/group column", choices = c("None" = "")),
           shiny::actionButton(ns("run_button"), "Run")
         ),
         bslib::accordion_panel(
           title = "Download Figure",
-          icon = bs_icon("download"),
+          icon = bsicons::bs_icon("download"),
           shiny::textInput(
             inputId = ns("height"),
             label = "Height",
@@ -71,7 +68,7 @@ TMT_ui <- function(id) {
             bslib::accordion_panel(
               title = 'Download',
               icon = bsicons::bs_icon('download'),
-              shiny::downloadButton(ns("fig1_download"), label = "Output Table", icon = icon("download"))
+              shiny::downloadButton(ns("fig1_download"), label = "Output Table", icon = shiny::icon("download"))
             )
           ),
           shiny::mainPanel(
@@ -80,7 +77,7 @@ TMT_ui <- function(id) {
         ),
         bslib::navset_card_tab(
           title = "Tab 2",
-          sidebar = accordion(
+          sidebar = bslib::accordion(
             bslib::accordion_panel(
               title = 'Parameter',
               shiny::radioButtons(inputId = ns("Logical_value2"),
@@ -91,7 +88,7 @@ TMT_ui <- function(id) {
             bslib::accordion_panel(
               title = 'Download',
               icon = bsicons::bs_icon('download'),
-              shiny::downloadButton(ns("fig2_download"), label = "Output Table", icon = icon("download"))
+              shiny::downloadButton(ns("fig2_download"), label = "Output Table", icon = shiny::icon("download"))
             )
           ),
           shiny::mainPanel(
@@ -112,14 +109,13 @@ TMT_ui <- function(id) {
 #' @param id A unique identifier for the Shiny namespace.
 #' @import shiny
 #' @importFrom utils read.csv head write.csv
-#' @importFrom ggplot2 ggsave last_plot
+#' @importFrom ggplot2 ggsave
 #' @name TMT_server
 #' @export
 #'
-utils::globalVariables(c("mtcars", "wt", "hp", "drat"))
+utils::globalVariables(c("x_value", "y_value", "color_value"))
 TMT_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
-    ns <- session$ns
     data_uploaded <- shiny::reactive({
       shiny::req(input$SampleInfo)
       print(base::paste("File uploaded:", input$SampleInfo$datapath))
@@ -132,24 +128,46 @@ TMT_server <- function(id) {
         return(NULL)
       })
     })
+
+    shiny::observeEvent(data_uploaded(), {
+      data <- data_uploaded()
+      shiny::req(data)
+      numeric_cols <- base::names(data)[vapply(data, is.numeric, logical(1))]
+      shiny::updateSelectInput(session, "x_column", choices = numeric_cols, selected = numeric_cols[1])
+      shiny::updateSelectInput(session, "y_column", choices = numeric_cols, selected = numeric_cols[min(2, base::length(numeric_cols))])
+      shiny::updateSelectInput(session, "color_column", choices = c("None" = "", base::names(data)), selected = "")
+    }, ignoreInit = TRUE)
+
+    tmt_plot <- shiny::reactive({
+      data <- data_uploaded()
+      shiny::req(base::nrow(data) > 0)
+      shiny::req(input$x_column %in% base::colnames(data), input$y_column %in% base::colnames(data))
+      plot_df <- data.frame(
+        x_value = data[[input$x_column]],
+        y_value = data[[input$y_column]],
+        stringsAsFactors = FALSE
+      )
+      if (!base::is.null(input$color_column) && input$color_column != "" && input$color_column %in% base::colnames(data)) {
+        plot_df$color_value <- base::as.factor(data[[input$color_column]])
+        return(
+          ggplot2::ggplot(plot_df, ggplot2::aes(x = x_value, y = y_value, color = color_value)) +
+            ggplot2::geom_point() +
+            ggplot2::labs(x = input$x_column, y = input$y_column, color = input$color_column, title = "TMT numeric column comparison")
+        )
+      }
+      ggplot2::ggplot(plot_df, ggplot2::aes(x = x_value, y = y_value)) +
+        ggplot2::geom_point() +
+        ggplot2::labs(x = input$x_column, y = input$y_column, title = "TMT numeric column comparison")
+    })
+
     output$plot1 <- shiny::renderPlot({
       shiny::req(input$run_button)
-      data <- data_uploaded()
-      print(utils::head(data))
-      shiny::req(base::nrow(data) > 0)
-      shiny::req("wt" %in% base::colnames(data), "hp" %in% colnames(data))
-      ggplot2::ggplot(data, ggplot2::aes(x = wt, y = hp)) +
-        ggplot2::geom_point() +
-        ggplot2::ggtitle("Plot 1: Weight vs Horsepower")
+      print(utils::head(data_uploaded()))
+      print(tmt_plot())
     })
     output$plot2 <- shiny::renderPlot({
       shiny::req(input$run_button)
-      data <- data_uploaded()
-      shiny::req(nrow(data) > 0)
-      shiny::req("wt" %in% base::colnames(data), "drat" %in% base::colnames(data))
-      ggplot2::ggplot(data, ggplot2::aes(x = wt, y = drat)) +
-        ggplot2::geom_point(col = "red") +
-        ggplot2::ggtitle("Plot 2: Weight vs Drat")
+      print(tmt_plot())
     })
     output$fig1_download <- shiny::downloadHandler(
       filename = function() {
@@ -158,7 +176,7 @@ TMT_server <- function(id) {
       content = function(file) {
         ggplot2::ggsave(
           file,
-          plot = ggplot2::last_plot(),
+          plot = tmt_plot(),
           width = base::as.numeric(input$width),
           height = base::as.numeric(input$height),
           units = input$Units)
@@ -171,7 +189,7 @@ TMT_server <- function(id) {
       content = function(file) {
         ggplot2::ggsave(
           file,
-          plot = last_plot(),
+          plot = tmt_plot(),
           width = base::as.numeric(input$width),
           height = base::as.numeric(input$height),
           units = input$Units)
@@ -187,4 +205,3 @@ TMT_server <- function(id) {
     )
   })
 }
-
