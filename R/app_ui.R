@@ -859,7 +859,7 @@ app_ui <- function(request) {
           enrichment_analysis_ui("enrichment_analysis")
         ),
         bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
-        bslib::nav_panel("Pathview", pathview_ui("pathview")),
+        bslib::nav_panel("Pathview", pathview_ui("pathview"))
         # bslib::nav_panel("Protein function", protein_fun_ui("protein_fun"))
       ),
 

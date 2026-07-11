@@ -53,12 +53,17 @@ guess_sample_info <- function(samples) {
 normalise_sample_info <- function(sample_info, samples) {
   if (base::is.null(sample_info)) return(guess_sample_info(samples))
   names(sample_info) <- base::make.names(names(sample_info), unique = TRUE)
-  maxquant_col <- first_matching_column(names(sample_info), c("^maxquant_id$", "maxquant", "raw.file", "file", "run", "sample"))
-  sample_col <- first_matching_column(names(sample_info), c("^sample_id$", "^Sample$", "sample", "condition", "run", "file"))
-  group_col <- first_matching_column(names(sample_info), c("^group$", "^Group$", "group", "condition", "treatment", "class"))
+  cols <- names(sample_info)
+  maxquant_col <- first_matching_column(cols, c("^maxquant_id$", "maxquant", "raw.file", "file", "run", "^sample$", "^Sample$"))
+  sample_col <- first_matching_column(cols, c("^sample_id$", "^Sample$", "sample.name", "sample_id", "run", "file"))
+  group_col <- first_matching_column(cols, c("^group$", "^Group$", "group", "condition", "treatment", "class"))
   if (base::is.null(maxquant_col)) maxquant_col <- if (!base::is.null(sample_col)) sample_col else names(sample_info)[1]
   if (base::is.null(sample_col)) sample_col <- maxquant_col
   if (base::is.null(group_col)) group_col <- sample_col
+  if (identical(group_col, sample_col) && base::length(cols) > 1) {
+    fallback_group <- first_matching_column(base::setdiff(cols, sample_col), c("^group$", "^Group$", "group", "condition", "treatment", "class"))
+    if (!base::is.null(fallback_group)) group_col <- fallback_group
+  }
   out <- data.frame(
     sample_id = base::make.names(as.character(sample_info[[sample_col]]), unique = TRUE),
     maxquant_id = base::make.names(as.character(sample_info[[maxquant_col]]), unique = TRUE),
@@ -77,12 +82,51 @@ normalise_sample_info <- function(sample_info, samples) {
   matched
 }
 
+summarise_numeric_mean <- function(x) {
+  if (base::all(base::is.na(x))) return(NA_real_)
+  base::mean(x, na.rm = TRUE)
+}
+
 build_expression_matrix <- function(df, id_col, abundance_cols, sample_names = NULL) {
   if (base::is.null(sample_names)) sample_names <- clean_sample_names(abundance_cols)
   expr <- data.frame(ID = as.character(df[[id_col]]), stringsAsFactors = FALSE)
   for (i in seq_along(abundance_cols)) expr[[sample_names[i]]] <- safe_numeric(df[[abundance_cols[i]]])
   expr <- expr[!is.na(expr$ID) & expr$ID != "", , drop = FALSE]
-  stats::aggregate(. ~ ID, data = expr, FUN = function(x) mean(x, na.rm = TRUE), na.action = na.pass)
+  stats::aggregate(. ~ ID, data = expr, FUN = summarise_numeric_mean, na.action = na.pass)
+}
+
+validate_protvis_data <- function(expression_matrix, sample_info = NULL) {
+  if (base::is.null(expression_matrix) || !base::is.data.frame(expression_matrix)) {
+    stop("Expression matrix must be a data frame.", call. = FALSE)
+  }
+  if (!"ID" %in% base::names(expression_matrix)) {
+    base::names(expression_matrix)[1] <- "ID"
+  }
+  if (base::ncol(expression_matrix) < 2) {
+    stop("Expression matrix must contain ID and at least one sample column.", call. = FALSE)
+  }
+  sample_cols <- base::setdiff(base::names(expression_matrix), "ID")
+  for (sample_col in sample_cols) {
+    expression_matrix[[sample_col]] <- safe_numeric(expression_matrix[[sample_col]])
+  }
+  expression_matrix <- expression_matrix[!base::is.na(expression_matrix$ID) & expression_matrix$ID != "", , drop = FALSE]
+  if (base::nrow(expression_matrix) == 0) {
+    stop("Expression matrix contains no valid protein IDs.", call. = FALSE)
+  }
+  expression_matrix[sample_cols] <- base::lapply(expression_matrix[sample_cols], function(x) {
+    x[base::is.nan(x)] <- NA_real_
+    x
+  })
+  if (base::is.null(sample_info)) {
+    sample_info <- guess_sample_info(sample_cols)
+  } else {
+    sample_info <- normalise_sample_info(sample_info, sample_cols)
+  }
+  missing_samples <- base::setdiff(sample_cols, sample_info$maxquant_id)
+  if (base::length(missing_samples) > 0) {
+    sample_info <- base::rbind(sample_info, guess_sample_info(missing_samples)[, c("sample_id", "maxquant_id", "group", "Sample", "Group")])
+  }
+  list(expression_matrix = expression_matrix, sample_info = sample_info)
 }
 
 parse_proteome_discoverer_output <- function(df) {
@@ -109,9 +153,10 @@ parse_skyline_output <- function(df) {
       stringsAsFactors = FALSE
     )
     long <- long[!is.na(long$ID) & !is.na(long$Intensity), , drop = FALSE]
-    wide <- stats::xtabs(Intensity ~ ID + Sample, data = long)
-    expr <- data.frame(ID = rownames(wide), as.data.frame.matrix(wide), check.names = FALSE)
-    return(list(expression_matrix = expr, note = "Parsed Skyline MSstats-style long report using ProteinName/FileName/Area."))
+    summary_long <- stats::aggregate(Intensity ~ ID + Sample, data = long, FUN = summarise_numeric_mean, na.action = na.pass)
+    expr <- tidyr::pivot_wider(summary_long, names_from = Sample, values_from = Intensity)
+    expr <- as.data.frame(expr, check.names = FALSE)
+    return(list(expression_matrix = expr, note = "Parsed Skyline MSstats-style long report using ProteinName/FileName/Area; duplicate protein/sample rows were averaged."))
   }
   id_col <- first_matching_column(cols, c("^ProteinName$", "Protein.Name", "Protein", "Accession"))
   abundance_cols <- numeric_column_names(df, exclude = id_col)
@@ -180,7 +225,9 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
       parsed <- parser(raw)
       sample_info <- NULL
       if (!is.null(input$sample_info)) sample_info <- read_proteomics_table(input$sample_info$datapath)
-      sample_info <- normalise_sample_info(sample_info, names(parsed$expression_matrix)[-1])
+      validated <- validate_protvis_data(parsed$expression_matrix, sample_info)
+      parsed$expression_matrix <- validated$expression_matrix
+      sample_info <- validated$sample_info
       rv$raw <- raw
       rv$expression_matrix <- parsed$expression_matrix
       rv$sample_info <- sample_info
