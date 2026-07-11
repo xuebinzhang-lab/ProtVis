@@ -46,6 +46,8 @@ golem_add_external_resources <- function() {
       }
 
       .navbar {
+        position: relative;
+        z-index: 2500;
         background: rgba(255, 255, 255, 0.94) !important;
         border-bottom: 1px solid var(--pv-border);
         box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
@@ -74,6 +76,7 @@ golem_add_external_resources <- function() {
         border-radius: 16px;
         box-shadow: var(--pv-shadow);
         padding: 0.45rem;
+        z-index: 3000;
       }
 
       .dropdown-item {
@@ -178,15 +181,15 @@ golem_add_external_resources <- function() {
       .protvis-page {
         max-width: 1450px;
         margin: 0 auto;
-        padding: 8px 6px 280px 6px;
+        padding: 18px 10px 36px 10px;
       }
 
       .protvis-hero {
         position: relative;
         overflow: hidden;
         border-radius: 28px;
-        min-height: 620px;
-        margin: 18px auto 22px auto;
+        min-height: 500px;
+        margin: 22px auto 22px auto;
         background:
           radial-gradient(circle at top right, rgba(23, 135, 201, 0.13) 0, rgba(23, 135, 201, 0.05) 26%, transparent 44%),
           linear-gradient(135deg, #ffffff 0%, #eef8ff 52%, #f8fbff 100%);
@@ -197,7 +200,7 @@ golem_add_external_resources <- function() {
 
       .protvis-hero-inner {
         width: 100%;
-        padding: 38px 42px 28px 42px;
+        padding: 42px 42px 34px 42px;
       }
 
       .protvis-hero-top {
@@ -208,23 +211,23 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-hero-content {
-        flex: 1 1 58%;
+        flex: 1 1 54%;
         max-width: 700px;
         padding-top: 0;
       }
 
       .protvis-hero-image-wrap {
-        flex: 0 0 38%;
+        flex: 0 0 40%;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 260px;
+        min-height: 240px;
       }
 
       .protvis-hero-image-card {
         width: 100%;
-        max-width: 460px;
-        min-height: 250px;
+        max-width: 430px;
+        min-height: 230px;
         background: transparent;
         border: none;
         box-shadow: none;
@@ -238,7 +241,7 @@ golem_add_external_resources <- function() {
       .protvis-hero-figure {
         width: 100%;
         height: auto;
-        max-height: 290px;
+        max-height: 260px;
         object-fit: contain;
         border-radius: 16px;
         display: block;
@@ -489,11 +492,9 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-site-footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
+        position: static;
         width: 100%;
-        z-index: 1050;
+        z-index: 1;
         background: rgba(255, 255, 255, 0.96);
         color: var(--pv-text);
         padding: 16px 0 10px 0;
@@ -544,7 +545,7 @@ golem_add_external_resources <- function() {
 
       @media (max-width: 992px) {
         .protvis-page {
-          padding-bottom: 340px;
+          padding-bottom: 32px;
         }
 
         .protvis-home-bottom {
@@ -595,7 +596,7 @@ golem_add_external_resources <- function() {
 
       @media (max-width: 768px) {
         .protvis-page {
-          padding-bottom: 390px;
+          padding-bottom: 28px;
         }
 
         .protvis-home-bottom {
@@ -674,15 +675,15 @@ app_ui <- function(request) {
                   shiny::div(class = "protvis-title", "ProtVis"),
                   shiny::p(
                     class = "protvis-subtitle",
-                    "ProtVis integrates proteomics processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and figure generation in one platform."
+                    "A clean, modular platform for proteomics preprocessing, differential analysis, functional enrichment, protein structure/PTM visualization, and multi-omics exploration."
                   ),
                   shiny::div(
                     class = "protvis-badge-wrap",
-                    shiny::span(class = "protvis-badge", "End-to-End"),
-                    shiny::span(class = "protvis-badge", "Protein 3D"),
-                    shiny::span(class = "protvis-badge", "PTM visualization"),
-                    shiny::span(class = "protvis-badge", "Multi-omics"),
-                    shiny::span(class = "protvis-badge", "Modular")
+                    shiny::span(class = "protvis-badge", "Data preprocessing"),
+                    shiny::span(class = "protvis-badge", "Differential analysis"),
+                    shiny::span(class = "protvis-badge", "Enrichment"),
+                    shiny::span(class = "protvis-badge", "Protein 3D / PTM"),
+                    shiny::span(class = "protvis-badge", "Multi-omics")
                   )
                 ),
 
@@ -705,21 +706,21 @@ app_ui <- function(request) {
 
                 shiny::div(
                   class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "End-to-End"),
-                  shiny::div(class = "protvis-stat-label", "Integrated workflow"),
+                  shiny::div(class = "protvis-stat-value", "Workflow"),
+                  shiny::div(class = "protvis-stat-label", "End-to-end analysis"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "From data preprocessing to analysis and visualization."
+                    "Project setup, input, preprocessing, statistics, and visualization in one place."
                   )
                 ),
 
                 shiny::div(
                   class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "Protein 3D"),
+                  shiny::div(class = "protvis-stat-value", "Structure"),
                   shiny::div(class = "protvis-stat-label", "Structure visualization"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "Supports protein structure exploration."
+                    "Explore protein structures and connect results to biological interpretation."
                   )
                 ),
 
@@ -729,17 +730,17 @@ app_ui <- function(request) {
                   shiny::div(class = "protvis-stat-label", "Modification visualization"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "Supports PTM analysis and visualization."
+                    "Dedicated PTM workflows help visualize modification evidence and patterns."
                   )
                 ),
 
                 shiny::div(
                   class = "protvis-stat-card",
-                  shiny::div(class = "protvis-stat-value", "Multi-omics"),
+                  shiny::div(class = "protvis-stat-value", "Omics"),
                   shiny::div(class = "protvis-stat-label", "Integrated analysis"),
                   shiny::div(
                     class = "protvis-stat-note",
-                    "Supports multi-omics analysis and cross-omics exploration."
+                    "Integrate proteomics with broader omics views for exploratory analysis."
                   )
                 )
               )
