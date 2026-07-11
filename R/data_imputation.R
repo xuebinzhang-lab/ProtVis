@@ -26,20 +26,23 @@ data_imputation_ui <- function(id) {
 
   shiny::tagList(
     shinyjs::useShinyjs(),
+    protvis_data_input_style(),
     bslib::layout_sidebar(
+      class = "pv-mq-shell",
       sidebar = bslib::sidebar(
-        width = 300,
+        width = 320,
+        class = "pv-sidebar-card",
 
         shiny::actionButton(
           ns("load_data"),
-          "LOAD DATA",
-          class = "btn btn-light fw-bold"
+          "Load data",
+          class = "btn btn-primary fw-bold pv-load-button"
         ),
 
         shiny::actionButton(
           ns("visualize_missing_values"),
           "Visualize missing values",
-          class = "btn btn-light fw-bold"
+          class = "btn btn-outline-primary fw-bold pv-load-button"
         ),
 
         shiny::uiOutput(ns("load_status_panel")),
@@ -64,8 +67,8 @@ data_imputation_ui <- function(id) {
             ),
             shiny::actionButton(
               ns("run_impute"),
-              "Run Imputation",
-              class = "btn btn-light fw-bold"
+              "Run imputation",
+              class = "btn btn-success fw-bold pv-load-button"
             )
           ),
           bslib::accordion_panel(
@@ -85,11 +88,13 @@ data_imputation_ui <- function(id) {
             ),
             shiny::downloadButton(
               ns("downloadOriginalPlot"),
-              "Download Original Plot"
+              "Download original plot",
+              class = "btn btn-outline-primary"
             ),
             shiny::downloadButton(
               ns("downloadImputedPlot"),
-              "Download Imputed Plot"
+              "Download imputed plot",
+              class = "btn btn-outline-primary"
             )
           )
         )
@@ -115,6 +120,7 @@ data_imputation_ui <- function(id) {
             height = 600,
 
             bslib::card(
+              class = "pv-preview-card",
               height = "800px",
               bslib::card_header("Original Data"),
               bslib::card_body(
@@ -123,6 +129,7 @@ data_imputation_ui <- function(id) {
             ),
 
             bslib::card(
+              class = "pv-preview-card",
               height = "800px",
               bslib::card_header("Original Data Visualization"),
               bslib::card_body(
@@ -131,6 +138,7 @@ data_imputation_ui <- function(id) {
             ),
 
             bslib::card(
+              class = "pv-preview-card",
               height = "800px",
               bslib::card_header("Imputed Data"),
               bslib::card_body(
@@ -139,6 +147,7 @@ data_imputation_ui <- function(id) {
             ),
 
             bslib::card(
+              class = "pv-preview-card",
               height = "800px",
               bslib::card_header("Imputed Data Visualization"),
               bslib::card_body(
@@ -245,9 +254,9 @@ data_imputation_server <- function(id, shared_state) {
 
     output$load_status_panel <- shiny::renderUI({
       if (isTRUE(rv$load_success)) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
