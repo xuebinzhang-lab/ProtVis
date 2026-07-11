@@ -10,7 +10,7 @@
 #' @export
 #'
 TMT_ui <- function(id) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   bslib::nav_panel(
     title = 'TMT',
     icon = bsicons::bs_icon("play-circle"),
@@ -35,7 +35,7 @@ TMT_ui <- function(id) {
         ),
         bslib::accordion_panel(
           title = "Download Figure",
-          icon = bs_icon("download"),
+          icon = bsicons::bs_icon("download"),
           shiny::textInput(
             inputId = ns("height"),
             label = "Height",
@@ -71,7 +71,7 @@ TMT_ui <- function(id) {
             bslib::accordion_panel(
               title = 'Download',
               icon = bsicons::bs_icon('download'),
-              shiny::downloadButton(ns("fig1_download"), label = "Output Table", icon = icon("download"))
+              shiny::downloadButton(ns("fig1_download"), label = "Output Table", icon = shiny::icon("download"))
             )
           ),
           shiny::mainPanel(
@@ -80,7 +80,7 @@ TMT_ui <- function(id) {
         ),
         bslib::navset_card_tab(
           title = "Tab 2",
-          sidebar = accordion(
+          sidebar = bslib::accordion(
             bslib::accordion_panel(
               title = 'Parameter',
               shiny::radioButtons(inputId = ns("Logical_value2"),
@@ -91,7 +91,7 @@ TMT_ui <- function(id) {
             bslib::accordion_panel(
               title = 'Download',
               icon = bsicons::bs_icon('download'),
-              shiny::downloadButton(ns("fig2_download"), label = "Output Table", icon = icon("download"))
+              shiny::downloadButton(ns("fig2_download"), label = "Output Table", icon = shiny::icon("download"))
             )
           ),
           shiny::mainPanel(
@@ -145,7 +145,7 @@ TMT_server <- function(id) {
     output$plot2 <- shiny::renderPlot({
       shiny::req(input$run_button)
       data <- data_uploaded()
-      shiny::req(nrow(data) > 0)
+      shiny::req(base::nrow(data) > 0)
       shiny::req("wt" %in% base::colnames(data), "drat" %in% base::colnames(data))
       ggplot2::ggplot(data, ggplot2::aes(x = wt, y = drat)) +
         ggplot2::geom_point(col = "red") +
@@ -171,7 +171,7 @@ TMT_server <- function(id) {
       content = function(file) {
         ggplot2::ggsave(
           file,
-          plot = last_plot(),
+          plot = ggplot2::last_plot(),
           width = base::as.numeric(input$width),
           height = base::as.numeric(input$height),
           units = input$Units)
@@ -187,4 +187,3 @@ TMT_server <- function(id) {
     )
   })
 }
-
