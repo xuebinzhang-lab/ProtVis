@@ -63,10 +63,21 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
 
     output$dynamic_header <- shiny::renderUI({
       shiny::req(data_source_reactive())
-      shiny::tags$h4(
-        base::paste("Current Data Source:", data_source_reactive()),
-        class = "text-primary",
-        style = "margin-top: 20px; margin-bottom: 20px;"
+      shiny::div(
+        class = "pv-data-input-header",
+        shiny::div(
+          shiny::span("Data input", class = "pv-section-eyebrow"),
+          shiny::tags$h2("Prepare proteomics data", class = "pv-page-title"),
+          shiny::tags$p(
+            "Load the selected search-engine output, remove unreliable peptide evidence, and preview each processing result before downstream analysis.",
+            class = "pv-page-subtitle"
+          )
+        ),
+        shiny::div(
+          class = "pv-source-pill",
+          shiny::span("Current data source", class = "pv-source-label"),
+          shiny::strong(data_source_reactive())
+        )
       )
     })
 

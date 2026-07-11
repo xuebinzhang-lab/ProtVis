@@ -13,50 +13,63 @@
 
 MaxQuant_ui <- function(id) {
   ns <- NS(id)
-  bslib::layout_sidebar(
-    sidebar = bslib::sidebar(
-      width = 300,
-      shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
-      shiny::uiOutput(ns("load_status_panel")),
-      bslib::accordion(
-        bslib::accordion_panel(
-          title = "remove unreliable peptide",
-          icon = bsicons::bs_icon("Filter"),
-          shiny::div(
-            style = "font-size: 12px;",
-            shiny::checkboxGroupInput(
-              inputId = ns("selected_Method"),
-              label = "Please Select the Removal Method:",
-              choices = c("remove peptide Only identified by site" = "site",
-                          "remove potential contaminant peptide" = "conpeptide",
-                          "remove reverse peptide" = "peptide"),
-              selected = c("site", "peptide", "conpeptide")
-            ),
-            shiny::actionButton(ns("run_filter_unreliable"), "Remove", class = "btn btn-light fw-bold"),
-            shiny::actionButton(ns("report"), "Report", class = "btn btn-light fw-bold")
+  shiny::tagList(
+    protvis_data_input_style(),
+    bslib::layout_sidebar(
+      class = "pv-mq-shell",
+      sidebar = bslib::sidebar(
+        width = 320,
+        shiny::div(
+          class = "pv-sidebar-card",
+          shiny::actionButton(ns("load_data"), "Load data", class = "btn btn-primary fw-bold pv-load-button"),
+          shiny::uiOutput(ns("load_status_panel")),
+          bslib::accordion(
+            open = "Filtering options",
+            bslib::accordion_panel(
+              title = "Filtering options",
+              icon = bsicons::bs_icon("funnel"),
+              shiny::p("Remove common MaxQuant flags before downstream processing.", class = "pv-filter-note"),
+              shiny::checkboxGroupInput(
+                inputId = ns("selected_Method"),
+                label = NULL,
+                choices = c("Only identified by site" = "site",
+                            "Potential contaminant" = "conpeptide",
+                            "Reverse peptide" = "peptide"),
+                selected = c("site", "peptide", "conpeptide")
+              ),
+              shiny::div(
+                class = "pv-action-row",
+                shiny::actionButton(ns("run_filter_unreliable"), "Remove", class = "btn btn-success fw-bold"),
+                shiny::actionButton(ns("report"), "Report", class = "btn btn-outline-primary fw-bold")
+              )
+            )
           )
         )
-      )
-    ),
-    shiny::div(
+      ),
       bslib::card(
-        bslib::card_header("Preview the data processing process"),
+        class = "pv-preview-card",
+        bslib::card_header(
+          class = "pv-card-header",
+          shiny::div(
+            shiny::tags$h4("Processing preview", class = "pv-card-title"),
+            shiny::tags$p("Inspect loaded data and generated filtering results.", class = "pv-card-subtitle")
+          ),
+          shiny::uiOutput(ns("matrix_check"))
+        ),
         bslib::card_body(
           fill = TRUE,
           bslib::navset_tab(
             id = ns("Expression_Matrix"),
-            header = NULL,
             bslib::nav_panel("Sample info",
                              uiOutput(ns("sample_info_ui"))
             ),
             bslib::nav_panel("Expression Matrix",
-                             htmlOutput(ns("matrix_check")),
                              DT::DTOutput(ns("tbl_expression_matrix"))
             ),
-            bslib::nav_panel("Filtered Unreliable Peptide",
+            bslib::nav_panel("Filtered Peptides",
                              DT::DTOutput(ns("tbl_unreliable_filtered"))
             ),
-            bslib::nav_panel("Reporter",
+            bslib::nav_panel("Report",
                              DT::DTOutput(ns("result_df"))
             )
           )
@@ -192,9 +205,9 @@ MaxQuant_server <- function(id, shared_state) {
     # UI outputs
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
@@ -210,11 +223,12 @@ MaxQuant_server <- function(id, shared_state) {
 
     output$matrix_check <- shiny::renderUI({
       if (!rv$load_success || is.null(rv$expression_matrix)) {
-        shiny::HTML("<span style='color: red;'>Expression matrix not loaded.</span>")
+        shiny::span("Expression matrix not loaded", class = "badge text-bg-secondary")
       } else {
-        shiny::HTML(base::paste("<span style='color: green;'>Matrix dimensions:",
-                                base::nrow(rv$expression_matrix), "rows x", base::ncol(rv$expression_matrix),
-                                "columns</span>"))
+        shiny::span(
+          base::paste("Matrix:", base::nrow(rv$expression_matrix), "rows ×", base::ncol(rv$expression_matrix), "columns"),
+          class = "badge text-bg-success"
+        )
       }
     })
 
