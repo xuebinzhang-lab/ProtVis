@@ -101,6 +101,27 @@ overview_ui <- function(id) {
             shiny::downloadButton(ns("dr_download_before_pdf"), "Download Before Normalization"),
             shiny::downloadButton(ns("dr_download_after_pdf"), "Download After Normalization"),
             shiny::downloadButton(ns("dr_download_both_pdf"), "Download Both Plots")
+          ),
+          bslib::accordion_panel(
+            title = "Proteomics QC",
+            icon = bsicons::bs_icon("clipboard-pulse"),
+            shiny::numericInput(ns("qc_top_n"), "Top variable features for QC PCA", value = 500, min = 50, max = 5000, step = 50),
+            shiny::selectInput(
+              ns("qc_download_plot_type"),
+              "QC figure to download",
+              choices = c(
+                "Sample total intensity" = "sample_total",
+                "Missing value rate" = "missing_rate",
+                "Intensity boxplot" = "boxplot",
+                "Intensity density" = "density",
+                "PCA" = "pca",
+                "Coefficient of variation" = "cv"
+              )
+            ),
+            shiny::numericInput(ns("qc_plot_width"), "Download Plot Width (inches)", value = 8),
+            shiny::numericInput(ns("qc_plot_height"), "Download Plot Height (inches)", value = 6),
+            shiny::downloadButton(ns("qc_download_pdf"), "Download QC PDF"),
+            shiny::downloadButton(ns("qc_download_matrix"), "Download Normalized Matrix")
           )
         )
       ),
@@ -135,6 +156,30 @@ overview_ui <- function(id) {
             bslib::card_body(
               shiny::plotOutput(ns("DR_AfterNormalization"))
             )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Proteomics QC summary"),
+            bslib::card_body(
+              shiny::verbatimTextOutput(ns("qc_summary")),
+              shiny::plotOutput(ns("qc_sample_total_plot"), height = "300px")
+            )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Proteomics missing values and distributions"),
+            bslib::card_body(
+              shiny::plotOutput(ns("qc_missing_rate_plot"), height = "250px"),
+              shiny::plotOutput(ns("qc_boxplot"), height = "250px")
+            )
+          ),
+          bslib::card(
+            height = "800px",
+            bslib::card_header("Proteomics PCA and CV"),
+            bslib::card_body(
+              shiny::plotOutput(ns("qc_pca_plot"), height = "300px"),
+              shiny::plotOutput(ns("qc_cv_plot"), height = "250px")
+            )
           )
         )
       )
@@ -160,7 +205,7 @@ overview_ui <- function(id) {
 #' @importFrom vegan metaMDS
 #' @importFrom ggsci scale_color_lancet scale_fill_lancet
 #' @importFrom gridExtra grid.arrange
-#' @importFrom ggplot2 ggplot aes geom_point stat_ellipse theme_bw labs
+#' @importFrom ggplot2 ggplot aes geom_point stat_ellipse theme_bw labs geom_col geom_boxplot geom_density geom_histogram geom_text theme_minimal theme element_text
 #' @name overview_server
 #' @export
 #'
@@ -744,6 +789,146 @@ overview_server <- function(id, shared_state) {
           ncol = 2
         )
         grDevices::dev.off()
+      }
+    )
+
+    qc_matrix <- shiny::reactive({
+      shiny::req(isTRUE(rv$load_success))
+      shiny::req(rv$normalized_matrix)
+      base::as.matrix(rv$normalized_matrix)
+    })
+
+    qc_long_intensity <- shiny::reactive({
+      mat <- qc_matrix()
+      base::data.frame(
+        Sample = rep(base::colnames(mat), each = base::nrow(mat)),
+        Intensity = as.vector(mat),
+        stringsAsFactors = FALSE
+      )
+    })
+
+    qc_sample_total_plot <- shiny::reactive({
+      mat <- qc_matrix()
+      total_df <- base::data.frame(
+        Sample = base::colnames(mat),
+        TotalIntensity = base::colSums(mat, na.rm = TRUE),
+        stringsAsFactors = FALSE
+      )
+      ggplot2::ggplot(total_df, ggplot2::aes(x = Sample, y = TotalIntensity)) +
+        ggplot2::geom_col(fill = "#2563eb") +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+        ggplot2::labs(title = "Sample total normalized intensity", x = NULL, y = "Total intensity")
+    })
+
+    qc_missing_rate_plot <- shiny::reactive({
+      mat <- qc_matrix()
+      missing_df <- base::data.frame(
+        Sample = base::colnames(mat),
+        MissingRate = base::colMeans(base::is.na(mat)),
+        stringsAsFactors = FALSE
+      )
+      ggplot2::ggplot(missing_df, ggplot2::aes(x = Sample, y = MissingRate)) +
+        ggplot2::geom_col(fill = "#dc2626") +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+        ggplot2::labs(title = "Missing value rate by sample", x = NULL, y = "Missing rate")
+    })
+
+    qc_boxplot <- shiny::reactive({
+      ggplot2::ggplot(qc_long_intensity(), ggplot2::aes(x = Sample, y = Intensity)) +
+        ggplot2::geom_boxplot(fill = "#38bdf8", outlier.size = 0.6) +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+        ggplot2::labs(title = "Normalized intensity distribution", x = NULL, y = "Intensity")
+    })
+
+    qc_density_plot <- shiny::reactive({
+      ggplot2::ggplot(qc_long_intensity(), ggplot2::aes(x = Intensity, color = Sample)) +
+        ggplot2::geom_density(na.rm = TRUE) +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::labs(title = "Normalized intensity density", x = "Intensity", y = "Density")
+    })
+
+    qc_pca_plot <- shiny::reactive({
+      mat <- qc_matrix()
+      row_sds <- apply(mat, 1, stats::sd, na.rm = TRUE)
+      keep <- is.finite(row_sds) & row_sds > 0
+      top_n <- base::min(input$qc_top_n, base::sum(keep))
+      if (top_n > 0 && base::sum(keep) > top_n) {
+        top_idx <- base::order(row_sds, decreasing = TRUE)[base::seq_len(top_n)]
+        keep <- base::seq_along(row_sds) %in% top_idx
+      }
+      pca_mat <- base::t(mat[keep, , drop = FALSE])
+      pca_mat[base::is.na(pca_mat)] <- 0
+      shiny::validate(shiny::need(base::nrow(pca_mat) >= 2 && base::ncol(pca_mat) >= 2, "Need at least two samples and two variable features for PCA."))
+      pca <- stats::prcomp(pca_mat, center = TRUE, scale. = TRUE)
+      var_exp <- base::round(100 * (pca$sdev^2 / base::sum(pca$sdev^2))[1:2], 1)
+      pca_df <- base::data.frame(Sample = base::rownames(pca$x), PC1 = pca$x[, 1], PC2 = pca$x[, 2], stringsAsFactors = FALSE)
+      ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, label = Sample)) +
+        ggplot2::geom_point(size = 3, color = "#7c3aed") +
+        ggplot2::geom_text(vjust = -0.7, size = 3) +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::labs(title = "PCA of normalized proteomics samples", x = base::paste0("PC1 (", var_exp[1], "%)"), y = base::paste0("PC2 (", var_exp[2], "%)"))
+    })
+
+    qc_cv_plot <- shiny::reactive({
+      mat <- qc_matrix()
+      row_mean <- base::rowMeans(mat, na.rm = TRUE)
+      row_sd <- apply(mat, 1, stats::sd, na.rm = TRUE)
+      cv_df <- base::data.frame(CV = row_sd / base::abs(row_mean), stringsAsFactors = FALSE)
+      cv_df <- cv_df[base::is.finite(cv_df$CV), , drop = FALSE]
+      ggplot2::ggplot(cv_df, ggplot2::aes(x = CV)) +
+        ggplot2::geom_histogram(bins = 50, fill = "#22c55e", color = "white") +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::labs(title = "Protein coefficient of variation", x = "CV", y = "Protein count")
+    })
+
+    qc_plot_by_type <- function(type) {
+      switch(type,
+             sample_total = qc_sample_total_plot(),
+             missing_rate = qc_missing_rate_plot(),
+             boxplot = qc_boxplot(),
+             density = qc_density_plot(),
+             pca = qc_pca_plot(),
+             cv = qc_cv_plot(),
+             qc_sample_total_plot())
+    }
+
+    output$qc_summary <- shiny::renderPrint({
+      mat <- qc_matrix()
+      cat("Proteomics QC summary\n")
+      cat("Proteins/features:", base::nrow(mat), "\n")
+      cat("Samples:", base::ncol(mat), "\n")
+      cat("Overall missing rate:", base::round(base::mean(base::is.na(mat)), 4), "\n")
+      cat("Median sample intensity range:", base::paste(base::round(base::range(apply(mat, 2, stats::median, na.rm = TRUE)), 4), collapse = " - "), "\n")
+    })
+
+    output$qc_sample_total_plot <- shiny::renderPlot(print(qc_sample_total_plot()))
+    output$qc_missing_rate_plot <- shiny::renderPlot(print(qc_missing_rate_plot()))
+    output$qc_boxplot <- shiny::renderPlot(print(qc_boxplot()))
+    output$qc_pca_plot <- shiny::renderPlot(print(qc_pca_plot()))
+    output$qc_cv_plot <- shiny::renderPlot(print(qc_cv_plot()))
+
+    output$qc_download_pdf <- shiny::downloadHandler(
+      filename = function() {
+        base::paste0("overview_proteomics_qc_", input$qc_download_plot_type, "_", base::Sys.Date(), ".pdf")
+      },
+      content = function(file) {
+        grDevices::pdf(file, width = input$qc_plot_width, height = input$qc_plot_height)
+        print(qc_plot_by_type(input$qc_download_plot_type))
+        grDevices::dev.off()
+      }
+    )
+
+    output$qc_download_matrix <- shiny::downloadHandler(
+      filename = function() {
+        base::paste0("overview_normalized_matrix_", base::Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        mat <- qc_matrix()
+        out <- base::data.frame(ID = base::rownames(mat), mat, check.names = FALSE)
+        utils::write.csv(out, file, row.names = FALSE)
       }
     )
   })

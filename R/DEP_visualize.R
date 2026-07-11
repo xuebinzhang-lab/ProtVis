@@ -200,10 +200,10 @@ DEP_visualize_ui <- function(id) {
     )
   )
 }
-#' TMT Server Logic
+#' DEP Visualization Server Logic
 #'
-#' Defines the server-side logic for the TMT (Tandem Mass Tag) analysis section
-#' in a Shiny application, including plot generation based on user input.
+#' Defines the server-side logic for the DEP visualization section in a Shiny
+#' application, including plot generation based on user input.
 #'
 #' @param input Shiny input values.
 #' @param output Shiny output values.
@@ -214,8 +214,6 @@ DEP_visualize_ui <- function(id) {
 #' @name DEP_visualize_server
 #' @export
 #'
-utils::globalVariables(c("mtcars", "wt", "hp", "drat"))
-
 DEP_visualize_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns  # 获取命名空间
