@@ -148,7 +148,13 @@ render_source_pca <- function(expression_matrix, sample_info) {
   if (ncol(mat) < 2 || nrow(mat) < 2) {
     graphics::plot.new(); graphics::text(0.5, 0.5, "Need at least two samples and proteins for PCA."); return(invisible(NULL))
   }
-  pca <- stats::prcomp(t(log2(mat + 1)), scale. = TRUE)
+  pca_input <- t(log2(mat + 1))
+  variable_features <- apply(pca_input, 2, stats::sd, na.rm = TRUE) > 0
+  pca_input <- pca_input[, variable_features, drop = FALSE]
+  if (ncol(pca_input) < 2) {
+    graphics::plot.new(); graphics::text(0.5, 0.5, "Need at least two variable proteins for PCA."); return(invisible(NULL))
+  }
+  pca <- stats::prcomp(pca_input, scale. = TRUE)
   plot_df <- data.frame(Sample = rownames(pca$x), PC1 = pca$x[, 1], PC2 = pca$x[, 2], stringsAsFactors = FALSE)
   plot_df <- merge(plot_df, sample_info, by = "Sample", all.x = TRUE)
   print(ggplot2::ggplot(plot_df, ggplot2::aes(PC1, PC2, color = Group, label = Sample)) +
