@@ -13,50 +13,63 @@
 
 MaxQuant_ui <- function(id) {
   ns <- NS(id)
-  bslib::layout_sidebar(
-    sidebar = bslib::sidebar(
-      width = 300,
-      shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold"),
-      shiny::uiOutput(ns("load_status_panel")),
-      bslib::accordion(
-        bslib::accordion_panel(
-          title = "remove unreliable peptide",
-          icon = bsicons::bs_icon("Filter"),
-          shiny::div(
-            style = "font-size: 12px;",
-            shiny::checkboxGroupInput(
-              inputId = ns("selected_Method"),
-              label = "Please Select the Removal Method:",
-              choices = c("remove peptide Only identified by site" = "site",
-                          "remove potential contaminant peptide" = "conpeptide",
-                          "remove reverse peptide" = "peptide"),
-              selected = c("site", "peptide", "conpeptide")
-            ),
-            shiny::actionButton(ns("run_filter_unreliable"), "Remove", class = "btn btn-light fw-bold"),
-            shiny::actionButton(ns("report"), "Report", class = "btn btn-light fw-bold")
+  shiny::tagList(
+    shiny::tags$style(shiny::HTML("\n      .pv-data-input-header {\n        display: flex;\n        justify-content: space-between;\n        gap: 1rem;\n        align-items: flex-end;\n        margin: 1.25rem 0 1rem;\n        padding: 1.25rem 1.5rem;\n        border: 1px solid #d7e3ef;\n        border-radius: 18px;\n        background: linear-gradient(135deg, #ffffff 0%, #eef7ff 100%);\n        box-shadow: 0 10px 30px rgba(15, 76, 117, 0.08);\n      }\n      .pv-section-eyebrow {\n        color: #0b84c6;\n        font-size: 0.78rem;\n        font-weight: 700;\n        letter-spacing: 0.08em;\n        text-transform: uppercase;\n      }\n      .pv-page-title {\n        margin: 0.25rem 0;\n        color: #18324a;\n        font-weight: 800;\n      }\n      .pv-page-subtitle {\n        margin: 0;\n        max-width: 760px;\n        color: #607080;\n      }\n      .pv-source-pill {\n        min-width: 210px;\n        padding: 0.85rem 1rem;\n        border-radius: 14px;\n        background: #ffffff;\n        border: 1px solid #cfe2f3;\n        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);\n      }\n      .pv-source-label {\n        display: block;\n        color: #6c7a89;\n        font-size: 0.78rem;\n        margin-bottom: 0.2rem;\n      }\n      .pv-mq-shell .sidebar {\n        border-right: 0;\n      }\n      .pv-sidebar-card {\n        padding: 1rem;\n        border: 1px solid #d9e7f2;\n        border-radius: 16px;\n        background: #ffffff;\n        box-shadow: 0 8px 24px rgba(24, 50, 74, 0.08);\n      }\n      .pv-load-button {\n        width: 100%;\n        border-radius: 12px;\n        padding: 0.7rem 1rem;\n        text-transform: uppercase;\n        letter-spacing: 0.03em;\n      }\n      .pv-status {\n        display: flex;\n        gap: 0.5rem;\n        align-items: center;\n        margin: 0.85rem 0 1rem;\n        padding: 0.75rem;\n        border-radius: 12px;\n        font-weight: 700;\n      }\n      .pv-status-ready { background: #eaf7ef; color: #177245; }\n      .pv-status-empty { background: #fff1f1; color: #c73535; }\n      .pv-filter-note {\n        color: #5f6f7f;\n        font-size: 0.82rem;\n        margin-bottom: 0.75rem;\n      }\n      .pv-action-row {\n        display: grid;\n        grid-template-columns: 1fr 1fr;\n        gap: 0.5rem;\n      }\n      .pv-preview-card {\n        border: 1px solid #d7e3ef;\n        border-radius: 18px;\n        overflow: hidden;\n        box-shadow: 0 12px 32px rgba(24, 50, 74, 0.08);\n      }\n      .pv-card-header {\n        display: flex;\n        justify-content: space-between;\n        gap: 1rem;\n        align-items: center;\n        background: #ffffff;\n      }\n      .pv-card-title {\n        margin: 0;\n        font-weight: 800;\n        color: #18324a;\n      }\n      .pv-card-subtitle {\n        margin: 0.15rem 0 0;\n        color: #6c7a89;\n        font-size: 0.9rem;\n      }\n      @media (max-width: 900px) {\n        .pv-data-input-header, .pv-card-header {\n          align-items: stretch;\n          flex-direction: column;\n        }\n        .pv-source-pill { min-width: 0; }\n      }\n    ")),
+    bslib::layout_sidebar(
+      class = "pv-mq-shell",
+      sidebar = bslib::sidebar(
+        width = 320,
+        shiny::div(
+          class = "pv-sidebar-card",
+          shiny::actionButton(ns("load_data"), "Load data", class = "btn btn-primary fw-bold pv-load-button"),
+          shiny::uiOutput(ns("load_status_panel")),
+          bslib::accordion(
+            open = "Filtering options",
+            bslib::accordion_panel(
+              title = "Filtering options",
+              icon = bsicons::bs_icon("funnel"),
+              shiny::p("Remove common MaxQuant flags before downstream processing.", class = "pv-filter-note"),
+              shiny::checkboxGroupInput(
+                inputId = ns("selected_Method"),
+                label = NULL,
+                choices = c("Only identified by site" = "site",
+                            "Potential contaminant" = "conpeptide",
+                            "Reverse peptide" = "peptide"),
+                selected = c("site", "peptide", "conpeptide")
+              ),
+              shiny::div(
+                class = "pv-action-row",
+                shiny::actionButton(ns("run_filter_unreliable"), "Remove", class = "btn btn-success fw-bold"),
+                shiny::actionButton(ns("report"), "Report", class = "btn btn-outline-primary fw-bold")
+              )
+            )
           )
         )
-      )
-    ),
-    shiny::div(
+      ),
       bslib::card(
-        bslib::card_header("Preview the data processing process"),
+        class = "pv-preview-card",
+        bslib::card_header(
+          class = "pv-card-header",
+          shiny::div(
+            shiny::tags$h4("Processing preview", class = "pv-card-title"),
+            shiny::tags$p("Inspect loaded data and generated filtering results.", class = "pv-card-subtitle")
+          ),
+          shiny::uiOutput(ns("matrix_check"))
+        ),
         bslib::card_body(
           fill = TRUE,
           bslib::navset_tab(
             id = ns("Expression_Matrix"),
-            header = NULL,
             bslib::nav_panel("Sample info",
                              uiOutput(ns("sample_info_ui"))
             ),
             bslib::nav_panel("Expression Matrix",
-                             htmlOutput(ns("matrix_check")),
                              DT::DTOutput(ns("tbl_expression_matrix"))
             ),
-            bslib::nav_panel("Filtered Unreliable Peptide",
+            bslib::nav_panel("Filtered Peptides",
                              DT::DTOutput(ns("tbl_unreliable_filtered"))
             ),
-            bslib::nav_panel("Reporter",
+            bslib::nav_panel("Report",
                              DT::DTOutput(ns("result_df"))
             )
           )
@@ -192,9 +205,9 @@ MaxQuant_server <- function(id, shared_state) {
     # UI outputs
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
@@ -210,11 +223,12 @@ MaxQuant_server <- function(id, shared_state) {
 
     output$matrix_check <- shiny::renderUI({
       if (!rv$load_success || is.null(rv$expression_matrix)) {
-        shiny::HTML("<span style='color: red;'>Expression matrix not loaded.</span>")
+        shiny::span("Expression matrix not loaded", class = "badge text-bg-secondary")
       } else {
-        shiny::HTML(base::paste("<span style='color: green;'>Matrix dimensions:",
-                                base::nrow(rv$expression_matrix), "rows x", base::ncol(rv$expression_matrix),
-                                "columns</span>"))
+        shiny::span(
+          base::paste("Matrix:", base::nrow(rv$expression_matrix), "rows ×", base::ncol(rv$expression_matrix), "columns"),
+          class = "badge text-bg-success"
+        )
       }
     })
 
