@@ -21,10 +21,11 @@ skyline_ui <- function(id) {
           icon = bsicons::bs_icon("upload"),
           shiny::fileInput(
             inputId = ns('protein_file'),
-            label = 'Upload ProteinGroups (xlsx or csv)',
+            label = 'Upload Skyline report/MSstats export (csv, tsv, xlsx)',
             multiple = FALSE,
-            accept = c(".xlsx", ".xls", ".csv")
+            accept = c(".xlsx", ".xls", ".csv", ".tsv", ".txt")
           ),
+          shiny::actionButton(ns("load_data"), "Parse Skyline Output", class = "btn btn-primary w-100"),
           shiny::fileInput(
             inputId = ns('sample_info'),
             label = 'Upload Sample Info (xlsx or csv)',
@@ -77,8 +78,8 @@ skyline_ui <- function(id) {
 
 #' Skyline Server Logic Module
 #'
-#' Registers placeholder outputs for the Skyline data-source module until the
-#' dedicated processing workflow is implemented.
+#' Parses Skyline MSstats-style long reports or wide protein abundance exports
+#' into a ProtVis expression matrix.
 #' @param id Character. Module ID used for namespacing server inputs/outputs.
 #' @param shared_state A reactiveValues object shared across modules.
 #' @return None. Called for side effects in the Shiny session.
@@ -87,5 +88,5 @@ skyline_ui <- function(id) {
 #' @name skyline_server
 #' @export
 skyline_server <- function(id, shared_state = NULL) {
-  register_placeholder_analysis_server(id, "Skyline", shared_state)
+  register_tabular_data_source_server(id, "Skyline", parse_skyline_output, shared_state)
 }
