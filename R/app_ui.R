@@ -843,10 +843,26 @@ app_ui <- function(request) {
       bslib::nav_menu(
         "Pre-processing",
         icon = bsicons::bs_icon("wrench"),
-        bslib::nav_panel("Correct Noise", correct_noise_ui("correct_noise")),
-        bslib::nav_panel("Data Transformed", data_transformed_ui("data_transformed")),
-        bslib::nav_panel("Data Imputation", data_imputation_ui("data_imputation")),
-        bslib::nav_panel("Data Normalization", data_normalization_ui("data_normalization"))
+        bslib::nav_panel(
+          "Correct Noise",
+          icon = bsicons::bs_icon("soundwave"),
+          correct_noise_ui("correct_noise")
+        ),
+        bslib::nav_panel(
+          "Data Transformation",
+          icon = bsicons::bs_icon("arrow-repeat"),
+          data_transformed_ui("data_transformed")
+        ),
+        bslib::nav_panel(
+          "Data Imputation",
+          icon = bsicons::bs_icon("patch-plus"),
+          data_imputation_ui("data_imputation")
+        ),
+        bslib::nav_panel(
+          "Data Normalization",
+          icon = bsicons::bs_icon("sliders"),
+          data_normalization_ui("data_normalization")
+        )
       ),
 
       bslib::nav_menu(
