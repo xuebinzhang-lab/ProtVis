@@ -50,14 +50,17 @@ data_normalization_ui <- function(id) {
 
   shiny::tagList(
     shinyjs::useShinyjs(),
+    protvis_data_input_style(),
     bslib::layout_sidebar(
+      class = "pv-mq-shell",
       sidebar = bslib::sidebar(
-        width = 300,
+        width = 320,
+        class = "pv-sidebar-card",
 
         shiny::actionButton(
           ns("load_data"),
-          "LOAD DATA",
-          class = "btn btn-light fw-bold"
+          "Load data",
+          class = "btn btn-primary fw-bold pv-load-button"
         ),
 
         shiny::uiOutput(ns("load_status_panel")),
@@ -65,8 +68,8 @@ data_normalization_ui <- function(id) {
 
         shiny::actionButton(
           ns("run_normalization"),
-          "RUN NORMALIZATION",
-          class = "btn btn-primary"
+          "Run normalization",
+          class = "btn btn-success fw-bold pv-load-button"
         ),
 
         shiny::uiOutput(ns("normalization_status_panel")),
@@ -117,6 +120,7 @@ data_normalization_ui <- function(id) {
           height = 600,
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Original Data"),
             bslib::card_body(
@@ -125,6 +129,7 @@ data_normalization_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Original Data Visualization"),
             bslib::card_body(
@@ -133,6 +138,7 @@ data_normalization_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Normalized Data"),
             bslib::card_body(
@@ -141,6 +147,7 @@ data_normalization_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Normalized Data Visualization"),
             bslib::card_body(
@@ -246,20 +253,17 @@ data_normalization_server <- function(id, shared_state) {
 
     output$load_status_panel <- shiny::renderUI({
       if (isTRUE(rv$load_success)) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
     output$normalization_status_panel <- shiny::renderUI({
       if (isTRUE(rv$normalization_done)) {
-        shiny::span(
-          "✅ Median subtraction normalization completed",
-          style = "color: green;"
-        )
+        shiny::div(class = "pv-status pv-status-ready", "✓ Median subtraction normalization completed")
       } else {
-        shiny::span("ℹ️ Normalization not run yet", style = "color: #666666;")
+        shiny::div(class = "pv-status pv-status-empty", "Normalization not run yet")
       }
     })
 

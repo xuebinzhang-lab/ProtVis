@@ -37,9 +37,13 @@ nine_quadrant_ui <- function(id) {
     )
   })
 
-  bslib::layout_sidebar(
-    sidebar = bslib::sidebar(
-      width = 320,
+  shiny::tagList(
+    protvis_data_input_style(),
+    bslib::layout_sidebar(
+      class = "pv-mq-shell",
+      sidebar = bslib::sidebar(
+        width = 320,
+        class = "pv-sidebar-card",
       open = "open",
       gap = "12px",
       bslib::accordion(
@@ -72,8 +76,8 @@ nine_quadrant_ui <- function(id) {
             style = "margin-top: 12px;",
             shiny::actionButton(
               ns("run_plot"),
-              "Run",
-              class = "btn-primary",
+              "Run plot",
+              class = "btn btn-primary fw-bold pv-load-button",
               width = "100%"
             )
           )
@@ -111,7 +115,7 @@ nine_quadrant_ui <- function(id) {
           shiny::downloadButton(
             ns("download_pdf"),
             "Download PDF",
-            class = "btn-success",
+            class = "btn btn-outline-primary fw-bold pv-load-button",
             width = "100%"
           )
         )
@@ -122,6 +126,7 @@ nine_quadrant_ui <- function(id) {
       col_widths = c(5, 7),
 
       bslib::card(
+        class = "pv-preview-card",
         full_screen = TRUE,
         style = "min-height: 760px;",
         bslib::card_header(
@@ -140,6 +145,7 @@ nine_quadrant_ui <- function(id) {
       ),
 
       bslib::card(
+        class = "pv-preview-card",
         full_screen = TRUE,
         style = "min-height: 760px;",
         bslib::card_header(
@@ -158,6 +164,7 @@ nine_quadrant_ui <- function(id) {
           shiny::uiOutput(ns("quadrant_tables_ui"))
         )
       )
+    )
     )
   )
 }
