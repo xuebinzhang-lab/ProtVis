@@ -35,6 +35,14 @@ co_enrichment_ui <- function(id) {
           bslib::accordion_panel(
             title = "Data Input",
 
+            shiny::actionButton(
+              inputId = ns("load_example"),
+              label = "Use built-in example data",
+              class = "btn btn-outline-primary w-100"
+            ),
+
+            shiny::tags$hr(),
+
             shiny::selectInput(
               inputId = ns("omics_mode"),
               label = "Co-enrichment Mode",
@@ -512,6 +520,48 @@ co_enrichment_server <- function(id) {
       df
     }
 
+
+    make_example_enrichment_data <- function() {
+      list(
+        transcriptome = data.frame(
+          Pathway = c("Carbon metabolism", "Ribosome", "Plant hormone signal transduction", "MAPK signaling pathway", "Phenylpropanoid biosynthesis", "Protein processing in ER"),
+          padj = c(0.003, 0.018, 0.021, 0.036, 0.044, 0.073),
+          Count = c(28, 35, 19, 16, 22, 12),
+          stringsAsFactors = FALSE
+        ),
+        proteome = data.frame(
+          Pathway = c("Carbon metabolism", "Ribosome", "Protein processing in ER", "Oxidative phosphorylation", "Phenylpropanoid biosynthesis", "Glutathione metabolism"),
+          padj = c(0.004, 0.025, 0.017, 0.031, 0.042, 0.08),
+          Count = c(24, 31, 20, 15, 18, 9),
+          stringsAsFactors = FALSE
+        ),
+        metabolome = data.frame(
+          Pathway = c("Carbon metabolism", "Glutathione metabolism", "Phenylpropanoid biosynthesis", "Amino sugar metabolism", "MAPK signaling pathway", "Starch and sucrose metabolism"),
+          padj = c(0.006, 0.019, 0.028, 0.034, 0.061, 0.047),
+          Count = c(18, 14, 16, 11, 8, 13),
+          stringsAsFactors = FALSE
+        )
+      )
+    }
+
+    apply_example_enrichment_data <- function() {
+      ex <- make_example_enrichment_data()
+      rv$df1 <- ex$transcriptome
+      rv$df2 <- ex$proteome
+      rv$df3 <- ex$metabolome
+
+      shiny::updateTextInput(session, "omics1_name", value = "Transcriptome")
+      shiny::updateTextInput(session, "omics2_name", value = "Proteome")
+      shiny::updateTextInput(session, "omics3_name", value = "Metabolome")
+
+      for (prefix in c("1", "2", "3")) {
+        df <- rv[[paste0("df", prefix)]]
+        cn <- colnames(df)
+        shiny::updateSelectInput(session, paste0("pathway_col_", prefix), choices = cn, selected = "Pathway")
+        shiny::updateSelectInput(session, paste0("padj_col_", prefix), choices = cn, selected = "padj")
+      }
+    }
+
     normalize_colnames <- function(x) {
       out <- tolower(trimws(x))
       out <- gsub("[[:space:]]+", "_", out)
@@ -982,6 +1032,12 @@ co_enrichment_server <- function(id) {
         )
       }, ignoreNULL = TRUE)
     }
+
+
+    shiny::observeEvent(input$load_example, {
+      apply_example_enrichment_data()
+      shiny::showNotification("Example co-enrichment data loaded. Review mappings, then click Run Analysis.", type = "message")
+    })
 
     observe_file_and_guess(shiny::reactive(input$file1), "1")
     observe_file_and_guess(shiny::reactive(input$file2), "2")
