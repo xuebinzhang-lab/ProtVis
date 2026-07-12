@@ -488,13 +488,15 @@ golem_add_external_resources <- function() {
       }
 
       .protvis-home-bottom {
-        margin-bottom: 24px;
+        margin-bottom: 56px;
       }
 
       .protvis-site-footer {
+        clear: both;
         position: static;
         width: 100%;
         z-index: 1;
+        margin-top: 48px;
         background: rgba(255, 255, 255, 0.96);
         color: var(--pv-text);
         padding: 16px 0 10px 0;
@@ -949,7 +951,7 @@ app_ui <- function(request) {
                   shiny::div(class = "footer-title", "Developer"),
                   shiny::p(
                     class = "footer-text",
-                    shiny::strong("Fei Liang & Xiao Wang"),
+                    shiny::strong("Fei Liang"),
                     shiny::br(),
                     "State Key Laboratory of Crop Stress Adaptation and Improvement,",
                     shiny::br(),
@@ -965,6 +967,8 @@ app_ui <- function(request) {
                   shiny::div(class = "footer-title", "Contact"),
                   shiny::p(
                     class = "footer-text",
+                    shiny::strong("Fei Liang"),
+                    shiny::br(),
                     "Email: fyliangfei@163.com",
                     shiny::br(),
                     "Platform: ProtVis",
