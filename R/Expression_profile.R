@@ -11,71 +11,106 @@
 #'
 Expression_profile_ui <- function(id) {
   ns <- NS(id)
-  bslib::nav_panel(
-    title = 'Expression profile',
-    icon = bsicons::bs_icon("alexa"),
-    bslib::layout_sidebar(
-      sidebar = bslib::accordion(
-        bslib::accordion_panel(
-          title = "File Upload",
-          icon = bsicons::bs_icon("upload"),
-          shiny::fileInput(
-            inputId = ns('file'),
-            label = 'Expression matrix',
-            multiple = FALSE,
-            accept = '.csv'
+
+  sidebar_ui <- bslib::accordion(
+    bslib::accordion_panel(
+      title = "File Upload",
+      icon = bsicons::bs_icon("upload"),
+      shiny::fileInput(
+        inputId = ns("file"),
+        label = "Expression matrix",
+        multiple = FALSE,
+        accept = ".csv"
+      )
+    ),
+    bslib::accordion_panel(
+      title = "Method",
+      icon = bsicons::bs_icon("view-stacked"),
+      open = TRUE,
+      shiny::selectInput(
+        ns("dropdown"),
+        "Choose a Method:",
+        choices = c("Kmeans", "Heatmap")
+      )
+    )
+  )
+
+  kmeans_ui <- shiny::conditionalPanel(
+    condition = "input.dropdown == 'Kmeans'",
+    ns = ns,
+    bslib::layout_column_wrap(
+      width = 1,
+      height = 800,
+      bslib::navset_card_tab(
+        height = 800,
+        full_screen = TRUE,
+        title = "Kmeans",
+        sidebar = bslib::accordion(
+          open = "closed",
+          bslib::accordion_panel(
+            title = "Parameter",
+            colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
+            shiny::numericInput(ns("centers"), "centers:", value = 6, min = 0)
+          ),
+          bslib::accordion_panel(
+            title = "Run",
+            shiny::actionButton(ns("run_btn_Kmeans"), "Run")
+          ),
+          bslib::accordion_panel(
+            title = "Download",
+            icon = bsicons::bs_icon("download"),
+            shiny::numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
+            shiny::numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
+            shiny::downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = shiny::icon("download")),
+            shiny::br(),
+            shiny::downloadButton(ns("download_Kmeans_table"), label = "Table", icon = shiny::icon("download"))
           )
         ),
-        bslib::accordion_panel(
-          title = "Method",
-          icon = bsicons::bs_icon("view-stacked"),
-          open = TRUE,
-          shiny::selectInput(ns("dropdown"), "Choose a Method:",
-                             choices = c("Kmeans","Heatmap"))
-        ),
-      shiny::conditionalPanel(
-        condition = "input.dropdown == 'Kmeans'",
-        ns = ns,
-        bslib::layout_column_wrap(
-          width = 1,
-          height = 800,
-          bslib::navset_card_tab(
-            height = 800,
-            full_screen = TRUE,
-            title = "Kmeans",
-            sidebar = bslib::accordion(
-              open = 'closed',
-              bslib::accordion_panel(
-                title = 'Parameter',
-                colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
-                shiny::numericInput(ns("centers"), "centers:", value = 6, min = 0)
-              ),
-              bslib::accordion_panel(
-                title = 'Run',
-                shiny::actionButton(ns("run_btn_Kmeans"), "Run")
-              ),
-              bslib::accordion_panel(
-                title = 'Download',
-                icon = bsicons::bs_icon('download'),
-                shiny::numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
-                shiny::numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
-                shiny::downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = shiny::icon("download")),
-                shiny::br(),
-                shiny::downloadButton(ns("download_Kmeans_table"), label = "Table", icon = shiny::icon("download"))
-              )
-            ),
-            shiny::tabsetPanel(
-              type = "tabs",
-              shiny::tabPanel(
-                title = "Figure",
-                shiny::plotOutput(ns("Kmeansplotshow"))
-              ),
-              shiny::tabPanel(
-                title = "Table",
-                DT::DTOutput(ns("Kmeans_dataTable"))
-              )
+        shiny::tabsetPanel(
+          type = "tabs",
+          shiny::tabPanel("Figure", shiny::plotOutput(ns("Kmeansplotshow"))),
+          shiny::tabPanel("Table", DT::DTOutput(ns("Kmeans_dataTable")))
+        )
+      )
+    )
+  )
+
+  heatmap_ui <- shiny::conditionalPanel(
+    condition = "input.dropdown == 'Heatmap'",
+    ns = ns,
+    bslib::layout_column_wrap(
+      width = 1,
+      height = 800,
+      bslib::navset_card_tab(
+        height = 800,
+        full_screen = TRUE,
+        title = "Heatmap trend analysis (K-means)",
+        sidebar = bslib::accordion(
+          open = "Parameter",
+          bslib::accordion_panel(
+            title = "Parameter",
+            shiny::numericInput(ns("heatmap_centers"), "K-means clusters:", value = 6, min = 2),
+            shiny::selectInput(
+              ns("heatmap_scale"),
+              "Scale:",
+              choices = c("Row (trend)" = "row", "Column" = "column", "None" = "none"),
+              selected = "row"
             )
+          ),
+          bslib::accordion_panel(
+            title = "Run",
+            shiny::actionButton(ns("run_btn_heatmap"), "Run heatmap", class = "btn btn-primary")
+          ),
+          bslib::accordion_panel(
+            title = "Download",
+            icon = bsicons::bs_icon("download"),
+            shiny::downloadButton(ns("download_heatmap_table"), label = "Cluster table", icon = shiny::icon("download"))
           )
+        ),
+        shiny::tabsetPanel(
+          type = "tabs",
+          shiny::tabPanel("Figure", shiny::plotOutput(ns("heatmap_plot"), height = "680px")),
+          shiny::tabPanel("Table", DT::DTOutput(ns("heatmap_table")))
         )
       ),
       shiny::conditionalPanel(
@@ -118,6 +153,15 @@ Expression_profile_ui <- function(id) {
           )
         )
       )
+    )
+  )
+
+  bslib::nav_panel(
+    title = "Expression profile",
+    icon = bsicons::bs_icon("alexa"),
+    bslib::layout_sidebar(
+      sidebar = sidebar_ui,
+      shiny::tagList(kmeans_ui, heatmap_ui)
     )
   )
 }
