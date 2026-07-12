@@ -19,13 +19,16 @@ data_transformed_ui <- function(id) {
 
   shiny::tagList(
     shinyjs::useShinyjs(),
+    protvis_data_input_style(),
     bslib::layout_sidebar(
+      class = "pv-mq-shell",
       sidebar = bslib::sidebar(
-        width = 300,
+        width = 320,
+        class = "pv-sidebar-card",
 
         shiny::div(
           style = "margin-bottom: 15px;",
-          shiny::actionButton(ns("load_data"), "LOAD DATA", class = "btn btn-light fw-bold")
+          shiny::actionButton(ns("load_data"), "Load data", class = "btn btn-primary fw-bold pv-load-button")
         ),
 
         shiny::uiOutput(ns("load_status_panel")),
@@ -49,7 +52,7 @@ data_transformed_ui <- function(id) {
 
         shiny::div(
           style = "margin-top: 15px;",
-          shiny::actionButton(ns("run_transformation"), "Run Transformation", class = "btn btn-primary")
+          shiny::actionButton(ns("run_transformation"), "Run transformation", class = "btn btn-success fw-bold pv-load-button")
         ),
 
         shiny::uiOutput(ns("transformation_status_panel")),
@@ -109,7 +112,7 @@ data_transformed_ui <- function(id) {
 
         shiny::div(
           style = "margin-top: 15px;",
-          shiny::actionButton(ns("export_transformed_data"), "Export Data", class = "btn btn-light fw-bold")
+          shiny::actionButton(ns("export_transformed_data"), "Export data", class = "btn btn-outline-primary fw-bold pv-load-button")
         ),
 
         shiny::uiOutput(ns("export_transformed_data_status_panel"))
@@ -120,6 +123,7 @@ data_transformed_ui <- function(id) {
           width = 1/2,
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Original Data"),
             bslib::card_body(
@@ -128,6 +132,7 @@ data_transformed_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Original Data Visualization"),
             bslib::card_body(
@@ -136,6 +141,7 @@ data_transformed_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Transformed Data"),
             bslib::card_body(
@@ -144,6 +150,7 @@ data_transformed_ui <- function(id) {
           ),
 
           bslib::card(
+            class = "pv-preview-card",
             height = "800px",
             bslib::card_header("Transformed Data Visualization"),
             bslib::card_body(
@@ -216,28 +223,28 @@ data_transformed_server <- function(id, shared_state) {
 
     output$load_status_panel <- shiny::renderUI({
       if (isTRUE(rv$load_success)) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
     output$transformation_status_panel <- shiny::renderUI({
       if (isTRUE(rv$transformation_done)) {
-        shiny::span(
-          paste0("✅ Current transformation method: ", input$data_transformed),
-          style = "color: green;"
+        shiny::div(
+          class = "pv-status pv-status-ready",
+          paste0("✓ Current transformation method: ", input$data_transformed)
         )
       } else {
-        shiny::span("ℹ️ Data transformation not run yet", style = "color: #666666;")
+        shiny::div(class = "pv-status pv-status-empty", "Data transformation not run yet")
       }
     })
 
     output$export_transformed_data_status_panel <- shiny::renderUI({
       if (isTRUE(rv$export_success)) {
-        shiny::span("✅ Data exported", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data exported")
       } else {
-        shiny::span("Waiting for export", style = "color: #666666;")
+        shiny::div(class = "pv-status pv-status-empty", "Waiting for export")
       }
     })
 
