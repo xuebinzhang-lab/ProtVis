@@ -28,6 +28,7 @@ venn_ui <- function(id) {
           multiple = FALSE,
           accept = ".csv"
         ),
+        shiny::actionButton(ns("load_example"), "Use example data", class = "btn btn-outline-primary w-100"),
         shiny::radioButtons(
           inputId = ns("plot_type"),
           label = "Choose plot type",
@@ -94,17 +95,30 @@ venn_server <- function(id) {
       upset_data = NULL,
       upset_table = NULL,
       colors = NULL,
-      plot_mode = NULL
+      plot_mode = NULL,
+      example_df = NULL
     )
 
-    parsed_data <- shiny::reactive({
-      shiny::req(input$file)
-
-      df <- utils::read.csv(
-        file = input$file$datapath,
-        stringsAsFactors = FALSE,
-        check.names = FALSE
+    make_example_venn_data <- function() {
+      data.frame(
+        Proteome = c("P53", "MAPK1", "AKT1", "MTOR", "STAT3", "EGFR", NA),
+        Transcriptome = c("P53", "MAPK1", "HIF1A", "STAT3", "JUN", NA, NA),
+        Phosphoproteome = c("AKT1", "MTOR", "MAPK1", "EGFR", "SRC", "JUN", NA),
+        stringsAsFactors = FALSE
       )
+    }
+
+    parsed_data <- shiny::reactive({
+      if (!is.null(rv$example_df)) {
+        df <- rv$example_df
+      } else {
+        shiny::req(input$file)
+        df <- utils::read.csv(
+          file = input$file$datapath,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        )
+      }
 
       df[] <- lapply(df, function(x) {
         x <- as.character(x)
@@ -149,7 +163,7 @@ venn_server <- function(id) {
       )
     })
 
-    shiny::observeEvent(input$file, {
+    refresh_color_selectors <- function() {
       dat <- parsed_data()
 
       output$colorSelectors <- shiny::renderUI({
@@ -157,10 +171,22 @@ venn_server <- function(id) {
           colourpicker::colourInput(
             inputId = session$ns(paste0("color_", i)),
             label = paste("Select Color for", names(dat$set_list)[i]),
-            value = sample(grDevices::colors(), 1)
+            value = grDevices::hcl.colors(length(dat$set_list), "Set2")[i]
           )
         })
       })
+    }
+
+    shiny::observeEvent(input$load_example, {
+      rv$example_df <- make_example_venn_data()
+      refresh_color_selectors()
+      shiny::showNotification("Example Venn/UpSet data loaded. Click Run to draw the plot.", type = "message")
+    })
+
+    shiny::observeEvent(input$file, {
+      rv$example_df <- NULL
+      dat <- parsed_data()
+      refresh_color_selectors()
     })
 
     get_plot_mode <- shiny::reactive({
@@ -185,13 +211,18 @@ venn_server <- function(id) {
       rv$upset_data <- dat$row_mat
       rv$upset_table <- dat$bin_df
       rv$colors <- sapply(seq_along(names(dat$set_list)), function(i) {
-        input[[paste0("color_", i)]]
+        selected_color <- input[[paste0("color_", i)]]
+        if (is.null(selected_color) || identical(selected_color, "")) {
+          grDevices::hcl.colors(length(dat$set_list), "Set2")[i]
+        } else {
+          selected_color
+        }
       })
       rv$plot_mode <- get_plot_mode()
     })
 
     output$plot_notice <- shiny::renderUI({
-      shiny::req(input$file)
+      shiny::req(!is.null(input$file) || !is.null(rv$example_df))
 
       dat <- parsed_data()
       n_sets <- length(dat$set_list)

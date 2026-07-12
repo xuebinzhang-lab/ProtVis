@@ -32,8 +32,7 @@ Expression_profile_ui <- function(id) {
           open = TRUE,
           shiny::selectInput(ns("dropdown"), "Choose a Method:",
                              choices = c("Kmeans","Heatmap"))
-        )
-      ),
+        ),
       shiny::conditionalPanel(
         condition = "input.dropdown == 'Kmeans'",
         ns = ns,
@@ -75,6 +74,46 @@ Expression_profile_ui <- function(id) {
                 title = "Table",
                 DT::DTOutput(ns("Kmeans_dataTable"))
               )
+            )
+          )
+        )
+      ),
+      shiny::conditionalPanel(
+        condition = "input.dropdown == 'Heatmap'",
+        ns = ns,
+        bslib::layout_column_wrap(
+          width = 1,
+          height = 800,
+          bslib::navset_card_tab(
+            height = 800,
+            full_screen = TRUE,
+            title = "Heatmap trend analysis (K-means)",
+            sidebar = bslib::accordion(
+              open = "Parameter",
+              bslib::accordion_panel(
+                title = "Parameter",
+                shiny::numericInput(ns("heatmap_centers"), "K-means clusters:", value = 6, min = 2),
+                shiny::selectInput(
+                  ns("heatmap_scale"),
+                  "Scale:",
+                  choices = c("Row (trend)" = "row", "Column" = "column", "None" = "none"),
+                  selected = "row"
+                )
+              ),
+              bslib::accordion_panel(
+                title = "Run",
+                shiny::actionButton(ns("run_btn_heatmap"), "Run heatmap", class = "btn btn-primary")
+              ),
+              bslib::accordion_panel(
+                title = "Download",
+                icon = bsicons::bs_icon("download"),
+                shiny::downloadButton(ns("download_heatmap_table"), label = "Cluster table", icon = shiny::icon("download"))
+              )
+            ),
+            shiny::tabsetPanel(
+              type = "tabs",
+              shiny::tabPanel("Figure", shiny::plotOutput(ns("heatmap_plot"), height = "680px")),
+              shiny::tabPanel("Table", DT::DTOutput(ns("heatmap_table")))
             )
           )
         )
@@ -225,6 +264,50 @@ Expression_profile_server <- function(id) {
       )
     }
     )
+
+    shiny::observeEvent(input$run_btn_heatmap, {
+      shiny::req(input$dropdown == "Heatmap")
+      mat <- data()
+      mat <- as.matrix(mat)
+      storage.mode(mat) <- "numeric"
+      mat <- mat[stats::complete.cases(mat), , drop = FALSE]
+      shiny::validate(shiny::need(nrow(mat) >= input$heatmap_centers, "The matrix must contain at least as many rows as K-means clusters."))
+
+      scaled_mat <- switch(
+        input$heatmap_scale,
+        row = t(scale(t(mat))),
+        column = scale(mat),
+        none = mat
+      )
+      scaled_mat[is.na(scaled_mat)] <- 0
+      km <- stats::kmeans(scaled_mat, centers = input$heatmap_centers)
+      cluster_table <- data.frame(ID = rownames(scaled_mat), Cluster = paste0("Cluster", km$cluster), scaled_mat, check.names = FALSE)
+      cluster_table <- cluster_table[order(cluster_table$Cluster), , drop = FALSE]
+      plot_mat <- as.matrix(cluster_table[, setdiff(colnames(cluster_table), c("ID", "Cluster")), drop = FALSE])
+      rownames(plot_mat) <- cluster_table$ID
+
+      output$heatmap_plot <- shiny::renderPlot({
+        stats::heatmap(
+          plot_mat,
+          Rowv = NA,
+          Colv = NA,
+          scale = "none",
+          labRow = NA,
+          margins = c(8, 6),
+          main = "Expression trend heatmap (K-means ordered)"
+        )
+      })
+
+      output$heatmap_table <- DT::renderDT({
+        DT::datatable(cluster_table, options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
+      })
+
+      output$download_heatmap_table <- shiny::downloadHandler(
+        filename = function() paste0("heatmap_kmeans_clusters_", Sys.Date(), ".csv"),
+        content = function(file) utils::write.csv(cluster_table, file, row.names = FALSE)
+      )
+    })
+
   }
   )
 }
