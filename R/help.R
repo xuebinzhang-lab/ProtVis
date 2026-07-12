@@ -16,151 +16,79 @@ help_ui <- function() {
     "Help",
     icon = bsicons::bs_icon("question-circle"),
     shiny::div(
-      style = "
-        max-width: 1200px;
-        margin: 30px auto;
-        padding: 10px 20px 40px 20px;
-      ",
-
+      class = "protvis-page",
       shiny::div(
-        style = "
-          text-align: center;
-          margin-bottom: 30px;
-        ",
-        shiny::h2(
-          "Help & Documentation",
-          style = "font-weight: 700; margin-bottom: 10px;"
-        ),
-        shiny::p(
-          "ProtVis is a modular platform for proteomics data analysis, visualization, and interpretation.",
-          style = "font-size: 16px; color: #555;"
-        ),
-        shiny::p(
-          "A recommended workflow is: Project init → Data input → Pre-processing → Downstream analysis. Protein Structure is provided as a standalone module.",
-          style = "font-size: 15px; color: #666; max-width: 900px; margin: 0 auto;"
-        )
-      ),
-
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-
-        bslib::card(
-          style = "height: 100%;",
-          bslib::card_header(
-            shiny::tags$strong("Recommended Workflow")
-          ),
-          bslib::card_body(
-            shiny::tags$ol(
-              style = "line-height: 1.8; margin-bottom: 0;",
-              shiny::tags$li(
-                shiny::tags$strong("Project init: "),
-                "Define project metadata and initialize the analysis environment."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Data input: "),
-                "Upload abundance tables, annotation files, and sample metadata."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Pre-processing: "),
-                "Perform filtering, missing value handling, normalization, and quality assessment."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Downstream analysis: "),
-                "Run DEP analysis, enrichment analysis, GSEA, pathway interpretation, and visualization."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Toolkits: "),
-                "Use additional plotting and utility modules for flexible exploration."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Protein Structure: "),
-                "Explore proteins in a dedicated structure-based visualization module."
-              )
-            )
+        class = "pv-data-input-header",
+        shiny::div(
+          shiny::span("Help center", class = "pv-section-eyebrow"),
+          shiny::tags$h2("ProtVis workflow guide", class = "pv-page-title"),
+          shiny::tags$p(
+            "Follow the recommended workflow, learn each module purpose, and use the built-in examples where available to quickly verify plots and tables.",
+            class = "pv-page-subtitle"
           )
         ),
-
+        shiny::div(
+          class = "pv-source-pill",
+          shiny::span("Recommended start", class = "pv-source-label"),
+          shiny::strong("Project init → Data input")
+        )
+      ),
+      bslib::layout_columns(
+        col_widths = c(4, 4, 4),
         bslib::card(
-          style = "height: 100%;",
-          bslib::card_header(
-            shiny::tags$strong("Module Guide")
-          ),
+          class = "pv-preview-card",
+          bslib::card_header("1. Prepare data"),
           bslib::card_body(
             shiny::tags$ul(
-              style = "line-height: 1.8; margin-bottom: 0;",
-              shiny::tags$li(
-                shiny::tags$strong("Project init"),
-                ": Set up project name, output path, and analysis information."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Protein Structure"),
-                ": Perform protein structure exploration and visualization."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Data input"),
-                ": Import proteomics data and experimental design tables."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Pre-processing"),
-                ": Prepare clean and analysis-ready expression matrices."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Downstream analysis"),
-                ": Conduct DEP, enrichment, GSEA, and pathway-level interpretation."
-              ),
-              shiny::tags$li(
-                shiny::tags$strong("Toolkits"),
-                ": Access supplementary visualization and utility functions."
-              )
+              shiny::tags$li("Create a project and confirm the working directory."),
+              shiny::tags$li("Import MaxQuant, Proteome Discoverer, Skyline, Mascot, OpenMS, or custom matrices."),
+              shiny::tags$li("Use example data buttons in supported modules to test the workflow.")
+            )
+          )
+        ),
+        bslib::card(
+          class = "pv-preview-card",
+          bslib::card_header("2. Process and analyze"),
+          bslib::card_body(
+            shiny::tags$ul(
+              shiny::tags$li("Run filtering, transformation, imputation, and normalization in order."),
+              shiny::tags$li("Inspect every preview table before moving downstream."),
+              shiny::tags$li("Use DEP, enrichment, GSEA, and pathway views for interpretation.")
+            )
+          )
+        ),
+        bslib::card(
+          class = "pv-preview-card",
+          bslib::card_header("3. Visualize and export"),
+          bslib::card_body(
+            shiny::tags$ul(
+              shiny::tags$li("Explore expression profiles, multi-omics, PTM, protein structure, and toolkit plots."),
+              shiny::tags$li("Download publication-ready figures and processed tables."),
+              shiny::tags$li(shiny::strong("Contact: "), "Fei Liang")
             )
           )
         )
       ),
-
       shiny::br(),
-
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-
-        bslib::card(
-          style = "height: 100%;",
-          bslib::card_header(
-            shiny::tags$strong("Tips for Use")
-          ),
-          bslib::card_body(
-            shiny::tags$ul(
-              style = "line-height: 1.8; margin-bottom: 0;",
-              shiny::tags$li("Proceed through the main workflow step by step for the most stable analysis experience."),
-              shiny::tags$li("Check sample annotation and group labels carefully before downstream analysis."),
-              shiny::tags$li("Inspect intermediate results after each pre-processing step."),
-              shiny::tags$li("Use export options to save publication-ready figures and result tables."),
-              shiny::tags$li("Use Protein Structure independently when structure-based exploration is needed.")
-            )
-          )
-        ),
-
-        bslib::card(
-          style = "height: 100%;",
-          bslib::card_header(
-            shiny::tags$strong("Documentation")
-          ),
-          bslib::card_body(
-            shiny::p(
-              "This page can be extended with:",
-              style = "margin-bottom: 12px;"
+      bslib::card(
+        class = "pv-preview-card",
+        bslib::card_header("Module quick reference"),
+        bslib::card_body(
+          DT::datatable(
+            data.frame(
+              Module = c("Project init", "Data input", "Pre-processing", "Downstream analysis", "Multi-omics", "Toolkits"),
+              Purpose = c(
+                "Define project metadata and output location.",
+                "Import expression matrices and search-engine outputs.",
+                "Clean, transform, impute, and normalize data.",
+                "Run differential analysis and functional interpretation.",
+                "Explore expression profiles, co-enrichment, Venn/UpSet, and cross-omics views.",
+                "Generate utility plots and protein-centric visualizations."
+              ),
+              stringsAsFactors = FALSE
             ),
-            shiny::tags$ul(
-              style = "line-height: 1.8; margin-bottom: 15px;",
-              shiny::tags$li("Step-by-step tutorials"),
-              shiny::tags$li("Example workflows"),
-              shiny::tags$li("Frequently asked questions"),
-              shiny::tags$li("Downloadable user manuals"),
-              shiny::tags$li("Links to GitHub and project resources")
-            ),
-            shiny::p(
-              shiny::strong("Contact: "),
-              "Fei Liang & Xiao Wang"
-            )
+            rownames = FALSE,
+            options = list(dom = "t", paging = FALSE)
           )
         )
       )

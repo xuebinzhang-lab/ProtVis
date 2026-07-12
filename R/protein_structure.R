@@ -12,10 +12,7 @@
 protein_structure_ui <- function(id) {
   ns <- shiny::NS(id)
 
-  bslib::nav_panel(
-    title = "Secondary structure of protein",
-    icon = bsicons::bs_icon("activity"),
-    bslib::layout_sidebar(
+  bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 320,
         open = TRUE,
@@ -172,7 +169,6 @@ protein_structure_ui <- function(id) {
         )
       )
     )
-  )
 }
 
 #' Protein Structure Analysis Server Module
