@@ -4,12 +4,10 @@
 #'   DO NOT REMOVE.
 #'
 #' @import shiny
-#' @importFrom bslib bs_themer
 #' @name app_server
 #' @export
 #'
 app_server <- function(input, output, session) {
-  bslib::bs_themer()
   shared_state <- reactiveValues(
     workdir = NULL,
     sample_info = NULL,
@@ -52,7 +50,6 @@ app_server <- function(input, output, session) {
   boxplot_module_server("box1")
   swissmodel_server("swissmodel")
   stacked_column_chart_server("stacked_column_chart")
-  TMT_server("TMT")
   correlation_chord_server("correlation_chord")
   DEG_server("DEG")
 }
