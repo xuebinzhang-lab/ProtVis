@@ -112,57 +112,13 @@ Expression_profile_ui <- function(id) {
           shiny::tabPanel("Figure", shiny::plotOutput(ns("heatmap_plot"), height = "680px")),
           shiny::tabPanel("Table", DT::DTOutput(ns("heatmap_table")))
         )
-      ),
-      shiny::conditionalPanel(
-        condition = "input.dropdown == 'Heatmap'",
-        ns = ns,
-        bslib::layout_column_wrap(
-          width = 1,
-          height = 800,
-          bslib::navset_card_tab(
-            height = 800,
-            full_screen = TRUE,
-            title = "Heatmap trend analysis (K-means)",
-            sidebar = bslib::accordion(
-              open = "Parameter",
-              bslib::accordion_panel(
-                title = "Parameter",
-                shiny::numericInput(ns("heatmap_centers"), "K-means clusters:", value = 6, min = 2),
-                shiny::selectInput(
-                  ns("heatmap_scale"),
-                  "Scale:",
-                  choices = c("Row (trend)" = "row", "Column" = "column", "None" = "none"),
-                  selected = "row"
-                )
-              ),
-              bslib::accordion_panel(
-                title = "Run",
-                shiny::actionButton(ns("run_btn_heatmap"), "Run heatmap", class = "btn btn-primary")
-              ),
-              bslib::accordion_panel(
-                title = "Download",
-                icon = bsicons::bs_icon("download"),
-                shiny::downloadButton(ns("download_heatmap_table"), label = "Cluster table", icon = shiny::icon("download"))
-              )
-            ),
-            shiny::tabsetPanel(
-              type = "tabs",
-              shiny::tabPanel("Figure", shiny::plotOutput(ns("heatmap_plot"), height = "680px")),
-              shiny::tabPanel("Table", DT::DTOutput(ns("heatmap_table")))
-            )
-          )
-        )
       )
     )
   )
 
-  bslib::nav_panel(
-    title = "Expression profile",
-    icon = bsicons::bs_icon("alexa"),
-    bslib::layout_sidebar(
-      sidebar = sidebar_ui,
-      shiny::tagList(kmeans_ui, heatmap_ui)
-    )
+  bslib::layout_sidebar(
+    sidebar = sidebar_ui,
+    shiny::tagList(kmeans_ui, heatmap_ui)
   )
 }
 

@@ -16,10 +16,7 @@
 venn_ui <- function(id) {
   ns <- shiny::NS(id)
 
-  bslib::nav_panel(
-    title = "Venn",
-    icon = bsicons::bs_icon("play-circle"),
-    bslib::layout_sidebar(
+  bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 300,
         shiny::fileInput(
@@ -60,7 +57,6 @@ venn_ui <- function(id) {
         )
       )
     )
-  )
 }
 
 #' Venn Diagram Server Module
