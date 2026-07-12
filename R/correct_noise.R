@@ -86,14 +86,18 @@ correct_values <- function(raw_mat) {
 correct_noise_ui <- function(id) {
   ns <- shiny::NS(id)
 
-  bslib::layout_sidebar(
-    sidebar = bslib::sidebar(
-      width = 300,
+  shiny::tagList(
+    protvis_data_input_style(),
+    bslib::layout_sidebar(
+      class = "pv-mq-shell",
+      sidebar = bslib::sidebar(
+        width = 320,
+        class = "pv-sidebar-card",
 
       shiny::actionButton(
         ns("load_data"),
-        "LOAD DATA",
-        class = "btn btn-light fw-bold"
+        "Load data",
+        class = "btn btn-primary fw-bold pv-load-button"
       ),
       shiny::uiOutput(ns("load_status_panel")),
       shinyWidgets::progressBar(
@@ -150,8 +154,8 @@ correct_noise_ui <- function(id) {
 
       shiny::actionButton(
         ns("export_correct_noise"),
-        "EXPORT DATA",
-        class = "btn btn-light fw-bold"
+        "Export data",
+        class = "btn btn-outline-primary fw-bold pv-load-button"
       ),
       shiny::uiOutput(ns("export_correct_noise_status_panel")),
       shinyWidgets::progressBar(
@@ -166,7 +170,14 @@ correct_noise_ui <- function(id) {
     ),
 
     bslib::card(
-      bslib::card_header("Preview the data processing process"),
+      class = "pv-preview-card",
+      bslib::card_header(
+        class = "pv-card-header",
+        shiny::div(
+          shiny::tags$h4("Processing preview", class = "pv-card-title"),
+          shiny::tags$p("Review preprocessing inputs, outputs, and intermediate results.", class = "pv-card-subtitle")
+        )
+      ),
       bslib::card_body(
         fill = TRUE,
         bslib::navset_tab(
@@ -192,6 +203,7 @@ correct_noise_ui <- function(id) {
         )
       )
     )
+  )
   )
 }
 
@@ -277,17 +289,17 @@ correct_noise_server <- function(id, shared_state) {
 
     output$load_status_panel <- shiny::renderUI({
       if (rv$load_success) {
-        shiny::span("✅ Data loaded", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
-        shiny::span("❌ Data not loaded", style = "color: red;")
+        shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
       }
     })
 
     output$export_correct_noise_status_panel <- shiny::renderUI({
       if (rv$export_success) {
-        shiny::span("✅ Data exported", style = "color: green;")
+        shiny::div(class = "pv-status pv-status-ready", "✓ Data exported")
       } else {
-        shiny::span("Waiting for export", style = "color: #666;")
+        shiny::div(class = "pv-status pv-status-empty", "Waiting for export")
       }
     })
 
