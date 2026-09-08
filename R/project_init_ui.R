@@ -159,8 +159,13 @@ project_init_server <- function(id, shared_state) {
           source = row$source[[1L]], file = row$file[[1L]], auto_export = FALSE
         )
         shared_state$sample_info <- dataset$sample_info
-        shared_state$expression_matrix <- dataset$expression_data
-        shared_state$expression_matrix_filtered <- dataset$expression_data
+        # Keep the protein identifier as an explicit column at every UI
+        # boundary.  ProtVis_dataset stores it as row names internally, but
+        # the preprocessing modules intentionally consume an ID-first data
+        # frame.  Passing expression_data directly makes the first sample
+        # look like ID and silently discards the real protein identifiers.
+        shared_state$expression_matrix <- protvis_expression_matrix(dataset)
+        shared_state$expression_matrix_filtered <- protvis_expression_matrix(dataset)
         shared_state$data_source <- row$source[[1L]]
         shared_state$workdir <- protvis_output_directory(shared_state$workdir %||% getwd())
         shiny::showNotification(
@@ -200,6 +205,8 @@ project_init_server <- function(id, shared_state) {
         dataset$metadata$object_version <- 1L
         dataset <- protvis_auto_export_dataset(dataset, directory = directory)
         shared_state$dataset <- dataset
+        shared_state$expression_matrix <- protvis_expression_matrix(dataset)
+        shared_state$expression_matrix_filtered <- protvis_expression_matrix(dataset)
         shared_state$dataset_name <- protvis_dataset_name(dataset)
         history <- shared_state$dataset_history %||% list()
         shared_state$dataset_history <- c(history, list(dataset))

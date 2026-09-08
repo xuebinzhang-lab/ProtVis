@@ -280,6 +280,13 @@ correct_noise_server <- function(id, shared_state) {
 
         if (base::exists("expression_matrix_filtered", envir = e)) {
           shared_state$expression_matrix_filtered <- e$expression_matrix_filtered
+          # Older RDA files may contain a row-name-only matrix.  Normalize it
+          # before the ID-aware preprocessing code reads the first column.
+          if (base::is.data.frame(shared_state$expression_matrix_filtered) &&
+              !"ID" %in% base::names(shared_state$expression_matrix_filtered)) {
+            shared_state$expression_matrix_filtered <-
+              .protvis_rownames_to_column(shared_state$expression_matrix_filtered, "ID")
+          }
           shared_state$rename_result <- NULL
           shared_state$correct_noise_result <- NULL
         }
@@ -328,15 +335,35 @@ correct_noise_server <- function(id, shared_state) {
     correct_noise_step1 <- shiny::reactive({
       shiny::req(shared_state$expression_matrix_filtered, shared_state$sample_info)
 
+      input_data <- base::as.data.frame(
+        shared_state$expression_matrix_filtered,
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      if (!"ID" %in% base::names(input_data)) {
+        input_data <- .protvis_rownames_to_column(input_data, "ID")
+      }
+      sample_cols <- base::setdiff(base::names(input_data), "ID")
+      if (base::length(sample_cols) == 0L) {
+        stop("Expression matrix has no sample columns.", call. = FALSE)
+      }
+
       new_name <- dplyr::left_join(
-        base::data.frame(maxquant_id = base::colnames(shared_state$expression_matrix_filtered)[-1]),
+        base::data.frame(maxquant_id = sample_cols, stringsAsFactors = FALSE),
         shared_state$sample_info,
         by = "maxquant_id"
       ) %>%
         dplyr::pull(sample_id)
 
-      shared_state$expression_matrix_filtered %>%
-        stats::setNames(c("ID", new_name))
+      # If the matrix already uses sample_id names (common for built-in and
+      # imported ProtVis_dataset objects), retain those names when the
+      # maxquant_id lookup has no match.  Always make names unique so joins
+      # and reshaping cannot expand the data unexpectedly.
+      new_name <- as.character(new_name)
+      missing_name <- is.na(new_name) | !nzchar(trimws(new_name))
+      new_name[missing_name] <- sample_cols[missing_name]
+      base::names(input_data) <- c("ID", make.unique(new_name, sep = "_"))
+      input_data
     })
 
     shiny::observeEvent(input$rename_columns, {
