@@ -124,7 +124,7 @@ data_transformed_ui <- function(id) {
             height = "800px",
             bslib::card_header("Original Data"),
             bslib::card_body(
-              DT::DTOutput(ns("originalData"))
+              shiny::tableOutput(ns("originalData"))
             )
           ),
 
@@ -142,7 +142,7 @@ data_transformed_ui <- function(id) {
             height = "800px",
             bslib::card_header("Transformed Data"),
             bslib::card_body(
-              DT::DTOutput(ns("transformedData"))
+              shiny::tableOutput(ns("transformedData"))
             )
           ),
 
@@ -312,16 +312,12 @@ data_transformed_server <- function(id, shared_state) {
       )
     })
 
-    output$originalData <- DT::renderDT({
+    output$originalData <- shiny::renderTable({
       shiny::req(original_matrix_show())
-      DT::datatable(
-        display_data_frame(original_matrix_show()),
-        rownames = FALSE,
-        options = list(scrollX = TRUE, pageLength = 10)
-      )
+      utils::head(display_data_frame(original_matrix_show()), 100L)
     })
 
-    output$transformedData <- DT::renderDT({
+    output$transformedData <- shiny::renderTable({
       shiny::req(rv$load_success)
 
       show_df <- if (!base::is.null(rv$transformed)) {
@@ -332,11 +328,7 @@ data_transformed_server <- function(id, shared_state) {
         original_matrix_show()
       }
 
-      DT::datatable(
-        display_data_frame(show_df),
-        rownames = FALSE,
-        options = list(scrollX = TRUE, pageLength = 10)
-      )
+      utils::head(display_data_frame(show_df), 100L)
     })
 
     output$originalPlot <- shiny::renderPlot({
