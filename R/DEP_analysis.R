@@ -45,7 +45,7 @@ DEP_analysis_ui <- function(id) {
 
         shiny::h5("Demo CompareGroup"),
         shiny::tags$small(
-          "The example below shows the required two-column format: Group1 and Group2.",
+          "Built-in comparisons use the tissue column (Root vs Shoot). Uploaded CompareGroup files with Group1 and Group2 remain supported.",
           style = "color: #6c757d;"
         ),
         shiny::div(
@@ -203,6 +203,30 @@ DEP_analysis_server <- function(id, shared_state) {
       }
     }
 
+    normalize_tissue <- function(x) {
+      values <- trimws(tolower(as.character(x)))
+      dplyr::case_when(
+        grepl("shoot|leaf|above", values) ~ "Shoot",
+        grepl("root|below", values) ~ "Root",
+        TRUE ~ trimws(as.character(x))
+      )
+    }
+
+    numeric_expression_matrix <- function(x) {
+      df <- base::as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+      values <- base::lapply(df, function(column) {
+        suppressWarnings(base::as.numeric(base::as.character(column)))
+      })
+      matrix <- base::as.matrix(
+        base::as.data.frame(values, stringsAsFactors = FALSE, check.names = FALSE)
+      )
+      storage.mode(matrix) <- "numeric"
+      if (!base::is.null(base::rownames(df))) {
+        base::rownames(matrix) <- base::rownames(df)
+      }
+      matrix
+    }
+
     reset_dep_state <- function() {
       rv$dep_ready <- FALSE
       rv$dep_has_run <- FALSE
@@ -226,6 +250,19 @@ DEP_analysis_server <- function(id, shared_state) {
     )
 
     demo_compare_data <- shiny::reactive({
+      if (!base::is.null(rv$sample_info) &&
+          "tissue" %in% base::colnames(rv$sample_info)) {
+        tissues <- unique(as.character(rv$sample_info$tissue))
+        tissues <- tissues[!is.na(tissues) & nzchar(tissues) & tissues != "Unassigned"]
+        if (base::all(c("Root", "Shoot") %in% tissues)) {
+          return(base::data.frame(
+            Group1 = "Root",
+            Group2 = "Shoot",
+            stringsAsFactors = FALSE
+          ))
+        }
+      }
+
       groups <- if (!base::is.null(rv$sample_info) &&
                     "group" %in% base::colnames(rv$sample_info)) {
         unique(as.character(rv$sample_info$group))
@@ -298,9 +335,13 @@ DEP_analysis_server <- function(id, shared_state) {
 
     shiny::observeEvent(input$load_data, {
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
-        matrix <- base::as.matrix(shared_state$dataset$expression_data)
-        storage.mode(matrix) <- "numeric"
+        matrix <- numeric_expression_matrix(shared_state$dataset$expression_data)
         rv$sample_info <- shared_state$dataset$sample_info
+        if ("tissue" %in% base::colnames(rv$sample_info)) {
+          rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue)
+        } else if ("tissue2" %in% base::colnames(rv$sample_info)) {
+          rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue2)
+        }
         rv$normalized_matrix <- matrix
         rv$compare_data <- demo_compare_data()
         rv$load_success <- TRUE
@@ -345,14 +386,17 @@ DEP_analysis_server <- function(id, shared_state) {
 
         if (base::exists("sample_info", envir = e)) {
           rv$sample_info <- e$sample_info
+          if ("tissue" %in% base::colnames(rv$sample_info)) {
+            rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue)
+          } else if ("tissue2" %in% base::colnames(rv$sample_info)) {
+            rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue2)
+          }
         } else {
           rv$sample_info <- NULL
         }
 
         if (base::exists("normalized_data", envir = e)) {
-          rv$normalized_matrix <- base::as.data.frame(
-            e$normalized_data, stringsAsFactors = FALSE, check.names = FALSE
-          )
+          rv$normalized_matrix <- numeric_expression_matrix(e$normalized_data)
         } else {
           rv$normalized_matrix <- NULL
           shiny::showNotification(
@@ -738,16 +782,30 @@ DEP_analysis_server <- function(id, shared_state) {
         )
 
         if (base::is.null(rv$sample_info) ||
-            !base::all(c("group", "sample_id") %in% base::colnames(rv$sample_info))) {
+            !"sample_id" %in% base::colnames(rv$sample_info)) {
+          next
+        }
+
+        grouping_column <- if (
+          "tissue" %in% base::colnames(rv$sample_info) &&
+          base::all(c(group1, group2) %in% as.character(rv$sample_info$tissue))
+        ) {
+          "tissue"
+        } else if ("group" %in% base::colnames(rv$sample_info)) {
+          "group"
+        } else {
+          NULL
+        }
+        if (base::is.null(grouping_column)) {
           next
         }
 
         samples_group1 <- rv$sample_info %>%
-          dplyr::filter(group == group1) %>%
+          dplyr::filter(.data[[grouping_column]] == group1) %>%
           dplyr::pull(sample_id)
 
         samples_group2 <- rv$sample_info %>%
-          dplyr::filter(group == group2) %>%
+          dplyr::filter(.data[[grouping_column]] == group2) %>%
           dplyr::pull(sample_id)
 
         req_cols <- c(samples_group1, samples_group2)
@@ -760,9 +818,9 @@ DEP_analysis_server <- function(id, shared_state) {
           next
         }
 
-        exp_matrix <- rv$normalized_matrix %>%
-          as.data.frame() %>%
-          dplyr::select(dplyr::all_of(req_cols))
+        exp_matrix <- numeric_expression_matrix(
+          rv$normalized_matrix[, req_cols, drop = FALSE]
+        )
 
         if (base::ncol(exp_matrix) < 2 || base::nrow(exp_matrix) == 0) {
           next
