@@ -110,6 +110,30 @@ overview_ui <- function(id) {
               choices = c("PCA", "PCoA", "tSNE", "UMAP", "NMDS"),
               selected = "UMAP"
             ),
+            shiny::selectInput(
+              ns("dr_group_by"),
+              "Color and ellipse grouping",
+              choices = c(
+                "Experimental group" = "group",
+                "Tissue" = "tissue2",
+                "Species" = "species",
+                "Batch" = "batch",
+                "Condition" = "condition"
+              ),
+              selected = "group"
+            ),
+            shiny::selectInput(
+              ns("dr_shape_by"),
+              "Point shape grouping",
+              choices = c(
+                "Species" = "species",
+                "Experimental group" = "group",
+                "Tissue" = "tissue2",
+                "Batch" = "batch",
+                "Condition" = "condition"
+              ),
+              selected = "species"
+            ),
             shiny::actionButton(ns("DR_analyse"), "Run"),
             shiny::numericInput(ns("dr_plot_width"), "Download Plot Width (inches)", value = 10),
             shiny::numericInput(ns("dr_plot_height"), "Download Plot Height (inches)", value = 7),
@@ -916,41 +940,71 @@ overview_server <- function(id, shared_state) {
       sample_names <- base::rownames(df)
       if (is.null(sample_names)) sample_names <- paste0("Sample_", base::seq_len(nrow(df)))
 
+      metadata_values <- function(column) {
+        info <- rv$sample_info
+        if (is.null(info) || !is.data.frame(info) ||
+            !"sample_id" %in% names(info)) {
+          return(rep(NA_character_, length(sample_names)))
+        }
+        if (identical(column, "tissue2") && !"tissue2" %in% names(info)) {
+          column <- if ("tissue" %in% names(info)) "tissue" else column
+        }
+        if (!column %in% names(info)) {
+          return(rep(NA_character_, length(sample_names)))
+        }
+        as.character(info[[column]])[match(sample_names, info$sample_id)]
+      }
+
+      normalise_tissue <- function(values) {
+        values <- as.character(values)
+        lower <- tolower(values)
+        values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Below-ground"
+        values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Above-ground"
+        values
+      }
+
+      selected_group <- as.character(input$dr_group_by %||% "group")
+      selected_shape <- as.character(input$dr_shape_by %||% "species")
+      group_values <- metadata_values(selected_group)
+      shape_values <- metadata_values(selected_shape)
+      if (identical(selected_group, "tissue2")) group_values <- normalise_tissue(group_values)
+      if (identical(selected_shape, "tissue2")) shape_values <- normalise_tissue(shape_values)
+      sample_type <- vapply(base::strsplit(sample_names, "_", fixed = TRUE),
+                            function(value) value[[1L]], character(1))
+      fallback_group <- ifelse(
+        grepl("root|below[ ._-]*ground|underground", tolower(sample_names)),
+        "Below-ground",
+        ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial",
+                     tolower(sample_names)), "Above-ground", sample_type)
+      )
+      group_values[is.na(group_values) | !nzchar(group_values)] <-
+        fallback_group[is.na(group_values) | !nzchar(group_values)]
+      fallback_shape <- ifelse(
+        sample_type == "B73", "Zea mays ssp. mays",
+        ifelse(sample_type == "Y12", "Zea mays ssp. mexicana", sample_type)
+      )
+      shape_values[is.na(shape_values) | !nzchar(shape_values)] <-
+        fallback_shape[is.na(shape_values) | !nzchar(shape_values)]
+
       df <- dplyr::mutate(
         df,
         Sample = sample_names,
         SampleType = vapply(base::strsplit(sample_names, "_", fixed = TRUE),
                             function(value) value[[1L]], character(1)),
-        Type = {
-          group_values <- rep(NA_character_, length(sample_names))
-          if (!is.null(rv$sample_info) &&
-              is.data.frame(rv$sample_info) &&
-              all(c("sample_id", "group") %in% names(rv$sample_info))) {
-            group_values <- as.character(rv$sample_info$group)[
-              match(sample_names, rv$sample_info$sample_id)
-            ]
-          }
-          fallback_values <- stringr::str_remove_all(sample_names, "^....|..$")
-          group_values[is.na(group_values) | !nzchar(group_values)] <-
-            fallback_values[is.na(group_values) | !nzchar(group_values)]
-          group_values
-        },
-        Species = dplyr::case_when(
-          SampleType == "B73" ~ "Zea mays ssp. mays",
-          TRUE ~ "Zea mays ssp. mexicana"
-        )
+        DRGroup = group_values,
+        DRShape = shape_values
       )
 
       ellipse_df <- df |>
         dplyr::filter(is.finite(V1), is.finite(V2)) |>
-        dplyr::group_by(Type) |>
+        dplyr::group_by(DRGroup) |>
         dplyr::filter(dplyr::n() >= 3L,
                       stats::sd(V1) > 0, stats::sd(V2) > 0) |>
         dplyr::ungroup()
 
       plot <- ggplot2::ggplot(df) +
         ggplot2::geom_point(
-          ggplot2::aes(x = V1, y = V2, color = Type, shape = Species),
+          ggplot2::aes(x = V1, y = V2, color = DRGroup, shape = DRShape),
           size = 1.2,
           alpha = 0.8
         )
@@ -958,12 +1012,12 @@ overview_server <- function(id, shared_state) {
         plot <- plot +
           ggplot2::stat_ellipse(
             data = ellipse_df,
-            ggplot2::aes(x = V1, y = V2, fill = Type),
+            ggplot2::aes(x = V1, y = V2, fill = DRGroup),
             geom = "polygon", level = 0.95, alpha = 0.25
           ) +
           ggplot2::stat_ellipse(
             data = ellipse_df,
-            ggplot2::aes(x = V1, y = V2, color = Type),
+            ggplot2::aes(x = V1, y = V2, color = DRGroup),
             geom = "path", level = 0.95, alpha = 1, linewidth = 0.5
           )
       }
