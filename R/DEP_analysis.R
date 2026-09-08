@@ -800,13 +800,13 @@ DEP_analysis_server <- function(id, shared_state) {
           next
         }
 
-        samples_group1 <- rv$sample_info %>%
-          dplyr::filter(.data[[grouping_column]] == group1) %>%
-          dplyr::pull(sample_id)
-
-        samples_group2 <- rv$sample_info %>%
-          dplyr::filter(.data[[grouping_column]] == group2) %>%
-          dplyr::pull(sample_id)
+        grouping_values <- as.character(rv$sample_info[[grouping_column]])
+        samples_group1 <- as.character(
+          rv$sample_info[grouping_values == group1, "sample_id", drop = TRUE]
+        )
+        samples_group2 <- as.character(
+          rv$sample_info[grouping_values == group2, "sample_id", drop = TRUE]
+        )
 
         req_cols <- c(samples_group1, samples_group2)
 
