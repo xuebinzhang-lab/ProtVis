@@ -543,8 +543,15 @@ load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
     protvis_builtin_data_path(source, format = format)
   }
   manifest <- protvis_builtin_datasets()
-  file_name <- if (!is.null(file)) as.character(file) else
-    manifest$file[match(source, manifest$source)]
+  manifest_rows <- manifest[manifest$source == source, , drop = FALSE]
+  file_name <- if (!is.null(file)) {
+    as.character(file)
+  } else if (!is.null(format)) {
+    manifest_rows$file[match(tolower(as.character(format)),
+                             tolower(manifest_rows$format))]
+  } else {
+    manifest_rows$file[[1L]]
+  }
   object <- import_protvis(path, source = source,
                  sample_info = sample_info,
                  filename = file_name)
