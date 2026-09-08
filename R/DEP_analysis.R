@@ -226,6 +226,29 @@ DEP_analysis_server <- function(id, shared_state) {
     )
 
     demo_compare_data <- shiny::reactive({
+      groups <- if (!base::is.null(rv$sample_info) &&
+                    "group" %in% base::colnames(rv$sample_info)) {
+        unique(as.character(rv$sample_info$group))
+      } else {
+        character()
+      }
+      groups <- groups[!is.na(groups) & nzchar(groups) & groups != "Unassigned"]
+      b73 <- groups[grepl("^B73", groups)]
+      y12 <- groups[grepl("^Y12", groups)]
+      matched <- b73[paste0("Y12", substring(b73, 4L)) %in% y12]
+      if (length(matched) > 0L) {
+        return(base::data.frame(
+          Group1 = matched,
+          Group2 = paste0("Y12", substring(matched, 4L)),
+          stringsAsFactors = FALSE
+        ))
+      }
+      if (length(groups) >= 2L) {
+        return(base::data.frame(
+          Group1 = groups[[1L]], Group2 = groups[[2L]],
+          stringsAsFactors = FALSE
+        ))
+      }
       base::data.frame(
         Group1 = c("B73_Root_VE", "B73_Root_V2"),
         Group2 = c("Y12_Root_VE", "Y12_Root_V2"),
@@ -274,6 +297,23 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$load_data, {
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        matrix <- base::as.matrix(shared_state$dataset$expression_data)
+        storage.mode(matrix) <- "numeric"
+        rv$sample_info <- shared_state$dataset$sample_info
+        rv$normalized_matrix <- matrix
+        rv$compare_data <- demo_compare_data()
+        rv$load_success <- TRUE
+        reset_dep_state()
+        shinyWidgets::updateProgressBar(
+          session = session, id = "load_progress", value = 100, total = 100
+        )
+        shiny::showNotification(
+          "✅ ProtVis_dataset loaded; demo comparison groups are ready.",
+          type = "message"
+        )
+        return(invisible(NULL))
+      }
       shiny::req(shared_state$workdir)
 
       shinyWidgets::updateProgressBar(
@@ -310,7 +350,9 @@ DEP_analysis_server <- function(id, shared_state) {
         }
 
         if (base::exists("normalized_data", envir = e)) {
-          rv$normalized_matrix <- e$normalized_data
+          rv$normalized_matrix <- base::as.data.frame(
+            e$normalized_data, stringsAsFactors = FALSE, check.names = FALSE
+          )
         } else {
           rv$normalized_matrix <- NULL
           shiny::showNotification(
@@ -319,7 +361,11 @@ DEP_analysis_server <- function(id, shared_state) {
           )
         }
 
-        rv$load_success <- TRUE
+        rv$load_success <- !base::is.null(rv$normalized_matrix) &&
+          !base::is.null(rv$sample_info)
+        if (isTRUE(rv$load_success) && base::is.null(rv$compare_data)) {
+          rv$compare_data <- demo_compare_data()
+        }
         reset_dep_state()
 
         shinyWidgets::updateProgressBar(
@@ -485,16 +531,16 @@ DEP_analysis_server <- function(id, shared_state) {
           tab_name,
           bslib::layout_column_wrap(
             width = 1/2,
-            height = 600,
+            gap = "1rem",
 
             bslib::card(
-              height = "800px",
+              height = "520px",
               bslib::card_header(base::paste("DEP table -", tab_name)),
               bslib::card_body(DT::DTOutput(ns(base::paste0("dep_table_", i))))
             ),
 
             bslib::card(
-              height = "800px",
+              height = "520px",
               bslib::card_header(base::paste("Volcano plot -", tab_name)),
               bslib::card_body(
                 bslib::layout_sidebar(
@@ -563,19 +609,22 @@ DEP_analysis_server <- function(id, shared_state) {
                       )
                     )
                   ),
-                  shiny::plotOutput(ns(base::paste0("volcano_plot_", i)))
+                  shiny::plotOutput(ns(base::paste0("volcano_plot_", i)),
+                                    height = "420px")
                 )
               )
             ),
 
             bslib::card(
-              height = "800px",
+              height = "520px",
               bslib::card_header(base::paste("Heatmap -", tab_name)),
-              bslib::card_body(shiny::plotOutput(ns(base::paste0("heatmap_", i))))
+              bslib::card_body(shiny::plotOutput(
+                ns(base::paste0("heatmap_", i)), height = "420px"
+              ))
             ),
 
             bslib::card(
-              height = "800px",
+              height = "520px",
               bslib::card_header(base::paste("Bar of DEP -", tab_name)),
               bslib::card_body(
                 bslib::layout_sidebar(
@@ -623,7 +672,8 @@ DEP_analysis_server <- function(id, shared_state) {
                       )
                     )
                   ),
-                  shiny::plotOutput(ns(base::paste0("bar_dep_", i)))
+                  shiny::plotOutput(ns(base::paste0("bar_dep_", i)),
+                                    height = "420px")
                 )
               )
             )
