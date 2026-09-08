@@ -233,6 +233,23 @@ utils::globalVariables(c(
 overview_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    standardize_overview_matrix <- function(data) {
+      matrix <- base::as.matrix(data)
+      storage.mode(matrix) <- "numeric"
+      matrix[!is.finite(matrix)] <- NA_real_
+      if (base::ncol(matrix) == 0L) return(matrix)
+      for (j in base::seq_len(base::ncol(matrix))) {
+        observed <- matrix[, j]
+        center <- if (base::any(is.finite(observed))) {
+          stats::median(observed[is.finite(observed)])
+        } else {
+          0
+        }
+        matrix[, j] <- observed - center
+      }
+      matrix
+    }
+
     rv <- shiny::reactiveValues(
       sample_info = NULL,
       load_success = FALSE,
@@ -248,6 +265,7 @@ overview_server <- function(id, shared_state) {
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         matrix <- base::as.matrix(shared_state$dataset$expression_data)
         storage.mode(matrix) <- "numeric"
+        matrix <- standardize_overview_matrix(matrix)
         rv$sample_info <- shared_state$dataset$sample_info
         rv$imputed_matrix <- matrix
         rv$normalized_matrix <- matrix
@@ -461,6 +479,10 @@ overview_server <- function(id, shared_state) {
         sample_id = base::colnames(matrix), stringsAsFactors = FALSE
       )
       info <- rv$sample_info
+      if (base::is.null(info) || !is.data.frame(info)) {
+        info <- base::data.frame(sample_id = character(),
+                                 stringsAsFactors = FALSE)
+      }
       info_index <- match(metadata_share$sample_id, info$sample_id)
       if ("maxquant_id" %in% base::colnames(info)) {
         fallback_index <- match(metadata_share$sample_id, info$maxquant_id)
@@ -469,14 +491,31 @@ overview_server <- function(id, shared_state) {
       for (column in base::setdiff(base::colnames(info), "sample_id")) {
         metadata_share[[column]] <- info[[column]][info_index]
       }
-      metadata_share$tissue2 <- if ("tissue" %in% names(metadata_share)) {
-        sub("_.*$", "", as.character(metadata_share$tissue))
+      tissue_values <- if ("tissue2" %in% names(metadata_share)) {
+        as.character(metadata_share$tissue2)
+      } else if ("tissue" %in% names(metadata_share)) {
+        as.character(metadata_share$tissue)
       } else {
-        ifelse(grepl("root", metadata_share$sample_id, ignore.case = TRUE),
-               "Root",
-               ifelse(grepl("leaf", metadata_share$sample_id,
-                            ignore.case = TRUE), "Leaf", "All samples"))
+        rep(NA_character_, nrow(metadata_share))
       }
+      tissue_lower <- tolower(tissue_values)
+      tissue_values[grepl("root|below[ ._-]*ground|underground", tissue_lower)] <- "Below-ground"
+      tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", tissue_lower)] <- "Above-ground"
+      sample_lower <- tolower(metadata_share$sample_id)
+      fallback_tissue <- ifelse(
+        grepl("root|below[ ._-]*ground|underground", sample_lower), "Below-ground",
+        ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", sample_lower),
+               "Above-ground", NA_character_)
+      )
+      channel <- suppressWarnings(as.integer(sub("^([0-9]+)_.*$", "\\1", metadata_share$sample_id)))
+      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel <= 3L] <- "Above-ground"
+      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel >= 4L] <- "Below-ground"
+      tissue_values[is.na(tissue_values) | !nzchar(tissue_values) |
+                      tissue_values == "NA" | tissue_values == "All samples"] <-
+        fallback_tissue[is.na(tissue_values) | !nzchar(tissue_values) |
+                         tissue_values == "NA" | tissue_values == "All samples"]
+      tissue_values[is.na(tissue_values) | !nzchar(tissue_values)] <- "All samples"
+      metadata_share$tissue2 <- tissue_values
       metadata_share$species <- if ("species" %in% names(metadata_share)) {
         as.character(metadata_share$species)
       } else {
@@ -486,29 +525,14 @@ overview_server <- function(id, shared_state) {
                             ignore.case = TRUE),
                       "Zea mays ssp. mexicana", "All samples"))
       }
-      fallback_tissue <- ifelse(
-        grepl("root", metadata_share$sample_id, ignore.case = TRUE), "Root",
-        ifelse(grepl("leaf", metadata_share$sample_id, ignore.case = TRUE),
-               "Leaf", "All samples")
-      )
-      metadata_share$tissue2[
-        is.na(metadata_share$tissue2) |
-          !nzchar(metadata_share$tissue2) |
-          metadata_share$tissue2 == "NA"
-      ] <- fallback_tissue[
-        is.na(metadata_share$tissue2) |
-          !nzchar(metadata_share$tissue2) |
-          metadata_share$tissue2 == "NA"
-      ]
-      metadata_share$tissue2[is.na(metadata_share$tissue2) |
-                               !nzchar(metadata_share$tissue2)] <- "All samples"
       metadata_share$species[is.na(metadata_share$species) |
                                !nzchar(metadata_share$species)] <- "All samples"
       ComplexHeatmap::rowAnnotation(
         Tissue = base::as.matrix(metadata_share["tissue2"]),
         Species = base::as.matrix(metadata_share["species"]),
         col = base::list(
-          Tissue = c("Leaf" = "#65a30d", "Pulvinus" = "#a16207",
+          Tissue = c("Above-ground" = "#65a30d", "Below-ground" = "#c2410c",
+                     "Leaf" = "#65a30d", "Pulvinus" = "#a16207",
                      "Root" = "#c2410c", "Stem" = "#166534",
                      "Shoot.tip" = "#2563eb", "All samples" = "#94a3b8"),
           Species = c("Zea mays ssp. mays" = "#f59e0b",
@@ -758,8 +782,8 @@ overview_server <- function(id, shared_state) {
       # cannot operate on NA/Inf values.
       observed <- base::rowSums(!is.na(matrix))
       matrix <- matrix[observed > 0, , drop = FALSE]
-      if (base::nrow(matrix) == 0L) {
-        stop("Dimensionality reduction requires at least one observed feature.",
+      if (base::nrow(matrix) < 2L) {
+        stop("Dimensionality reduction requires at least two observed features.",
              call. = FALSE)
       }
       for (i in base::seq_len(base::nrow(matrix))) {
@@ -817,13 +841,23 @@ overview_server <- function(id, shared_state) {
 
       if (method == "UMAP") {
         config <- umap::umap.defaults
-        config$n_neighbors <- base::min(
+        config$n_neighbors <- base::max(2L, base::min(
           config$n_neighbors, base::nrow(t_data) - 1L
-        )
+        ))
         config$n_components <- 2L
-        res <- base::as.data.frame(umap::umap(t_data, config = config)$layout[
-          , 1:2, drop = FALSE
-        ])
+        res <- tryCatch(
+          base::as.data.frame(umap::umap(t_data, config = config)$layout[
+            , 1:2, drop = FALSE
+          ]),
+          error = function(e) {
+            # UMAP is sensitive to tied/degenerate neighbourhood distances.
+            # PCA is a deterministic, finite fallback for the same cleaned
+            # matrix, so a valid DR plot is still available to the user.
+            base::as.data.frame(stats::prcomp(
+              t_data, center = TRUE, scale. = TRUE
+            )$x[, 1:2, drop = FALSE])
+          }
+        )
         base::colnames(res) <- c("V1", "V2")
         base::rownames(res) <- base::rownames(t_data)
         return(res)
@@ -832,6 +866,7 @@ overview_server <- function(id, shared_state) {
       if (method == "NMDS") {
         res <- base::as.data.frame(vegan::metaMDS(t_data, k = 2)[["points"]])
         base::colnames(res) <- c("V1", "V2")
+        base::rownames(res) <- base::rownames(t_data)
         return(res)
       }
 

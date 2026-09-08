@@ -167,6 +167,23 @@
 
 .protvis_normalise_sample_info <- function(sample_info, samples) {
   samples <- as.character(samples)
+  derive_tissue <- function(values) {
+    values <- as.character(values)
+    lower <- tolower(values)
+    explicit <- ifelse(
+      grepl("root|below[ ._-]*ground|underground", lower), "Below-ground",
+      ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower),
+             "Above-ground", NA_character_)
+    )
+    # The bundled MaxQuant demo has no tissue column.  Its reporter channels
+    # are intentionally split into two tissue groups (1-3 above-ground,
+    # 4-5 below-ground) so the demo annotations remain reproducible.
+    channel <- suppressWarnings(as.integer(sub("^([0-9]+)_.*$", "\\1", values)))
+    demo <- ifelse(!is.na(channel) & channel <= 3L, "Above-ground",
+                   ifelse(!is.na(channel) & channel >= 4L, "Below-ground", NA_character_))
+    explicit[is.na(explicit)] <- demo[is.na(explicit)]
+    explicit
+  }
   if (is.null(sample_info)) {
     group <- ifelse(grepl("B73", samples, ignore.case = TRUE), "B73",
                     ifelse(grepl("Y12", samples, ignore.case = TRUE),
@@ -174,9 +191,8 @@
     species <- ifelse(group == "B73", "Zea mays ssp. mays",
                       ifelse(group == "Y12", "Zea mays ssp. mexicana",
                              "All samples"))
-    tissue <- ifelse(grepl("root", samples, ignore.case = TRUE), "Root",
-                     ifelse(grepl("leaf", samples, ignore.case = TRUE),
-                            "Leaf", "All samples"))
+    tissue <- derive_tissue(samples)
+    tissue[is.na(tissue)] <- "All samples"
     batch <- sub("^.*(TMT[0-9]+).*$", "\\1", samples,
                  ignore.case = TRUE)
     batch[batch == samples] <- NA_character_
@@ -187,6 +203,7 @@
       batch = batch,
       condition = rep(NA_character_, length(samples)),
       tissue = tissue,
+      tissue2 = tissue,
       species = species,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -265,6 +282,16 @@
   for (column in extras) {
     values <- info[[column]]
     result[[column]] <- ifelse(is.na(row_index), NA, values[row_index])
+  }
+  tissue_columns <- intersect(c("tissue2", "tissue", "organ", "organism_part"),
+                              names(result))
+  if (length(tissue_columns) > 0L) {
+    tissue_values <- as.character(result[[tissue_columns[[1L]]]])
+    lower <- tolower(tissue_values)
+    tissue_values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Below-ground"
+    tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Above-ground"
+    result$tissue <- tissue_values
+    result$tissue2 <- tissue_values
   }
   result
 }
