@@ -55,7 +55,7 @@ data_imputation_ui <- function(id) {
               ns("choice_method"),
               "Method",
               choices = c("kNN", "RF", "Mean", "Median", "Zero", "Minimum"),
-              selected = "Mean"
+              selected = "kNN"
             ),
             shiny::numericInput(
               ns("minprob_q"),
