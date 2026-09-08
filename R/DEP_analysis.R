@@ -549,7 +549,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   sidebar = bslib::sidebar(
                     id = ns(base::paste0("volcano_sidebar_", i)),
                     position = "left",
-                    open = TRUE,
+                    open = FALSE,
                     width = 250,
                     bslib::accordion(
                       bslib::accordion_panel(
@@ -635,7 +635,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   sidebar = bslib::sidebar(
                     id = ns(base::paste0("bar_sidebar_", i)),
                     position = "left",
-                    open = TRUE,
+                    open = FALSE,
                     width = 250,
                     bslib::accordion(
                       bslib::accordion_panel(
@@ -933,8 +933,16 @@ DEP_analysis_server <- function(id, shared_state) {
                 ,
                 drop = FALSE
               ]
-              # Heatmap rendering must never receive NA/NaN/Inf.  Keep the
+              # Heatmap rendering must never receive NA/NaN/Inf. Keep the
               # DEP statistics unchanged and sanitize only this display copy.
+              heatmap_data <- base::as.data.frame(
+                base::lapply(heatmap_data, function(x) {
+                  suppressWarnings(base::as.numeric(base::as.character(x)))
+                }),
+                stringsAsFactors = FALSE,
+                check.names = FALSE
+              )
+              heatmap_data <- base::as.matrix(heatmap_data)
               storage.mode(heatmap_data) <- "numeric"
               finite_rows <- apply(
                 heatmap_data, 1, function(x) any(is.finite(x))
