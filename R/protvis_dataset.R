@@ -95,6 +95,25 @@
   data
 }
 
+# MaxQuant may encode missing raw abundances as exactly -8.  Normalize this
+# legacy sentinel only for MaxQuant objects; negative values from transformed
+# data belonging to other sources must remain unchanged.
+.protvis_normalise_dataset_missing_values <- function(expression_data,
+                                                      source = NULL) {
+  if (is.null(source) ||
+      !identical(tolower(as.character(source)), "maxquant")) {
+    return(expression_data)
+  }
+  sample_cols <- colnames(expression_data)
+  for (column in sample_cols) {
+    values <- .protvis_safe_numeric(expression_data[, column])
+    expression_data[[column]] <- ifelse(
+      !is.na(values) & values == -8, NA_real_, values
+    )
+  }
+  expression_data
+}
+
 .protvis_coerce_expression <- function(expression_data) {
   df <- .protvis_as_data_frame(expression_data)
   id_col <- .protvis_find_column(
@@ -421,6 +440,9 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     ),
     metadata
   )
+  expression_data <- .protvis_normalise_dataset_missing_values(
+    expression_data, source = object_metadata$source
+  )
   object <- list(
     expression_data = expression_data,
     sample_info = sample_info,
@@ -527,7 +549,10 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
 #' @export
 protvis_expression_matrix <- function(object) {
   validate_protvis_dataset(object)
-  out <- object$expression_data
+  out <- .protvis_normalise_dataset_missing_values(
+    object$expression_data,
+    source = object$metadata$source %||% NULL
+  )
   ids <- rownames(out)
   out <- base::data.frame(ID = ids, out, check.names = FALSE,
                           stringsAsFactors = FALSE)

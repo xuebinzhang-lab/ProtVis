@@ -78,6 +78,17 @@ test_that("MaxQuant missing sentinel is kept as NA", {
   expect_equal(validated$expression_matrix$S1[[1]], 10)
 })
 
+test_that("ProtVis_dataset export also sanitizes legacy MaxQuant sentinel", {
+  object <- create_protvis_dataset(
+    data.frame(ID = c("P1", "P2"), S1 = c(1, -8), S2 = c(-8, 2),
+               check.names = FALSE),
+    metadata = list(source = "MaxQuant")
+  )
+  shown <- protvis_expression_matrix(object)
+  expect_true(is.na(shown$S1[[2]]))
+  expect_true(is.na(shown$S2[[1]]))
+})
+
 test_that("bundled software fixtures import and enter the pipeline", {
   manifest <- protvis_builtin_datasets()
   expect_gte(nrow(manifest), 8)

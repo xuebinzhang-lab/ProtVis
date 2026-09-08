@@ -203,10 +203,31 @@ data_imputation_server <- function(id, shared_state) {
       load_success = FALSE
     )
 
+    clean_missing_sentinels <- function(data) {
+      df <- base::as.data.frame(
+        data, stringsAsFactors = FALSE, check.names = FALSE
+      )
+      sample_cols <- base::setdiff(base::colnames(df), "ID")
+      for (column in sample_cols) {
+        values <- suppressWarnings(base::as.numeric(
+          base::as.character(df[[column]])
+        ))
+        df[[column]][!is.na(values) & values == -8] <- NA_real_
+      }
+      base::rownames(df) <- if ("ID" %in% base::colnames(df)) {
+        as.character(df$ID)
+      } else {
+        base::rownames(df)
+      }
+      df
+    }
+
     shiny::observeEvent(input$load_data, {
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         rv$sample_info <- shared_state$dataset$sample_info
-        rv$expression_matrix <- protvis_expression_matrix(shared_state$dataset)
+        rv$expression_matrix <- clean_missing_sentinels(
+          protvis_expression_matrix(shared_state$dataset)
+        )
         rv$load_success <- TRUE
         shiny::showNotification(
           "✅ ProtVis_dataset loaded successfully.", type = "message"
@@ -235,6 +256,9 @@ data_imputation_server <- function(id, shared_state) {
             e$transformed,
             stringsAsFactors = FALSE,
             check.names = FALSE
+          )
+          rv$expression_matrix <- clean_missing_sentinels(
+            rv$expression_matrix
           )
         } else {
           rv$expression_matrix <- NULL
@@ -286,6 +310,7 @@ data_imputation_server <- function(id, shared_state) {
         stringsAsFactors = FALSE,
         check.names = FALSE
       )
+      df <- clean_missing_sentinels(df)
 
       if ("ID" %in% base::colnames(df)) {
         ids <- df$ID
