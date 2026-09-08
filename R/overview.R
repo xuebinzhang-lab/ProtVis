@@ -120,7 +120,10 @@ overview_ui <- function(id) {
                 "Batch" = "batch",
                 "Condition" = "condition"
               ),
-              selected = "group"
+              selected = "tissue"
+            ),
+            shiny::helpText(
+              "Color and 95% confidence ellipses use tissue (Root/Shoot)."
             ),
             shiny::selectInput(
               ns("dr_shape_by"),
@@ -873,10 +876,20 @@ overview_server <- function(id, shared_state) {
         perplexity <- base::max(1, base::min(
           30, base::floor((base::nrow(t_data) - 1) / 3)
         ))
-        res <- base::as.data.frame(Rtsne::Rtsne(
-          t_data, perplexity = perplexity, check_duplicates = FALSE,
-          pca = FALSE, dims = 2
-        )$Y)
+        res <- tryCatch(
+          Rtsne::Rtsne(
+            t_data, perplexity = perplexity, check_duplicates = FALSE,
+            pca = FALSE, dims = 2
+          )$Y,
+          error = function(e) {
+            # Very small or nearly tied datasets can be invalid for tSNE.
+            # Return a deterministic PCA projection so the panel remains
+            # usable and the same cleaned input is still represented.
+            stats::prcomp(t_data, center = TRUE, scale. = TRUE)$x[, 1:2,
+                                                                    drop = FALSE]
+          }
+        )
+        res <- base::as.data.frame(res)
         base::colnames(res) <- c("V1", "V2")
         base::rownames(res) <- base::rownames(t_data)
         return(res)
@@ -907,7 +920,13 @@ overview_server <- function(id, shared_state) {
       }
 
       if (method == "NMDS") {
-        res <- base::as.data.frame(vegan::metaMDS(t_data, k = 2)[["points"]])
+        res <- tryCatch(
+          vegan::metaMDS(t_data, k = 2, trace = 0)[["points"]],
+          error = function(e) {
+            stats::cmdscale(stats::dist(t_data), k = 2)
+          }
+        )
+        res <- base::as.data.frame(res)
         base::colnames(res) <- c("V1", "V2")
         base::rownames(res) <- base::rownames(t_data)
         return(res)
