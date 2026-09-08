@@ -25,6 +25,23 @@ safe_numeric <- function(x) {
   suppressWarnings(as.numeric(gsub(",", "", as.character(x), fixed = TRUE)))
 }
 
+# MaxQuant exports sometimes use -8 as a missing-value sentinel.  It is not a
+# valid raw abundance and must not leak into the canonical object or the
+# "Original Data" view.  Restrict this conversion to MaxQuant so that valid
+# negative values in already transformed matrices from other sources remain
+# untouched.
+normalise_proteomics_missing_values <- function(expression_matrix, source = NULL) {
+  if (is.null(source) || !identical(tolower(as.character(source)), "maxquant")) {
+    return(expression_matrix)
+  }
+  sample_cols <- base::setdiff(base::names(expression_matrix), "ID")
+  for (column in sample_cols) {
+    values <- safe_numeric(expression_matrix[[column]])
+    expression_matrix[[column]][!is.na(values) & values == -8] <- NA_real_
+  }
+  expression_matrix
+}
+
 numeric_column_names <- function(df, exclude = character()) {
   candidates <- base::setdiff(base::names(df), exclude)
   candidates[vapply(df[candidates], function(x) {
@@ -98,7 +115,8 @@ build_expression_matrix <- function(df, id_col, abundance_cols, sample_names = N
   stats::aggregate(. ~ ID, data = expr, FUN = summarise_numeric_mean, na.action = na.pass)
 }
 
-validate_protvis_data <- function(expression_matrix, sample_info = NULL) {
+validate_protvis_data <- function(expression_matrix, sample_info = NULL,
+                                  source = NULL) {
   if (base::is.null(expression_matrix) || !base::is.data.frame(expression_matrix)) {
     stop("Expression matrix must be a data frame.", call. = FALSE)
   }
@@ -112,6 +130,9 @@ validate_protvis_data <- function(expression_matrix, sample_info = NULL) {
   for (sample_col in sample_cols) {
     expression_matrix[[sample_col]] <- safe_numeric(expression_matrix[[sample_col]])
   }
+  expression_matrix <- normalise_proteomics_missing_values(
+    expression_matrix, source = source
+  )
   expression_matrix <- expression_matrix[!base::is.na(expression_matrix$ID) & expression_matrix$ID != "", , drop = FALSE]
   if (base::nrow(expression_matrix) == 0) {
     stop("Expression matrix contains no valid protein IDs.", call. = FALSE)
@@ -235,7 +256,9 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
             input$sample_info$datapath, filename = input$sample_info$name
           )
         }
-        validated <- validate_protvis_data(parsed$expression_matrix, sample_info)
+        validated <- validate_protvis_data(
+          parsed$expression_matrix, sample_info, source = source_name
+        )
         parsed$expression_matrix <- validated$expression_matrix
         sample_info <- validated$sample_info
         rv$raw <- raw

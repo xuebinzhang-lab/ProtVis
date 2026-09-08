@@ -186,7 +186,8 @@ project_init_server <- function(id, shared_state) {
         shiny::req(shared_state$sample_info, shared_state$expression_matrix,
                    shared_state$data_source)
         validated <- validate_protvis_data(
-          shared_state$expression_matrix, shared_state$sample_info
+          shared_state$expression_matrix, shared_state$sample_info,
+          source = shared_state$data_source
         )
         sample_info <- validated$sample_info
         expression_matrix <- validated$expression_matrix

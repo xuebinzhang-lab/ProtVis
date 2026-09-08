@@ -65,6 +65,19 @@ test_that("MaxQuant built-in workbook is complete and filtered", {
   expect_true(file.exists(path))
 })
 
+test_that("MaxQuant missing sentinel is kept as NA", {
+  expression <- data.frame(
+    ID = c("P1", "P2"),
+    S1 = c(10, -8),
+    S2 = c(-8, 20),
+    check.names = FALSE
+  )
+  validated <- validate_protvis_data(expression, source = "MaxQuant")
+  expect_true(is.na(validated$expression_matrix$S1[[2]]))
+  expect_true(is.na(validated$expression_matrix$S2[[1]]))
+  expect_equal(validated$expression_matrix$S1[[1]], 10)
+})
+
 test_that("bundled software fixtures import and enter the pipeline", {
   manifest <- protvis_builtin_datasets()
   expect_gte(nrow(manifest), 8)

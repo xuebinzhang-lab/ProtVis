@@ -440,6 +440,9 @@ protvis_read_table <- function(path, filename = NULL, sheet = 1L) {
          call. = FALSE)
   }
   parsed <- .protvis_parse_table(filtered, "MaxQuant")
+  parsed$expression <- normalise_proteomics_missing_values(
+    parsed$expression, source = "MaxQuant"
+  )
   parsed$raw_rows <- nrow(data)
   parsed$removed_rows <- sum(!keep)
   parsed$removed_by_flag <- removed_by_flag
