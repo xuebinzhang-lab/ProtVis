@@ -171,39 +171,53 @@
     values <- as.character(values)
     lower <- tolower(values)
     explicit <- ifelse(
-      grepl("root|below[ ._-]*ground|underground", lower), "Below-ground",
+      grepl("root|below[ ._-]*ground|underground", lower), "Root",
       ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower),
-             "Above-ground", NA_character_)
+             "Shoot", NA_character_)
     )
-    # The bundled MaxQuant demo has no tissue column.  Its reporter channels
-    # are intentionally split into two tissue groups (1-3 above-ground,
-    # 4-5 below-ground) so the demo annotations remain reproducible.
+    # The bundled MaxQuant demo has no tissue column. Its reporter channels
+    # map to the built-in sample information used by the application.
     channel <- suppressWarnings(as.integer(sub("^([0-9]+)_.*$", "\\1", values)))
-    demo <- ifelse(!is.na(channel) & channel <= 3L, "Above-ground",
-                   ifelse(!is.na(channel) & channel >= 4L, "Below-ground", NA_character_))
+    demo <- ifelse(!is.na(channel) & channel <= 3L, "Root",
+                   ifelse(!is.na(channel) & channel >= 4L, "Shoot", NA_character_))
     explicit[is.na(explicit)] <- demo[is.na(explicit)]
     explicit
   }
   if (is.null(sample_info)) {
-    group <- ifelse(grepl("B73", samples, ignore.case = TRUE), "B73",
-                    ifelse(grepl("Y12", samples, ignore.case = TRUE),
-                           "Y12", "Unassigned"))
-    species <- ifelse(group == "B73", "Zea mays ssp. mays",
-                      ifelse(group == "Y12", "Zea mays ssp. mexicana",
-                             "All samples"))
-    tissue <- derive_tissue(samples)
-    tissue[is.na(tissue)] <- "All samples"
+    channel <- suppressWarnings(as.integer(sub("^([0-9]+)_.*$", "\\1", samples)))
+    genotype <- ifelse(grepl("B73", samples, ignore.case = TRUE), "B73",
+                       ifelse(grepl("Y12", samples, ignore.case = TRUE),
+                              "Y12", "Unassigned"))
+    tissue_name <- c("Root_VE", "Root_V2", "Root_V4", "Leaf_VE", "Leaf_V4")
+    built_in_tissue <- ifelse(
+      !is.na(channel) & channel >= 1L & channel <= length(tissue_name),
+      tissue_name[channel], NA_character_
+    )
     batch <- sub("^.*(TMT[0-9]+).*$", "\\1", samples,
                  ignore.case = TRUE)
     batch[batch == samples] <- NA_character_
+    replicate <- sub("^TMT", "", batch, ignore.case = TRUE)
+    replicate[is.na(batch)] <- ""
+    group <- ifelse(!is.na(built_in_tissue) & genotype != "Unassigned",
+                    paste(genotype, built_in_tissue, sep = "_"), genotype)
+    species <- ifelse(genotype == "B73", "Zea mays ssp. mays",
+                      ifelse(genotype == "Y12", "Zea mays ssp. mexicana",
+                             "All samples"))
+    tissue <- ifelse(is.na(built_in_tissue), derive_tissue(samples), built_in_tissue)
+    tissue[is.na(tissue)] <- "All samples"
+    sample_id <- ifelse(
+      !is.na(built_in_tissue) & genotype != "Unassigned",
+      paste(genotype, built_in_tissue, replicate, sep = "_"), samples
+    )
     return(data.frame(
-      sample_id = samples,
+      sample_id = sample_id,
       maxquant_id = samples,
       group = group,
       batch = batch,
       condition = rep(NA_character_, length(samples)),
       tissue = tissue,
-      tissue2 = tissue,
+      tissue2 = ifelse(grepl("Root", tissue), "Root",
+                       ifelse(grepl("Leaf|Shoot", tissue), "Shoot", tissue)),
       species = species,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -288,9 +302,8 @@
   if (length(tissue_columns) > 0L) {
     tissue_values <- as.character(result[[tissue_columns[[1L]]]])
     lower <- tolower(tissue_values)
-    tissue_values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Below-ground"
-    tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Above-ground"
-    result$tissue <- tissue_values
+    tissue_values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Root"
+    tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Shoot"
     result$tissue2 <- tissue_values
   }
   result

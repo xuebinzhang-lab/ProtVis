@@ -112,11 +112,11 @@ test_that("built-in-style sample names receive usable annotations", {
   )
   expect_true(all(c("group", "batch", "tissue", "species") %in%
                   names(object$sample_info)))
-  expect_equal(object$sample_info$group, c("B73", "Y12"))
+  expect_equal(object$sample_info$group, c("B73_Root_VE", "Y12_Root_V2"))
   expect_equal(object$sample_info$species,
                c("Zea mays ssp. mays", "Zea mays ssp. mexicana"))
   expect_equal(object$sample_info$tissue,
-               c("Above-ground", "Above-ground"))
+               c("Root", "Root"))
 })
 
 test_that("bundled software fixtures import and enter the pipeline", {

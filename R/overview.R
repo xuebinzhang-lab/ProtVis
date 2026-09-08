@@ -264,21 +264,30 @@ overview_server <- function(id, shared_state) {
       if (base::ncol(matrix) == 0L) return(matrix)
       for (j in base::seq_len(base::ncol(matrix))) {
         observed <- matrix[, j]
-        missing <- !is.finite(observed)
-        if (base::any(missing)) {
-          replacement <- if (base::any(!missing)) {
-            stats::median(observed[!missing])
-          } else {
-            0
-          }
-          observed[missing] <- replacement
-        }
         center <- if (base::any(is.finite(observed))) {
           stats::median(observed[is.finite(observed)])
         } else {
           0
         }
         matrix[, j] <- observed - center
+      }
+      matrix
+    }
+
+    impute_overview_matrix <- function(data) {
+      matrix <- base::as.matrix(data)
+      storage.mode(matrix) <- "numeric"
+      matrix[!is.finite(matrix)] <- NA_real_
+      for (j in base::seq_len(base::ncol(matrix))) {
+        missing <- is.na(matrix[, j])
+        if (base::any(missing)) {
+          replacement <- if (base::any(!missing)) {
+            stats::median(matrix[!missing, j])
+          } else {
+            0
+          }
+          matrix[missing, j] <- replacement
+        }
       }
       matrix
     }
@@ -298,10 +307,11 @@ overview_server <- function(id, shared_state) {
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         matrix <- base::as.matrix(shared_state$dataset$expression_data)
         storage.mode(matrix) <- "numeric"
-        matrix <- standardize_overview_matrix(matrix)
+        imputed_matrix <- impute_overview_matrix(matrix)
+        normalized_matrix <- standardize_overview_matrix(imputed_matrix)
         rv$sample_info <- shared_state$dataset$sample_info
-        rv$imputed_matrix <- matrix
-        rv$normalized_matrix <- matrix
+        rv$imputed_matrix <- imputed_matrix
+        rv$normalized_matrix <- normalized_matrix
         rv$cor_results <- NULL
         rv$exp_results <- NULL
         rv$load_success <- TRUE
@@ -532,17 +542,17 @@ overview_server <- function(id, shared_state) {
         rep(NA_character_, nrow(metadata_share))
       }
       tissue_lower <- tolower(tissue_values)
-      tissue_values[grepl("root|below[ ._-]*ground|underground", tissue_lower)] <- "Below-ground"
-      tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", tissue_lower)] <- "Above-ground"
+      tissue_values[grepl("root|below[ ._-]*ground|underground", tissue_lower)] <- "Root"
+      tissue_values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", tissue_lower)] <- "Shoot"
       sample_lower <- tolower(metadata_share$sample_id)
       fallback_tissue <- ifelse(
-        grepl("root|below[ ._-]*ground|underground", sample_lower), "Below-ground",
+        grepl("root|below[ ._-]*ground|underground", sample_lower), "Root",
         ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", sample_lower),
-               "Above-ground", NA_character_)
+               "Shoot", NA_character_)
       )
       channel <- suppressWarnings(as.integer(sub("^([0-9]+)_.*$", "\\1", metadata_share$sample_id)))
-      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel <= 3L] <- "Above-ground"
-      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel >= 4L] <- "Below-ground"
+      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel <= 3L] <- "Root"
+      fallback_tissue[is.na(fallback_tissue) & !is.na(channel) & channel >= 4L] <- "Shoot"
       tissue_values[is.na(tissue_values) | !nzchar(tissue_values) |
                       tissue_values == "NA" | tissue_values == "All samples"] <-
         fallback_tissue[is.na(tissue_values) | !nzchar(tissue_values) |
@@ -564,7 +574,7 @@ overview_server <- function(id, shared_state) {
         Tissue = base::as.matrix(metadata_share["tissue2"]),
         Species = base::as.matrix(metadata_share["species"]),
         col = base::list(
-          Tissue = c("Above-ground" = "#65a30d", "Below-ground" = "#c2410c",
+          Tissue = c("Shoot" = "#65a30d", "Root" = "#c2410c",
                      "Leaf" = "#65a30d", "Pulvinus" = "#a16207",
                      "Root" = "#c2410c", "Stem" = "#166534",
                      "Shoot.tip" = "#2563eb", "All samples" = "#94a3b8"),
@@ -952,14 +962,19 @@ overview_server <- function(id, shared_state) {
         if (!column %in% names(info)) {
           return(rep(NA_character_, length(sample_names)))
         }
-        as.character(info[[column]])[match(sample_names, info$sample_id)]
+        index <- match(sample_names, info$sample_id)
+        if ("maxquant_id" %in% names(info)) {
+          fallback_index <- match(sample_names, info$maxquant_id)
+          index[is.na(index)] <- fallback_index[is.na(index)]
+        }
+        as.character(info[[column]])[index]
       }
 
       normalise_tissue <- function(values) {
         values <- as.character(values)
         lower <- tolower(values)
-        values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Below-ground"
-        values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Above-ground"
+        values[grepl("root|below[ ._-]*ground|underground", lower)] <- "Root"
+        values[grepl("leaf|shoot|stem|above[ ._-]*ground|aerial", lower)] <- "Shoot"
         values
       }
 
@@ -973,9 +988,9 @@ overview_server <- function(id, shared_state) {
                             function(value) value[[1L]], character(1))
       fallback_group <- ifelse(
         grepl("root|below[ ._-]*ground|underground", tolower(sample_names)),
-        "Below-ground",
+        "Root",
         ifelse(grepl("leaf|shoot|stem|above[ ._-]*ground|aerial",
-                     tolower(sample_names)), "Above-ground", sample_type)
+                     tolower(sample_names)), "Shoot", sample_type)
       )
       group_values[is.na(group_values) | !nzchar(group_values)] <-
         fallback_group[is.na(group_values) | !nzchar(group_values)]
