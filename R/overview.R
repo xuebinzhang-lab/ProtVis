@@ -128,37 +128,37 @@ overview_ui <- function(id) {
       bslib::page_fluid(
         bslib::layout_column_wrap(
           width = 1/2,
-          height = 750,
+          gap = "1rem",
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Correlation"),
             bslib::card_body(
-              shiny::plotOutput(ns("cor_res"))
+              shiny::plotOutput(ns("cor_res"), height = "430px")
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Expression pattern"),
             bslib::card_body(
-              shiny::plotOutput(ns("expression_pattern"))
+              shiny::plotOutput(ns("expression_pattern"), height = "430px")
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Dimensionality reduction analyse before normalization"),
             bslib::card_body(
-              shiny::plotOutput(ns("DR_BeforeNormalization"))
+              shiny::plotOutput(ns("DR_BeforeNormalization"), height = "430px")
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Dimensionality reduction analyse after normalization"),
             bslib::card_body(
-              shiny::plotOutput(ns("DR_AfterNormalization"))
+              shiny::plotOutput(ns("DR_AfterNormalization"), height = "430px")
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Proteomics QC summary"),
             bslib::card_body(
               shiny::verbatimTextOutput(ns("qc_summary")),
@@ -166,20 +166,20 @@ overview_ui <- function(id) {
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Proteomics missing values and distributions"),
             bslib::card_body(
-              shiny::plotOutput(ns("qc_missing_rate_plot"), height = "250px"),
-              shiny::plotOutput(ns("qc_boxplot"), height = "250px"),
-              shiny::plotOutput(ns("qc_density_plot"), height = "250px")
+              shiny::plotOutput(ns("qc_missing_rate_plot"), height = "180px"),
+              shiny::plotOutput(ns("qc_boxplot"), height = "180px"),
+              shiny::plotOutput(ns("qc_density_plot"), height = "180px")
             )
           ),
           bslib::card(
-            height = "800px",
+            height = "520px",
             bslib::card_header("Proteomics PCA and CV"),
             bslib::card_body(
-              shiny::plotOutput(ns("qc_pca_plot"), height = "300px"),
-              shiny::plotOutput(ns("qc_cv_plot"), height = "250px")
+              shiny::plotOutput(ns("qc_pca_plot"), height = "220px"),
+              shiny::plotOutput(ns("qc_cv_plot"), height = "180px")
             )
           )
         )
@@ -228,6 +228,22 @@ overview_server <- function(id, shared_state) {
     )
 
     shiny::observeEvent(input$load_data, {
+      # ProtVis_dataset is the canonical source for current projects.  The
+      # Step5/Step6 files below are retained only for legacy projects.
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        matrix <- base::as.matrix(shared_state$dataset$expression_data)
+        storage.mode(matrix) <- "numeric"
+        rv$sample_info <- shared_state$dataset$sample_info
+        rv$imputed_matrix <- matrix
+        rv$normalized_matrix <- matrix
+        rv$cor_results <- NULL
+        rv$exp_results <- NULL
+        rv$load_success <- TRUE
+        shiny::showNotification(
+          "✅ ProtVis_dataset loaded successfully.", type = "message"
+        )
+        return(invisible(NULL))
+      }
       shiny::req(shared_state$workdir)
 
       step5_path <- base::file.path(shared_state$workdir, "Step5_data_imputation.rda")
@@ -399,44 +415,51 @@ overview_server <- function(id, shared_state) {
       })
     })
 
+    make_metadata_annotation <- function(matrix) {
+      metadata_share <- dplyr::left_join(
+        base::data.frame(sample_id = base::colnames(matrix)),
+        rv$sample_info,
+        by = "sample_id"
+      )
+      metadata_share$tissue2 <- if ("tissue" %in% names(metadata_share)) {
+        sub("_.*$", "", as.character(metadata_share$tissue))
+      } else {
+        "All samples"
+      }
+      metadata_share$species <- if ("species" %in% names(metadata_share)) {
+        as.character(metadata_share$species)
+      } else {
+        "All samples"
+      }
+      metadata_share$tissue2[is.na(metadata_share$tissue2) |
+                               !nzchar(metadata_share$tissue2)] <- "All samples"
+      metadata_share$species[is.na(metadata_share$species) |
+                               !nzchar(metadata_share$species)] <- "All samples"
+      ComplexHeatmap::rowAnnotation(
+        Tissue = base::as.matrix(metadata_share["tissue2"]),
+        Species = base::as.matrix(metadata_share["species"]),
+        col = base::list(
+          Tissue = c("Leaf" = "#65a30d", "Pulvinus" = "#a16207",
+                     "Root" = "#c2410c", "Stem" = "#166534",
+                     "Shoot.tip" = "#2563eb", "All samples" = "#94a3b8"),
+          Species = c("Zea mays ssp. mays" = "#f59e0b",
+                      "Zea mays ssp. mexicana" = "#84cc16",
+                      "All samples" = "#94a3b8")
+        ),
+        annotation_name_gp = grid::gpar(fontsize = 7),
+        annotation_legend_param = base::list(
+          title_gp = grid::gpar(fontsize = 7),
+          labels_gp = grid::gpar(fontsize = 6)
+        )
+      )
+    }
+
     cor_heatmap <- shiny::reactive({
       shiny::req(isTRUE(rv$load_success))
       shiny::req(!base::is.null(rv$cor_results))
       shiny::req(!base::is.null(rv$sample_info))
 
-      metadata_share <- dplyr::left_join(
-        base::data.frame(sample_id = base::colnames(rv$normalized_matrix)),
-        rv$sample_info,
-        by = "sample_id"
-      )
-
-      metadata_share <- dplyr::mutate(
-        metadata_share,
-        tissue2 = stringr::str_split(tissue, "_", 2, simplify = TRUE)[, 1]
-      )
-
-      ha <- ComplexHeatmap::rowAnnotation(
-        Tissue = base::as.matrix(dplyr::select(metadata_share, tissue2)),
-        Species = base::as.matrix(dplyr::select(metadata_share, species)),
-        col = base::list(
-          Tissue = c(
-            "Leaf" = "green",
-            "Pulvinus" = "brown",
-            "Root" = "tan",
-            "Stem" = "darkgreen",
-            "Shoot.tip" = "blue"
-          ),
-          Species = c(
-            "Zea mays ssp. mays" = "orange",
-            "Zea mays ssp. mexicana" = "lightgreen"
-          )
-        ),
-        annotation_name_gp = grid::gpar(fontsize = 6),
-        annotation_legend_param = base::list(
-          title_gp = grid::gpar(fontsize = 6),
-          labels_gp = grid::gpar(fontsize = 6)
-        )
-      )
+      ha <- make_metadata_annotation(rv$normalized_matrix)
 
       min_break <- input$cor_color_min
       max_break <- input$cor_color_max
@@ -481,9 +504,15 @@ overview_server <- function(id, shared_state) {
         shiny::need(!base::is.null(rv$cor_results), "")
       )
 
-      ht <- cor_heatmap()
-      shiny::req(!base::is.null(ht))
-      ComplexHeatmap::draw(ht)
+      tryCatch({
+        ht <- cor_heatmap()
+        shiny::req(!base::is.null(ht))
+        ComplexHeatmap::draw(ht)
+      }, error = function(e) {
+        graphics::plot.new()
+        graphics::text(0.5, 0.5, paste("Correlation unavailable:",
+                                       conditionMessage(e)), cex = 0.9)
+      })
     })
 
     output$cor_download_pdf <- shiny::downloadHandler(
@@ -530,39 +559,7 @@ overview_server <- function(id, shared_state) {
       shiny::req(!base::is.null(rv$exp_results))
       shiny::req(!base::is.null(rv$sample_info))
 
-      metadata_share <- dplyr::left_join(
-        base::data.frame(sample_id = base::colnames(rv$normalized_matrix)),
-        rv$sample_info,
-        by = "sample_id"
-      )
-
-      metadata_share <- dplyr::mutate(
-        metadata_share,
-        tissue2 = stringr::str_split(tissue, "_", 2, simplify = TRUE)[, 1]
-      )
-
-      ha <- ComplexHeatmap::rowAnnotation(
-        Tissue = base::as.matrix(dplyr::select(metadata_share, tissue2)),
-        Species = base::as.matrix(dplyr::select(metadata_share, species)),
-        col = base::list(
-          Tissue = c(
-            "Leaf" = "green",
-            "Pulvinus" = "brown",
-            "Root" = "tan",
-            "Stem" = "darkgreen",
-            "Shoot.tip" = "blue"
-          ),
-          Species = c(
-            "Zea mays ssp. mays" = "orange",
-            "Zea mays ssp. mexicana" = "lightgreen"
-          )
-        ),
-        annotation_name_gp = grid::gpar(fontsize = 6),
-        annotation_legend_param = base::list(
-          title_gp = grid::gpar(fontsize = 6),
-          labels_gp = grid::gpar(fontsize = 6)
-        )
-      )
+      ha <- make_metadata_annotation(rv$normalized_matrix)
 
       min_break <- input$exp_color_min
       max_break <- input$exp_color_max
@@ -599,9 +596,15 @@ overview_server <- function(id, shared_state) {
         shiny::need(!base::is.null(rv$exp_results), "")
       )
 
-      ht <- exp_heatmap()
-      shiny::req(!base::is.null(ht))
-      ComplexHeatmap::draw(ht)
+      tryCatch({
+        ht <- exp_heatmap()
+        shiny::req(!base::is.null(ht))
+        ComplexHeatmap::draw(ht)
+      }, error = function(e) {
+        graphics::plot.new()
+        graphics::text(0.5, 0.5, paste("Expression pattern unavailable:",
+                                       conditionMessage(e)), cex = 0.9)
+      })
     })
 
     output$exp_download_pdf <- shiny::downloadHandler(
@@ -905,12 +908,36 @@ overview_server <- function(id, shared_state) {
       cat("Median sample intensity range:", base::paste(base::round(base::range(apply(mat, 2, stats::median, na.rm = TRUE)), 4), collapse = " - "), "\n")
     })
 
-    output$qc_sample_total_plot <- shiny::renderPlot(print(qc_sample_total_plot()))
-    output$qc_missing_rate_plot <- shiny::renderPlot(print(qc_missing_rate_plot()))
-    output$qc_boxplot <- shiny::renderPlot(print(qc_boxplot()))
-    output$qc_density_plot <- shiny::renderPlot(print(qc_density_plot()))
-    output$qc_pca_plot <- shiny::renderPlot(print(qc_pca_plot()))
-    output$qc_cv_plot <- shiny::renderPlot(print(qc_cv_plot()))
+    safe_qc_plot <- function(plot_function) {
+      tryCatch({
+        print(plot_function())
+      }, error = function(e) {
+        graphics::plot.new()
+        graphics::text(
+          0.5, 0.5, paste("QC plot unavailable:", conditionMessage(e)),
+          cex = 0.85
+        )
+      })
+    }
+
+    output$qc_sample_total_plot <- shiny::renderPlot(
+      safe_qc_plot(qc_sample_total_plot), height = 280
+    )
+    output$qc_missing_rate_plot <- shiny::renderPlot(
+      safe_qc_plot(qc_missing_rate_plot), height = 180
+    )
+    output$qc_boxplot <- shiny::renderPlot(
+      safe_qc_plot(qc_boxplot), height = 180
+    )
+    output$qc_density_plot <- shiny::renderPlot(
+      safe_qc_plot(qc_density_plot), height = 180
+    )
+    output$qc_pca_plot <- shiny::renderPlot(
+      safe_qc_plot(qc_pca_plot), height = 220
+    )
+    output$qc_cv_plot <- shiny::renderPlot(
+      safe_qc_plot(qc_cv_plot), height = 180
+    )
 
     output$qc_download_pdf <- shiny::downloadHandler(
       filename = function() {
