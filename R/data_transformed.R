@@ -191,6 +191,7 @@ data_transformed_server <- function(id, shared_state) {
     rv <- shiny::reactiveValues(
       correct_noise_result = NULL,
       sample_info = NULL,
+      protein_ids = NULL,
       load_success = FALSE,
       transformed = NULL,
       transformation_done = FALSE
@@ -265,16 +266,20 @@ data_transformed_server <- function(id, shared_state) {
         # explicitly and safely at this boundary.
         ids <- base::as.character(mat[["ID"]])
         mat[["ID"]] <- NULL
-        base::rownames(mat) <- ids
+        rv$protein_ids <- ids
+      } else {
+        rv$protein_ids <- base::rownames(mat)
       }
 
       mat <- as.data.frame(mat, check.names = FALSE)
+      base::rownames(mat) <- NULL
 
       num_df <- base::as.data.frame(
         lapply(mat, function(x) base::as.numeric(as.character(x))),
         check.names = FALSE,
-        row.names = base::rownames(mat)
+        stringsAsFactors = FALSE
       )
+      base::rownames(num_df) <- NULL
 
       num_df
     })
@@ -282,7 +287,8 @@ data_transformed_server <- function(id, shared_state) {
     original_matrix_show <- shiny::reactive({
       shiny::req(original_matrix_numeric())
       mat <- original_matrix_numeric()
-      result <- base::data.frame(ID = base::rownames(mat), mat,
+      ids <- rv$protein_ids %||% base::seq_len(base::nrow(mat))
+      result <- base::data.frame(ID = ids, mat,
                                  check.names = FALSE,
                                  stringsAsFactors = FALSE)
       base::rownames(result) <- NULL
@@ -311,8 +317,9 @@ data_transformed_server <- function(id, shared_state) {
       rv$transformed <- as.data.frame(
         rv$transformed,
         check.names = FALSE,
-        row.names = base::rownames(df_mat)
+        stringsAsFactors = FALSE
       )
+      base::rownames(rv$transformed) <- NULL
 
       rv$transformation_done <- TRUE
 
@@ -333,7 +340,8 @@ data_transformed_server <- function(id, shared_state) {
       show_df <- if (!base::is.null(rv$transformed)) {
         transformed <- base::as.data.frame(rv$transformed, check.names = FALSE,
                                            stringsAsFactors = FALSE)
-        result <- base::data.frame(ID = base::rownames(transformed), transformed,
+        ids <- rv$protein_ids %||% base::seq_len(base::nrow(transformed))
+        result <- base::data.frame(ID = ids, transformed,
                                    check.names = FALSE,
                                    stringsAsFactors = FALSE)
         base::rownames(result) <- NULL
