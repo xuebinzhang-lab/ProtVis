@@ -247,6 +247,20 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$load_data, {
+      # The ProtVis_dataset is the primary source. The legacy RDA path below
+      # remains only for projects created by older releases.
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$sample_info <- shared_state$dataset$sample_info
+        shared_state$expression_matrix_filtered <- protvis_expression_matrix(
+          shared_state$dataset
+        )
+        shared_state$rename_result <- NULL
+        shared_state$correct_noise_result <- NULL
+        rv$load_success <- TRUE
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 100)
+        shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
+        return(invisible(NULL))
+      }
       shiny::req(shared_state$workdir)
 
       shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)

@@ -188,6 +188,17 @@ data_transformed_server <- function(id, shared_state) {
     )
 
     shiny::observeEvent(input$load_data, {
+      # Use the canonical in-memory dataset first. The RDA branch is retained
+      # only as a compatibility path for projects created before ProtVis_dataset.
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        rv$sample_info <- shared_state$dataset$sample_info
+        rv$correct_noise_result <- protvis_expression_matrix(shared_state$dataset)
+        rv$transformed <- NULL
+        rv$transformation_done <- FALSE
+        rv$load_success <- TRUE
+        shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
+        return(invisible(NULL))
+      }
       shiny::req(shared_state$workdir)
 
       rda_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
