@@ -576,7 +576,7 @@ overview_server <- function(id, shared_state) {
         col = base::list(
           Tissue = c("Shoot" = "#65a30d", "Root" = "#c2410c",
                      "Leaf" = "#65a30d", "Pulvinus" = "#a16207",
-                     "Root" = "#c2410c", "Stem" = "#166534",
+                     "Stem" = "#166534",
                      "Shoot.tip" = "#2563eb", "All samples" = "#94a3b8"),
           Species = c("Zea mays ssp. mays" = "#f59e0b",
                       "Zea mays ssp. mexicana" = "#84cc16",
