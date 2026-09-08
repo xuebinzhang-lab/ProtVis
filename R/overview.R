@@ -43,6 +43,10 @@ overview_ui <- function(id) {
             ),
             shiny::numericInput(ns("cor_color_min"), "Set Min Value", value = -1, step = 0.1),
             shiny::numericInput(ns("cor_color_max"), "Set Max Value", value = 1, step = 0.1),
+            shiny::checkboxInput(ns("cor_cluster_rows"), "Cluster rows", TRUE),
+            shiny::checkboxInput(ns("cor_cluster_columns"), "Cluster columns", TRUE),
+            shiny::checkboxInput(ns("cor_show_numbers"), "Show correlation values", TRUE),
+            shiny::checkboxInput(ns("cor_show_column_names"), "Show sample names", FALSE),
             shiny::actionButton(ns("run_correlation"), "Run Correlation"),
             shiny::numericInput(ns("cor_plot_width"), "Download Plot Width (inches)", value = 10),
             shiny::numericInput(ns("cor_plot_height"), "Download Plot Height (inches)", value = 7),
@@ -64,6 +68,17 @@ overview_ui <- function(id) {
               label = "Scale Data",
               value = TRUE
             ),
+            shiny::selectInput(
+              ns("exp_scale_method"),
+              "Scaling direction",
+              choices = c("By protein (row)" = "row",
+                          "By sample (column)" = "column",
+                          "No scaling" = "none"),
+              selected = "row"
+            ),
+            shiny::checkboxInput(ns("exp_cluster_rows"), "Cluster samples", TRUE),
+            shiny::checkboxInput(ns("exp_cluster_columns"), "Cluster proteins", TRUE),
+            shiny::checkboxInput(ns("exp_show_feature_names"), "Show protein names", FALSE),
             colourpicker::colourInput(
               ns("exp_high_color"),
               "High Color",
@@ -406,11 +421,37 @@ overview_server <- function(id, shared_state) {
       shiny::req(rv$normalized_matrix)
 
       shiny::withProgress(message = "Calculating correlations...", value = 0.5, {
-        rv$cor_results <- stats::cor(
-          rv$normalized_matrix,
-          method = base::tolower(input$cor_method),
-          use = "pairwise.complete.obs"
+        matrix <- base::as.matrix(rv$normalized_matrix)
+        storage.mode(matrix) <- "numeric"
+        if (base::ncol(matrix) < 2L) {
+          shiny::showNotification(
+            "At least two samples are required for correlation analysis.",
+            type = "error"
+          )
+          rv$cor_results <- NULL
+          return()
+        }
+        result <- tryCatch(
+          stats::cor(
+            matrix,
+            method = base::tolower(input$cor_method),
+            use = "pairwise.complete.obs"
+          ),
+          error = function(e) {
+            shiny::showNotification(
+              paste("Correlation failed:", conditionMessage(e)),
+              type = "error"
+            )
+            NULL
+          }
         )
+        if (!base::is.null(result)) {
+          # Constant or entirely missing samples have undefined correlation.
+          # Preserve that information in the result; the heatmap converts it
+          # to a neutral display value without modifying the dataset.
+          diag(result) <- 1
+        }
+        rv$cor_results <- result
         shiny::incProgress(1, detail = "Done")
       })
     })
@@ -463,15 +504,24 @@ overview_server <- function(id, shared_state) {
 
       min_break <- input$cor_color_min
       max_break <- input$cor_color_max
+      shiny::validate(shiny::need(
+        is.finite(min_break) && is.finite(max_break) && min_break < max_break,
+        "Correlation color limits must be finite and min < max."
+      ))
       mid_break <- (min_break + max_break) / 2
+      heatmap_matrix <- rv$cor_results
+      heatmap_matrix[!is.finite(heatmap_matrix)] <- 0
 
       ComplexHeatmap::Heatmap(
-        rv$cor_results,
+        heatmap_matrix,
         right_annotation = ha,
+        cluster_rows = isTRUE(input$cor_cluster_rows),
+        cluster_columns = isTRUE(input$cor_cluster_columns),
         show_row_names = TRUE,
-        show_column_names = FALSE,
+        show_column_names = isTRUE(input$cor_show_column_names),
         row_names_gp = grid::gpar(fontsize = 6),
         border = "black",
+        na_col = "#d1d5db",
         name = "r",
         col = circlize::colorRamp2(
           breaks = c(min_break, mid_break, max_break),
@@ -485,14 +535,18 @@ overview_server <- function(id, shared_state) {
           title_gp = grid::gpar(fontsize = 6),
           labels_gp = grid::gpar(fontsize = 6)
         ),
-        cell_fun = function(j, i, x, y, width, height, fill) {
+        cell_fun = if (isTRUE(input$cor_show_numbers)) function(j, i, x, y, width, height, fill) {
           grid::grid.text(
-            label = base::round(rv$cor_results[i, j], 2),
+            label = if (is.finite(rv$cor_results[i, j])) {
+              base::round(rv$cor_results[i, j], 2)
+            } else {
+              "NA"
+            },
             x = x,
             y = y,
             gp = grid::gpar(fontsize = 6, col = "white")
           )
-        }
+        } else NULL
       )
     })
 
@@ -538,18 +592,27 @@ overview_server <- function(id, shared_state) {
 
       shiny::withProgress(message = "Analyzing expression patterns...", value = 0.5, {
         mat <- rv$normalized_matrix
-        row_vars <- matrixStats::rowVars(base::as.matrix(mat))
+        mat <- base::as.matrix(mat)
+        storage.mode(mat) <- "numeric"
+        row_vars <- matrixStats::rowVars(mat, na.rm = TRUE)
+        row_vars[!is.finite(row_vars)] <- -Inf
 
         top_n <- base::min(input$exp_top_n, base::nrow(mat))
         top_idx <- base::order(row_vars, decreasing = TRUE)[base::seq_len(top_n)]
         mat <- mat[top_idx, , drop = FALSE]
 
-        if (isTRUE(input$exp_scale)) {
-          mat <- base::t(scale(base::t(mat)))
-          mat <- base::as.data.frame(mat, stringsAsFactors = FALSE)
+        if (isTRUE(input$exp_scale) && input$exp_scale_method != "none") {
+          if (identical(input$exp_scale_method, "column")) {
+            mat <- base::scale(mat)
+          } else {
+            mat <- base::t(base::scale(base::t(mat)))
+          }
+          mat[!is.finite(mat)] <- NA_real_
         }
 
-        rv$exp_results <- mat
+        rv$exp_results <- base::as.data.frame(
+          mat, stringsAsFactors = FALSE, check.names = FALSE
+        )
         shiny::incProgress(1, detail = "Done")
       })
     })
@@ -563,15 +626,22 @@ overview_server <- function(id, shared_state) {
 
       min_break <- input$exp_color_min
       max_break <- input$exp_color_max
+      shiny::validate(shiny::need(
+        is.finite(min_break) && is.finite(max_break) && min_break < max_break,
+        "Expression color limits must be finite and min < max."
+      ))
       mid_break <- (min_break + max_break) / 2
 
       ComplexHeatmap::Heatmap(
         base::t(base::as.matrix(rv$exp_results)),
         right_annotation = ha,
+        cluster_rows = isTRUE(input$exp_cluster_rows),
+        cluster_columns = isTRUE(input$exp_cluster_columns),
         show_row_names = TRUE,
-        show_column_names = FALSE,
+        show_column_names = isTRUE(input$exp_show_feature_names),
         row_names_gp = grid::gpar(fontsize = 6),
         border = "black",
+        na_col = "#d1d5db",
         name = ifelse(isTRUE(input$exp_scale), "Z-score", "Intensity"),
         col = circlize::colorRamp2(
           breaks = c(min_break, mid_break, max_break),
@@ -630,12 +700,50 @@ overview_server <- function(id, shared_state) {
       after = NULL
     )
 
+    prepare_DR_matrix <- function(data) {
+      matrix <- base::as.matrix(data)
+      storage.mode(matrix) <- "numeric"
+      matrix[!is.finite(matrix)] <- NA_real_
+
+      # Missing values are not written back to ProtVis_dataset.  They are
+      # replaced only in this temporary matrix because distance-based methods
+      # cannot operate on NA/Inf values.
+      observed <- base::rowSums(!is.na(matrix))
+      matrix <- matrix[observed > 0, , drop = FALSE]
+      if (base::nrow(matrix) == 0L) {
+        stop("Dimensionality reduction requires at least one observed feature.",
+             call. = FALSE)
+      }
+      for (i in base::seq_len(base::nrow(matrix))) {
+        missing <- is.na(matrix[i, ])
+        if (base::any(missing)) {
+          replacement <- stats::median(matrix[i, !missing], na.rm = TRUE)
+          if (!is.finite(replacement)) replacement <- 0
+          matrix[i, missing] <- replacement
+        }
+      }
+      variation <- apply(matrix, 1, stats::sd)
+      matrix <- matrix[is.finite(variation) & variation > 0, , drop = FALSE]
+      if (base::nrow(matrix) == 0L) {
+        stop("Dimensionality reduction requires variable features.",
+             call. = FALSE)
+      }
+      base::t(matrix)
+    }
+
     perform_DR <- function(data, method) {
-      t_data <- base::t(base::as.matrix(data))
+      t_data <- prepare_DR_matrix(data)
+      if (base::nrow(t_data) < 3L) {
+        stop("At least three samples are required for a 2D reduction plot.",
+             call. = FALSE)
+      }
 
       if (method == "PCA") {
-        res <- base::as.data.frame(stats::prcomp(t_data)$x[, 1:2, drop = FALSE])
+        res <- base::as.data.frame(stats::prcomp(
+          t_data, center = TRUE, scale. = TRUE
+        )$x[, 1:2, drop = FALSE])
         base::colnames(res) <- c("V1", "V2")
+        base::rownames(res) <- base::rownames(t_data)
         return(res)
       }
 
@@ -647,14 +755,27 @@ overview_server <- function(id, shared_state) {
       }
 
       if (method == "tSNE") {
-        res <- base::as.data.frame(Rtsne::Rtsne(t_data, perplexity = 5)$Y)
+        perplexity <- base::max(1, base::min(
+          30, base::floor((base::nrow(t_data) - 1) / 3)
+        ))
+        res <- base::as.data.frame(Rtsne::Rtsne(
+          t_data, perplexity = perplexity, check_duplicates = FALSE,
+          pca = FALSE, dims = 2
+        )$Y)
         base::colnames(res) <- c("V1", "V2")
         base::rownames(res) <- base::rownames(t_data)
         return(res)
       }
 
       if (method == "UMAP") {
-        res <- base::as.data.frame(umap::umap(t_data)$layout[, 1:2, drop = FALSE])
+        config <- umap::umap.defaults
+        config$n_neighbors <- base::min(
+          config$n_neighbors, base::nrow(t_data) - 1L
+        )
+        config$n_components <- 2L
+        res <- base::as.data.frame(umap::umap(t_data, config = config)$layout[
+          , 1:2, drop = FALSE
+        ])
         base::colnames(res) <- c("V1", "V2")
         base::rownames(res) <- base::rownames(t_data)
         return(res)
@@ -670,53 +791,84 @@ overview_server <- function(id, shared_state) {
     }
 
     shiny::observeEvent(input$DR_analyse, {
-      shiny::req(rv$sample_info)
+      if (!isTRUE(rv$load_success)) {
+        shiny::showNotification("Load data before dimensionality reduction.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+
+      run_safe <- function(data, label) {
+        if (base::is.null(data)) return(NULL)
+        tryCatch(
+          perform_DR(data, input$dimReductionMethod),
+          error = function(e) {
+            shiny::showNotification(
+              paste(label, "reduction failed:", conditionMessage(e)),
+              type = "error", duration = 8
+            )
+            NULL
+          }
+        )
+      }
 
       shiny::withProgress(message = "Running dimensionality reduction...", value = 0.5, {
-        if (!base::is.null(rv$imputed_matrix)) {
-          DR_results$before <- perform_DR(rv$imputed_matrix, input$dimReductionMethod)
-          shiny::incProgress(0.3, detail = "Finished pre-normalization")
-        }
-
-        if (!base::is.null(rv$normalized_matrix)) {
-          DR_results$after <- perform_DR(rv$normalized_matrix, input$dimReductionMethod)
-          shiny::incProgress(0.2, detail = "Finished post-normalization")
-        }
+        DR_results$before <- run_safe(rv$imputed_matrix, "Before-normalization")
+        shiny::incProgress(0.4, detail = "Finished pre-normalization")
+        DR_results$after <- run_safe(rv$normalized_matrix, "After-normalization")
+        shiny::incProgress(0.6, detail = "Finished post-normalization")
       })
     })
 
     plot_DR_results <- function(dr_data, title_suffix) {
       df <- base::as.data.frame(dr_data)
+      sample_names <- base::rownames(df)
+      if (is.null(sample_names)) sample_names <- paste0("Sample_", base::seq_len(nrow(df)))
 
       df <- dplyr::mutate(
         df,
-        SampleType = stringr::str_split(base::rownames(df), "_", 2, simplify = TRUE)[, 1],
-        Type = stringr::str_remove_all(base::rownames(df), "^....|..$"),
+        Sample = sample_names,
+        SampleType = vapply(base::strsplit(sample_names, "_", fixed = TRUE),
+                            function(value) value[[1L]], character(1)),
+        Type = dplyr::if_else(
+          !is.null(rv$sample_info$group) &&
+            sample_names %in% rv$sample_info$sample_id,
+          as.character(rv$sample_info$group)[match(sample_names,
+                                                   rv$sample_info$sample_id)],
+          stringr::str_remove_all(sample_names, "^....|..$")
+        ),
         Species = dplyr::case_when(
           SampleType == "B73" ~ "Zea mays ssp. mays",
           TRUE ~ "Zea mays ssp. mexicana"
         )
       )
 
-      ggplot2::ggplot(df) +
+      ellipse_df <- df |>
+        dplyr::filter(is.finite(V1), is.finite(V2)) |>
+        dplyr::group_by(Type) |>
+        dplyr::filter(dplyr::n() >= 3L,
+                      stats::sd(V1) > 0, stats::sd(V2) > 0) |>
+        dplyr::ungroup()
+
+      plot <- ggplot2::ggplot(df) +
         ggplot2::geom_point(
           ggplot2::aes(x = V1, y = V2, color = Type, shape = Species),
           size = 1.2,
           alpha = 0.8
-        ) +
-        ggplot2::stat_ellipse(
-          ggplot2::aes(x = V1, y = V2, fill = Type),
-          geom = "polygon",
-          level = 0.95,
-          alpha = 0.25
-        ) +
-        ggplot2::stat_ellipse(
-          ggplot2::aes(x = V1, y = V2, color = Type),
-          geom = "path",
-          level = 0.95,
-          alpha = 1,
-          linewidth = 0.5
-        ) +
+        )
+      if (nrow(ellipse_df) > 0L) {
+        plot <- plot +
+          ggplot2::stat_ellipse(
+            data = ellipse_df,
+            ggplot2::aes(x = V1, y = V2, fill = Type),
+            geom = "polygon", level = 0.95, alpha = 0.25
+          ) +
+          ggplot2::stat_ellipse(
+            data = ellipse_df,
+            ggplot2::aes(x = V1, y = V2, color = Type),
+            geom = "path", level = 0.95, alpha = 1, linewidth = 0.5
+          )
+      }
+      plot +
         ggsci::scale_color_lancet() +
         ggsci::scale_fill_lancet() +
         ggplot2::labs(
@@ -804,11 +956,12 @@ overview_server <- function(id, shared_state) {
 
     qc_long_intensity <- shiny::reactive({
       mat <- qc_matrix()
-      base::data.frame(
+      long <- base::data.frame(
         Sample = rep(base::colnames(mat), each = base::nrow(mat)),
         Intensity = as.vector(mat),
         stringsAsFactors = FALSE
       )
+      long[is.finite(long$Intensity), , drop = FALSE]
     })
 
     qc_sample_total_plot <- shiny::reactive({
@@ -841,7 +994,8 @@ overview_server <- function(id, shared_state) {
 
     qc_boxplot <- shiny::reactive({
       ggplot2::ggplot(qc_long_intensity(), ggplot2::aes(x = Sample, y = Intensity)) +
-        ggplot2::geom_boxplot(fill = "#38bdf8", outlier.size = 0.6) +
+        ggplot2::geom_boxplot(fill = "#38bdf8", outlier.size = 0.6,
+                              na.rm = TRUE) +
         ggplot2::theme_minimal(base_size = 13) +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
         ggplot2::labs(title = "Normalized intensity distribution", x = NULL, y = "Intensity")
