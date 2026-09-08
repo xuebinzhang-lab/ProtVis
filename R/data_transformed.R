@@ -260,7 +260,12 @@ data_transformed_server <- function(id, shared_state) {
       mat <- rv$correct_noise_result
 
       if (base::is.data.frame(mat) && "ID" %in% base::colnames(mat)) {
-        mat <- tibble::column_to_rownames(mat, "ID")
+        # tibble::column_to_rownames() rejects data frames that already have
+        # row names. ProtVis_dataset exports may retain row names, so convert
+        # explicitly and safely at this boundary.
+        ids <- base::as.character(mat[["ID"]])
+        mat[["ID"]] <- NULL
+        base::rownames(mat) <- ids
       }
 
       mat <- as.data.frame(mat, check.names = FALSE)
@@ -276,8 +281,13 @@ data_transformed_server <- function(id, shared_state) {
 
     original_matrix_show <- shiny::reactive({
       shiny::req(original_matrix_numeric())
-      original_matrix_numeric() %>%
-        tibble::rownames_to_column("ID")
+      mat <- original_matrix_numeric()
+      result <- base::data.frame(ID = base::rownames(mat), mat,
+                                 check.names = FALSE,
+                                 stringsAsFactors = FALSE)
+      base::rownames(result) <- NULL
+      base::as.data.frame(result, check.names = FALSE,
+                          stringsAsFactors = FALSE)
     })
 
     shiny::observeEvent(input$run_transformation, {
@@ -321,9 +331,14 @@ data_transformed_server <- function(id, shared_state) {
       shiny::req(rv$load_success)
 
       show_df <- if (!base::is.null(rv$transformed)) {
-        rv$transformed %>%
-          as.data.frame(check.names = FALSE) %>%
-          tibble::rownames_to_column("ID")
+        transformed <- base::as.data.frame(rv$transformed, check.names = FALSE,
+                                           stringsAsFactors = FALSE)
+        result <- base::data.frame(ID = base::rownames(transformed), transformed,
+                                   check.names = FALSE,
+                                   stringsAsFactors = FALSE)
+        base::rownames(result) <- NULL
+        base::as.data.frame(result, check.names = FALSE,
+                            stringsAsFactors = FALSE)
       } else {
         original_matrix_show()
       }
