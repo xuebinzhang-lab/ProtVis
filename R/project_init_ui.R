@@ -37,7 +37,11 @@ project_init_ui <- function(id) {
       shiny::selectInput(
         inputId = ns("data_source"),
         label = "Select data source",
-        choices = c("Raw", "MaxQuant", "ProteomeDiscoverer", "Skyline", "Mascot", "OpenMS"),
+        choices = c(
+          "Raw", "MaxQuant", "ProteomeDiscoverer", "Proteome Discoverer",
+          "DIA-NN", "Spectronaut", "FragPipe", "Skyline", "Mascot", "OpenMS",
+          "User-defined matrix"
+        ),
         selected = "MaxQuant"
       )
     ),
@@ -96,26 +100,35 @@ project_init_server <- function(id, shared_state) {
     # Upload and read sample info, then store it in shared_state
     shiny::observeEvent(input$SampleInfo, {
       shiny::req(input$SampleInfo)
-      ext <- tools::file_ext(input$SampleInfo$name)
-      sample_info <- if (ext == "csv") {
-        utils::read.csv(input$SampleInfo$datapath, stringsAsFactors = FALSE)
-      } else {
-        readxl::read_excel(input$SampleInfo$datapath)
-      }
-      shared_state$sample_info <- sample_info
-      shiny::showNotification("Sample info uploaded", type = "message")
+      tryCatch({
+        sample_info <- protvis_read_table(
+          input$SampleInfo$datapath, filename = input$SampleInfo$name
+        )
+        shared_state$sample_info <- sample_info
+        shiny::showNotification("Sample info uploaded", type = "message")
+      }, error = function(e) {
+        shiny::showNotification(
+          paste0("Sample info upload failed: ", conditionMessage(e)),
+          type = "error"
+        )
+      })
     })
     # Upload and read expression matrix, then store it in shared_state
     shiny::observeEvent(input$expression_matrix, {
       shiny::req(input$expression_matrix)
-      ext <- tools::file_ext(input$expression_matrix$name)
-      expression_matrix <- if (ext == "csv") {
-        utils::read.csv(input$expression_matrix$datapath, stringsAsFactors = FALSE)
-      } else {
-        readxl::read_excel(input$expression_matrix$datapath)
-      }
-      shared_state$expression_matrix <- expression_matrix
-      shiny::showNotification("Expression matrix uploaded", type = "message")
+      tryCatch({
+        expression_matrix <- protvis_read_table(
+          input$expression_matrix$datapath,
+          filename = input$expression_matrix$name
+        )
+        shared_state$expression_matrix <- expression_matrix
+        shiny::showNotification("Expression matrix uploaded", type = "message")
+      }, error = function(e) {
+        shiny::showNotification(
+          paste0("Expression matrix upload failed: ", conditionMessage(e)),
+          type = "error"
+        )
+      })
     })
     # Sync data source selection to shared_state
     shiny::observeEvent(input$data_source, {
@@ -123,16 +136,18 @@ project_init_server <- function(id, shared_state) {
     })
     # On clicking the init button, save all data to Step1_project_init.rda in selected workdir
     shiny::observeEvent(input$run_button, {
-      shiny::req(shared_state$workdir, shared_state$sample_info, shared_state$expression_matrix, shared_state$data_source)
-      # Assign reactiveValues contents to plain variables for saving
-      validated <- validate_protvis_data(shared_state$expression_matrix, shared_state$sample_info)
-      sample_info <- validated$sample_info
-      expression_matrix <- validated$expression_matrix
-      shared_state$sample_info <- sample_info
-      shared_state$expression_matrix <- expression_matrix
-      data_source <- shared_state$data_source
-      save_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
       tryCatch({
+        shiny::req(shared_state$workdir, shared_state$sample_info,
+                   shared_state$expression_matrix, shared_state$data_source)
+        validated <- validate_protvis_data(
+          shared_state$expression_matrix, shared_state$sample_info
+        )
+        sample_info <- validated$sample_info
+        expression_matrix <- validated$expression_matrix
+        shared_state$sample_info <- sample_info
+        shared_state$expression_matrix <- expression_matrix
+        data_source <- shared_state$data_source
+        save_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
         base::save(sample_info, expression_matrix, data_source, file = save_path)
         shiny::showNotification("Project initialized successfully!", type = "message")
         message("✅ Step1_project_init.rda saved to: ", save_path)

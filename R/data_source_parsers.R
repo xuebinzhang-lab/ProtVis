@@ -1,6 +1,9 @@
 utils::globalVariables(c("Sample", "Intensity", "Group", "PC1", "PC2", "sample_id", "maxquant_id", "group"))
 
-read_proteomics_table <- function(path) {
+read_proteomics_table <- function(path, filename = NULL) {
+  if (exists("protvis_read_table", mode = "function")) {
+    return(protvis_read_table(path, filename = filename %||% basename(path)))
+  }
   ext <- base::tolower(tools::file_ext(path))
   if (ext %in% c("xlsx", "xls")) {
     return(as.data.frame(readxl::read_excel(path), check.names = FALSE))
@@ -39,7 +42,7 @@ clean_sample_names <- function(x) {
 }
 
 guess_sample_info <- function(samples) {
-  groups <- ifelse(grepl("treat|case|disease|stim", samples, ignore.case = TRUE), "Treatment", "Control")
+  groups <- rep("Unassigned", length(samples))
   data.frame(
     sample_id = samples,
     maxquant_id = samples,
@@ -220,43 +223,60 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
     rv <- shiny::reactiveValues(raw = NULL, sample_info = NULL, expression_matrix = NULL, note = NULL)
 
     load_source <- function() {
-      shiny::req(input$protein_file)
-      raw <- read_proteomics_table(input$protein_file$datapath)
-      parsed <- parser(raw)
-      sample_info <- NULL
-      if (!is.null(input$sample_info)) sample_info <- read_proteomics_table(input$sample_info$datapath)
-      validated <- validate_protvis_data(parsed$expression_matrix, sample_info)
-      parsed$expression_matrix <- validated$expression_matrix
-      sample_info <- validated$sample_info
-      rv$raw <- raw
-      rv$expression_matrix <- parsed$expression_matrix
-      rv$sample_info <- sample_info
-      rv$note <- parsed$note
-      if (!is.null(shared_state)) {
-        shared_state$expression_matrix <- parsed$expression_matrix
-        shared_state$expression_matrix_filtered <- parsed$expression_matrix
-        shared_state$sample_info <- sample_info
-        shared_state$data_source <- source_name
-        if (!is.null(shared_state$workdir)) {
-          expression_matrix <- parsed$expression_matrix
-          expression_matrix_filtered <- parsed$expression_matrix
-          data_source <- source_name
-          step1_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
-          step2_path <- file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
-          source_path <- file.path(shared_state$workdir, paste0("Step1_", gsub("[^A-Za-z0-9]+", "_", source_name), "_import.rda"))
-          base::save(sample_info, expression_matrix, data_source, file = step1_path)
-          base::save(sample_info, expression_matrix, expression_matrix_filtered, file = step2_path)
-          base::save(sample_info, expression_matrix, expression_matrix_filtered, data_source, file = source_path)
+      tryCatch({
+        shiny::req(input$protein_file)
+        raw <- read_proteomics_table(
+          input$protein_file$datapath, filename = input$protein_file$name
+        )
+        parsed <- parser(raw)
+        sample_info <- NULL
+        if (!is.null(input$sample_info)) {
+          sample_info <- read_proteomics_table(
+            input$sample_info$datapath, filename = input$sample_info$name
+          )
         }
-      }
-      shiny::showNotification(paste(source_name, "file parsed successfully."), type = "message")
+        validated <- validate_protvis_data(parsed$expression_matrix, sample_info)
+        parsed$expression_matrix <- validated$expression_matrix
+        sample_info <- validated$sample_info
+        rv$raw <- raw
+        rv$expression_matrix <- parsed$expression_matrix
+        rv$sample_info <- sample_info
+        rv$note <- parsed$note
+        if (!is.null(shared_state)) {
+          shared_state$expression_matrix <- parsed$expression_matrix
+          shared_state$expression_matrix_filtered <- parsed$expression_matrix
+          shared_state$sample_info <- sample_info
+          shared_state$data_source <- source_name
+          if (!is.null(shared_state$workdir)) {
+            expression_matrix <- parsed$expression_matrix
+            expression_matrix_filtered <- parsed$expression_matrix
+            data_source <- source_name
+            step1_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
+            step2_path <- file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+            source_path <- file.path(shared_state$workdir, paste0("Step1_", gsub("[^A-Za-z0-9]+", "_", source_name), "_import.rda"))
+            base::save(sample_info, expression_matrix, data_source, file = step1_path)
+            base::save(sample_info, expression_matrix, expression_matrix_filtered, file = step2_path)
+            base::save(sample_info, expression_matrix, expression_matrix_filtered, data_source, file = source_path)
+          }
+        }
+        shiny::showNotification(paste(source_name, "file parsed successfully."), type = "message")
+        invisible(TRUE)
+      }, error = function(e) {
+        shiny::showNotification(
+          paste0(source_name, " import failed: ", conditionMessage(e)),
+          type = "error"
+        )
+        invisible(FALSE)
+      })
     }
 
     shiny::observeEvent(input$load_data, load_source())
     shiny::observeEvent(input$protein_file, load_source(), ignoreInit = TRUE)
     shiny::observeEvent(input$sample_info, {
       shiny::req(rv$expression_matrix)
-      sample_info <- read_proteomics_table(input$sample_info$datapath)
+      sample_info <- read_proteomics_table(
+        input$sample_info$datapath, filename = input$sample_info$name
+      )
       rv$sample_info <- normalise_sample_info(sample_info, names(rv$expression_matrix)[-1])
       if (!is.null(shared_state)) {
         shared_state$sample_info <- rv$sample_info

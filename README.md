@@ -20,7 +20,9 @@ The application is designed for researchers who need publication-ready visual su
 
 ## Key features
 
--   **Multi-source proteomics import** for Raw-style matrices, MaxQuant, Proteome Discoverer, Skyline, Mascot, and OpenMS tabular outputs.
+-   **Multi-source proteomics import** for MaxQuant, Proteome Discoverer, DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, and user-defined matrices.
+-   **ProtVis_dataset** standardized object with expression data, sample/variable metadata, annotations, analysis results, provenance, checkpoints, and portable exports.
+-   **Recoverable workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Failed nodes are recorded and can be retried or resumed without taking down the Shiny session.
 -   **Preprocessing workflow handoff** from parser-backed imports into downstream modules such as Correct Noise, Data Transformed, Data Imputation, and Data Normalization.
 -   **Protein-level downstream analysis** including DEP analysis, enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
@@ -37,12 +39,24 @@ ProtVis supports the following data-source options from **Project init → Selec
 |---|---|---|
 | Raw | Generic expression matrix | Use when data are already organized as `ID + sample intensity columns`. |
 | MaxQuant | MaxQuant protein group/expression output | Includes MaxQuant-specific unreliable peptide filtering. |
+| DIA-NN | DIA-NN report files | Supports long Protein.Group/Run/quantity reports and wide matrices. |
+| Spectronaut | Spectronaut report files | Supports PG.ProteinGroups and quantity/intensity columns. |
+| FragPipe | FragPipe protein report files | Parses protein identifiers and intensity/LFQ columns. |
 | Proteome Discoverer | Protein or peptide group export (`.xlsx`, `.xls`, `.csv`) | Parses accession/protein ID columns and `Abundance`/`Area` style quantitative columns. |
 | Skyline | Skyline report / MSstats-style export (`.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`) | Supports long reports with `ProteinName`, `FileName`/replicate, and `Area`, or wide protein abundance tables. |
 | Mascot | Mascot CSV/export table (`.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`) | Parses protein accession columns and numeric quantitation columns such as emPAI or intensity. |
 | OpenMS | OpenMS consensus / ProteinQuantifier table (`.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`) | Parses protein accession columns and `intensity`/`abundance`/`area` style columns. |
 
 Parser-backed imports are converted into a common ProtVis expression matrix and sample metadata schema. When a working directory is available, ProtVis writes preprocessing-compatible handoff files so the imported data can continue into the **Pre-processing** menu.
+
+The ProtVis_dataset tab also loads the bundled Maxquant_Export.xlsx example
+without requiring an upload. The workbook is filtered for the standard
+MaxQuant flags and then processed through a transactional, checkpointed
+pipeline. A failed node records the error context while preserving the last
+valid object; users can restore a checkpoint, retry the node, or re-run only
+downstream stages. Script users can call load_protvis_builtin_data(),
+run_protvis_pipeline(), save_protvis_checkpoint(), and
+export_protvis_dataset() directly.
 
 ------------------------------------------------------------------------
 

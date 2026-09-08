@@ -39,6 +39,20 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
       Mascot = base::list(ui = Mascot_ui, server = Mascot_server, id = "Mascot"),
       OpenMS = base::list(ui = OpenMS_ui, server = OpenMS_server, id = "OpenMS")
     )
+    source_modules[["DIA-NN"]] <- base::list(
+      ui = DIA_NN_ui, server = DIA_NN_server, id = "DIA_NN"
+    )
+    source_modules[["Proteome Discoverer"]] <- source_modules[["ProteomeDiscoverer"]]
+    source_modules[["Spectronaut"]] <- base::list(
+      ui = Spectronaut_ui, server = Spectronaut_server, id = "Spectronaut"
+    )
+    source_modules[["FragPipe"]] <- base::list(
+      ui = FragPipe_ui, server = FragPipe_server, id = "FragPipe"
+    )
+    source_modules[["User-defined matrix"]] <- base::list(
+      ui = User_defined_matrix_ui, server = User_defined_matrix_server,
+      id = "User_defined_matrix"
+    )
 
     register_data_source_server <- function(module) {
       server_args <- base::names(base::formals(module$server))

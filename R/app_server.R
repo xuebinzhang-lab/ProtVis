@@ -12,7 +12,9 @@ app_server <- function(input, output, session) {
     workdir = NULL,
     sample_info = NULL,
     expression_matrix = NULL,
-    data_source = NULL
+    expression_matrix_filtered = NULL,
+    data_source = NULL,
+    dataset = NULL
   )
   project_init_server("project_init", shared_state = shared_state)
   data_input_server(
@@ -20,6 +22,7 @@ app_server <- function(input, output, session) {
     data_source_reactive = reactive(shared_state$data_source),
     shared_state = shared_state
   )
+  protvis_dataset_server("dataset", shared_state = shared_state)
   data_imputation_server("data_imputation", shared_state = shared_state)
   correct_noise_server("correct_noise", shared_state = shared_state)
   data_transformed_server("data_transformed", shared_state = shared_state)
