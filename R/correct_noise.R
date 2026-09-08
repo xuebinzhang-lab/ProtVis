@@ -29,6 +29,22 @@ correct_values <- function(raw_mat) {
   sample_cols <- base::setdiff(base::names(clean_mat), "ID")
   if (base::length(sample_cols) == 0L) return(clean_mat)
 
+  # Repeated protein IDs would make the replicate joins many-to-many and can
+  # expand a modest table into billions of rows. Collapse them before any
+  # reshaping, retaining the largest finite intensity per sample.
+  if (anyDuplicated(clean_mat$ID)) {
+    clean_mat <- clean_mat %>%
+      dplyr::group_by(ID) %>%
+      dplyr::summarise(
+        dplyr::across(dplyr::all_of(sample_cols), ~ {
+          value <- suppressWarnings(as.numeric(.x))
+          value <- value[is.finite(value)]
+          if (length(value) == 0L) NA_real_ else max(value)
+        }),
+        .groups = "drop"
+      )
+  }
+
   replicate_cols <- base::lapply(seq_len(3L), function(replicate) {
     pattern <- paste0("(^|_)", replicate, "(_|$)|_", replicate, "$|",
                       "_", replicate, "_")
@@ -131,29 +147,19 @@ correct_noise_ui <- function(id) {
         bslib::accordion_panel(
           title = "Step1 Rename Columns",
           icon = bsicons::bs_icon("tools"),
-          shinyWidgets::switchInput(
+          shiny::actionButton(
             inputId = ns("rename_columns"),
             label = "Rename Columns",
-            value = FALSE,
-            onLabel = "✔",
-            offLabel = "✘",
-            size = "small",
-            labelWidth = "120px",
-            handleWidth = 60
+            class = "btn btn-outline-primary w-100"
           )
         ),
         bslib::accordion_panel(
           title = "Step2 Correct Noise",
           icon = bsicons::bs_icon("tools"),
-          shinyWidgets::switchInput(
+          shiny::actionButton(
             inputId = ns("correct_noise"),
             label = "Correct Noise",
-            value = FALSE,
-            onLabel = "✔",
-            offLabel = "✘",
-            size = "small",
-            labelWidth = "120px",
-            handleWidth = 60
+            class = "btn btn-success w-100"
           ),
           shinyWidgets::progressBar(
             id = ns("noise_progress"),
@@ -230,7 +236,9 @@ correct_noise_server <- function(id, shared_state) {
     ns <- session$ns
 
     rv <- shiny::reactiveValues(
-      load_success = FALSE
+      load_success = FALSE,
+      rename_requested = FALSE,
+      noise_requested = FALSE
     )
 
     shiny::observe({
@@ -325,19 +333,23 @@ correct_noise_server <- function(id, shared_state) {
         stats::setNames(c("ID", new_name))
     })
 
-    shiny::observe({
+    shiny::observeEvent(input$rename_columns, {
       shiny::req(shared_state$expression_matrix_filtered)
-
-      if (isTRUE(input$rename_columns)) {
+      rv$rename_requested <- TRUE
+      tryCatch({
         shared_state$rename_result <- correct_noise_step1()
-      } else {
+        shiny::showNotification("✅ Columns renamed.", type = "message")
+      }, error = function(e) {
         shared_state$rename_result <- NULL
-      }
+        shiny::showNotification(
+          paste0("Column rename failed: ", conditionMessage(e)), type = "error"
+        )
+      })
     })
 
     shiny::observeEvent(input$correct_noise, {
-      if (isTRUE(input$correct_noise)) {
-        tryCatch({
+      rv$noise_requested <- TRUE
+      tryCatch({
           shiny::req(correct_noise_step1())
           shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 15)
           dat <- correct_noise_step1()
@@ -354,14 +366,10 @@ correct_noise_server <- function(id, shared_state) {
             type = "error"
           )
         })
-      } else {
-        shared_state$correct_noise_result <- NULL
-        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 0)
-      }
     })
 
     output$tbl_rename_columns <- DT::renderDT({
-      if (isTRUE(input$rename_columns)) {
+      if (isTRUE(rv$rename_requested)) {
         shiny::req(shared_state$rename_result)
         DT::datatable(
           shared_state$rename_result,
@@ -371,7 +379,7 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     output$tbl_correct_noise <- DT::renderDT({
-      if (isTRUE(input$correct_noise)) {
+      if (isTRUE(rv$noise_requested)) {
         shiny::req(shared_state$correct_noise_result)
         DT::datatable(
           shared_state$correct_noise_result %>%
