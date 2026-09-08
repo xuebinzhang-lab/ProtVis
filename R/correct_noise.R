@@ -168,21 +168,9 @@ correct_noise_ui <- function(id) {
       ),
 
       shiny::tags$br(),
-
-      shiny::actionButton(
-        ns("export_correct_noise"),
-        "Export data",
-        class = "btn btn-outline-primary fw-bold pv-load-button"
-      ),
-      shiny::uiOutput(ns("export_correct_noise_status_panel")),
-      shinyWidgets::progressBar(
-        id = ns("export_progress"),
-        value = 0,
-        total = 100,
-        display_pct = TRUE,
-        striped = TRUE,
-        status = "info",
-        title = "Export progress"
+      shiny::div(
+        class = "pv-status pv-status-ready",
+        "Results are saved automatically to ProtVis_dataset."
       )
     ),
 
@@ -242,8 +230,7 @@ correct_noise_server <- function(id, shared_state) {
     ns <- session$ns
 
     rv <- shiny::reactiveValues(
-      load_success = FALSE,
-      export_success = FALSE
+      load_success = FALSE
     )
 
     shiny::observe({
@@ -256,12 +243,6 @@ correct_noise_server <- function(id, shared_state) {
       shinyWidgets::updateProgressBar(
         session = session,
         id = "noise_progress",
-        value = 0,
-        total = 100
-      )
-      shinyWidgets::updateProgressBar(
-        session = session,
-        id = "export_progress",
         value = 0,
         total = 100
       )
@@ -309,14 +290,6 @@ correct_noise_server <- function(id, shared_state) {
         shiny::div(class = "pv-status pv-status-ready", "✓ Data loaded")
       } else {
         shiny::div(class = "pv-status pv-status-empty", "× Data not loaded")
-      }
-    })
-
-    output$export_correct_noise_status_panel <- shiny::renderUI({
-      if (rv$export_success) {
-        shiny::div(class = "pv-status pv-status-ready", "✓ Data exported")
-      } else {
-        shiny::div(class = "pv-status pv-status-empty", "Waiting for export")
       }
     })
 
@@ -408,39 +381,5 @@ correct_noise_server <- function(id, shared_state) {
       }
     })
 
-    shiny::observeEvent(input$export_correct_noise, {
-      shiny::req(rv$load_success, shared_state$workdir, shared_state$sample_info)
-
-      rv$export_success <- FALSE
-      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 10)
-
-      export_data <- NULL
-
-      if (isTRUE(input$correct_noise) && !base::is.null(shared_state$correct_noise_result)) {
-        export_data <- shared_state$correct_noise_result
-      } else if (isTRUE(input$rename_columns) && !base::is.null(shared_state$rename_result)) {
-        export_data <- shared_state$rename_result
-      } else {
-        export_data <- shared_state$expression_matrix_filtered
-      }
-
-      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 45)
-
-      save_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
-      sample_info <- shared_state$sample_info
-
-      correct_noise_result <- export_data %>%
-        tibble::column_to_rownames("ID") %>%
-        { . * 10000000 }
-
-      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 75)
-
-      base::save(sample_info, correct_noise_result, file = save_path)
-
-      shinyWidgets::updateProgressBar(session, id = "export_progress", value = 100)
-
-      rv$export_success <- TRUE
-      shiny::showNotification(paste0("✅ Saved to ", save_path), type = "message")
-    })
   })
 }

@@ -109,13 +109,10 @@ data_transformed_ui <- function(id) {
         ),
 
         shiny::hr(),
-
         shiny::div(
-          style = "margin-top: 15px;",
-          shiny::actionButton(ns("export_transformed_data"), "Export data", class = "btn btn-outline-primary fw-bold pv-load-button")
-        ),
-
-        shiny::uiOutput(ns("export_transformed_data_status_panel"))
+          class = "pv-status pv-status-ready",
+          "Results are saved automatically to ProtVis_dataset."
+        )
       ),
 
       bslib::page_fluid(
@@ -187,8 +184,7 @@ data_transformed_server <- function(id, shared_state) {
       sample_info = NULL,
       load_success = FALSE,
       transformed = NULL,
-      transformation_done = FALSE,
-      export_success = FALSE
+      transformation_done = FALSE
     )
 
     shiny::observeEvent(input$load_data, {
@@ -210,13 +206,11 @@ data_transformed_server <- function(id, shared_state) {
 
         rv$transformed <- NULL
         rv$transformation_done <- FALSE
-        rv$export_success <- FALSE
         rv$load_success <- TRUE
 
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
-        rv$export_success <- FALSE
         shiny::showNotification("❌ Step3_correct_noise.rda not found.", type = "error")
       }
     })
@@ -237,14 +231,6 @@ data_transformed_server <- function(id, shared_state) {
         )
       } else {
         shiny::div(class = "pv-status pv-status-empty", "Data transformation not run yet")
-      }
-    })
-
-    output$export_transformed_data_status_panel <- shiny::renderUI({
-      if (isTRUE(rv$export_success)) {
-        shiny::div(class = "pv-status pv-status-ready", "✓ Data exported")
-      } else {
-        shiny::div(class = "pv-status pv-status-empty", "Waiting for export")
       }
     })
 
@@ -432,32 +418,6 @@ data_transformed_server <- function(id, shared_state) {
         grDevices::dev.off()
       }
     )
-
-    shiny::observeEvent(input$export_transformed_data, {
-      shiny::req(shared_state$workdir, rv$sample_info, rv$correct_noise_result)
-
-      save_path <- base::file.path(shared_state$workdir, "Step4_data_transformed.rda")
-
-      sample_info <- rv$sample_info
-
-      correct_noise_result <- original_matrix_numeric()
-
-      transformed <- if (!base::is.null(rv$transformed)) {
-        rv$transformed %>%
-          as.data.frame(check.names = FALSE)
-      } else {
-        original_matrix_numeric()
-      }
-
-      base::save(sample_info, correct_noise_result, transformed, file = save_path)
-
-      rv$export_success <- TRUE
-
-      shiny::showNotification(
-        paste0("✅ Exported to: ", save_path),
-        type = "message"
-      )
-    })
 
     base::return(rv)
   })
