@@ -268,30 +268,19 @@ correct_noise_server <- function(id, shared_state) {
 
       if (base::file.exists(rda_path)) {
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 35)
-
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
-
+        dataset <- .protvis_load_stage_dataset(
+          rda_path,
+          expression_names = c("expression_matrix_filtered", "expression_matrix")
+        )
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 65)
-
-        if (base::exists("sample_info", envir = e)) {
-          shared_state$sample_info <- e$sample_info
-        }
-
-        if (base::exists("expression_matrix_filtered", envir = e)) {
-          shared_state$expression_matrix_filtered <- e$expression_matrix_filtered
-          # Older RDA files may contain a row-name-only matrix.  Normalize it
-          # before the ID-aware preprocessing code reads the first column.
-          if (base::is.data.frame(shared_state$expression_matrix_filtered) &&
-              !"ID" %in% base::names(shared_state$expression_matrix_filtered)) {
-            shared_state$expression_matrix_filtered <-
-              .protvis_rownames_to_column(shared_state$expression_matrix_filtered, "ID")
-          }
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          shared_state$sample_info <- dataset$sample_info
+          shared_state$expression_matrix_filtered <- protvis_expression_matrix(dataset)
           shared_state$rename_result <- NULL
           shared_state$correct_noise_result <- NULL
         }
-
-        rv$load_success <- TRUE
+        rv$load_success <- !base::is.null(dataset)
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 100)
         shiny::showNotification("✅ Step2 data loaded successfully.", type = "message")
       } else {
@@ -390,6 +379,30 @@ correct_noise_server <- function(id, shared_state) {
           result <- correct_values(dat)
           shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 100)
           shared_state$correct_noise_result <- result
+          dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+            shared_state$dataset
+          } else {
+            create_protvis_dataset(
+              shared_state$expression_matrix_filtered,
+              sample_info = shared_state$sample_info
+            )
+          }
+          dataset <- .protvis_update_expression(dataset, result)
+          dataset <- .protvis_new_analysis_dataset(
+            dataset, "noise_correction", list(method = "replicate_correction")
+          )
+          dataset$analysis_results$noise_correction <- list(
+            status = "success", method = "replicate_correction"
+          )
+          dataset <- .protvis_append_process(
+            dataset, "noise_correction", status = "success",
+            parameters = list(method = "replicate_correction")
+          )
+          .protvis_ui_sync_state(dataset, shared_state)
+          .protvis_save_stage_dataset(
+            dataset,
+            base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
+          )
           shiny::showNotification("✅ Noise correction completed.", type = "message")
         }, error = function(e) {
           shared_state$correct_noise_result <- NULL

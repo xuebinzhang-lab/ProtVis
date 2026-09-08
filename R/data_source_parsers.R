@@ -270,16 +270,24 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
           shared_state$expression_matrix_filtered <- parsed$expression_matrix
           shared_state$sample_info <- sample_info
           shared_state$data_source <- source_name
+          dataset <- create_protvis_dataset(
+            expression_data = parsed$expression_matrix,
+            sample_info = sample_info,
+            metadata = list(source = source_name)
+          )
+          dataset <- .protvis_append_process(
+            dataset, "import", status = "success",
+            parameters = list(source = source_name)
+          )
+          shared_state$dataset <- dataset
+          shared_state$dataset_name <- protvis_dataset_name(dataset)
           if (!is.null(shared_state$workdir)) {
-            expression_matrix <- parsed$expression_matrix
-            expression_matrix_filtered <- parsed$expression_matrix
-            data_source <- source_name
             step1_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
             step2_path <- file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
             source_path <- file.path(shared_state$workdir, paste0("Step1_", gsub("[^A-Za-z0-9]+", "_", source_name), "_import.rda"))
-            base::save(sample_info, expression_matrix, data_source, file = step1_path)
-            base::save(sample_info, expression_matrix, expression_matrix_filtered, file = step2_path)
-            base::save(sample_info, expression_matrix, expression_matrix_filtered, data_source, file = source_path)
+            .protvis_save_stage_dataset(dataset, step1_path)
+            .protvis_save_stage_dataset(dataset, step2_path)
+            .protvis_save_stage_dataset(dataset, source_path)
           }
         }
         shiny::showNotification(paste(source_name, "file parsed successfully."), type = "message")
@@ -303,13 +311,26 @@ register_tabular_data_source_server <- function(id, source_name, parser, shared_
       rv$sample_info <- normalise_sample_info(sample_info, names(rv$expression_matrix)[-1])
       if (!is.null(shared_state)) {
         shared_state$sample_info <- rv$sample_info
+        dataset <- create_protvis_dataset(
+          expression_data = rv$expression_matrix,
+          sample_info = rv$sample_info,
+          metadata = list(source = source_name)
+        )
+        dataset <- .protvis_append_process(
+          dataset, "sample_info_update", status = "success",
+          parameters = list(source = source_name)
+        )
+        shared_state$dataset <- dataset
+        shared_state$dataset_name <- protvis_dataset_name(dataset)
         if (!is.null(shared_state$workdir)) {
-          sample_info <- rv$sample_info
-          expression_matrix <- rv$expression_matrix
-          expression_matrix_filtered <- rv$expression_matrix
-          data_source <- source_name
-          base::save(sample_info, expression_matrix, data_source, file = file.path(shared_state$workdir, "Step1_project_init.rda"))
-          base::save(sample_info, expression_matrix, expression_matrix_filtered, file = file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda"))
+          .protvis_save_stage_dataset(
+            dataset,
+            file.path(shared_state$workdir, "Step1_project_init.rda")
+          )
+          .protvis_save_stage_dataset(
+            dataset,
+            file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+          )
         }
       }
     }, ignoreInit = TRUE)

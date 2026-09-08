@@ -214,20 +214,18 @@ data_transformed_server <- function(id, shared_state) {
       rda_path <- base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
 
       if (base::file.exists(rda_path)) {
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
-
-        if (base::exists("sample_info", envir = e)) {
-          rv$sample_info <- e$sample_info
-        }
-
-        if (base::exists("correct_noise_result", envir = e)) {
-          rv$correct_noise_result <- e$correct_noise_result
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "correct_noise_result"
+        )
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
+          rv$correct_noise_result <- protvis_expression_matrix(dataset)
         }
 
         rv$transformed <- NULL
         rv$transformation_done <- FALSE
-        rv$load_success <- TRUE
+        rv$load_success <- !base::is.null(dataset)
 
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
@@ -351,6 +349,10 @@ data_transformed_server <- function(id, shared_state) {
           error = function(e) dataset
         )
         .protvis_ui_sync_state(dataset, shared_state)
+        .protvis_save_stage_dataset(
+          dataset,
+          base::file.path(directory, "Step4_data_transformed.rda")
+        )
       }
 
       rv$transformation_done <- TRUE

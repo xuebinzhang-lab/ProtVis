@@ -51,7 +51,9 @@ Imports:
     jsonlite,
     limma,
     magrittr,
+    massdataset (>= 0.99.3),
     matrixStats,
+    methods,
     missForest,
     openxlsx,
     patchwork,
@@ -83,7 +85,8 @@ Imports:
     graphlayouts
 Remotes:
     junjunlab/GseaVis,
-    hadley/pryr
+    hadley/pryr,
+    tidymass/massdataset
 Suggests:
     ShinyWGCNA,
     arrow,

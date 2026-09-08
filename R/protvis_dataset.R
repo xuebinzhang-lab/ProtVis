@@ -5,6 +5,154 @@
   if (is.null(x) || length(x) == 0L) y else x
 }
 
+# ProtVis datasets are real tidyMass mass_dataset objects.  The additional
+# slots contain application state that has no direct tidyMass equivalent;
+# every scientific data slot remains the canonical mass_dataset slot.
+methods::setClass(
+  "ProtVis_dataset",
+  contains = "mass_dataset",
+  slots = c(
+    analysis_results = "list",
+    protvis_process_info = "list",
+    metadata = "list",
+    checkpoint_info = "list",
+    annotation = "ANY"
+  ),
+  prototype = list(
+    analysis_results = list(),
+    protvis_process_info = list(),
+    metadata = list(),
+    checkpoint_info = list(),
+    annotation = list()
+  )
+)
+
+.protvis_dataset_fields <- c(
+  "expression_data", "ms2_data", "annotation_table", "sample_info",
+  "variable_info", "sample_info_note", "variable_info_note",
+  "process_info", "mass_process_info", "other_files", "version",
+  "activated", "annotation", "analysis_results", "metadata",
+  "checkpoint_info"
+)
+
+.protvis_get_field <- function(x, name) {
+  name <- as.character(name)
+  slot_name <- switch(
+    name,
+    expression_data = "expression_data",
+    ms2_data = "ms2_data",
+    annotation_table = "annotation_table",
+    sample_info = "sample_info",
+    variable_info = "variable_info",
+    sample_info_note = "sample_info_note",
+    variable_info_note = "variable_info_note",
+    process_info = "protvis_process_info",
+    mass_process_info = "process_info",
+    other_files = "other_files",
+    version = "version",
+    activated = "activated",
+    annotation = "annotation",
+    analysis_results = "analysis_results",
+    metadata = "metadata",
+    checkpoint_info = "checkpoint_info",
+    NULL
+  )
+  if (!is.null(slot_name)) return(methods::slot(x, slot_name))
+
+  # Preserve tidyMass' convenient `object$sample_name` access for expression
+  # columns that are not ProtVis fields.
+  if (name %in% colnames(methods::slot(x, "expression_data"))) {
+    return(methods::slot(x, "expression_data")[[name]])
+  }
+  warning("Unknown or uninitialised ProtVis_dataset field: `", name, "`.",
+          call. = FALSE)
+  NULL
+}
+
+.protvis_set_field <- function(x, name, value) {
+  name <- as.character(name)
+  slot_name <- switch(
+    name,
+    expression_data = "expression_data",
+    ms2_data = "ms2_data",
+    annotation_table = "annotation_table",
+    sample_info = "sample_info",
+    variable_info = "variable_info",
+    sample_info_note = "sample_info_note",
+    variable_info_note = "variable_info_note",
+    process_info = "protvis_process_info",
+    mass_process_info = "process_info",
+    other_files = "other_files",
+    version = "version",
+    activated = "activated",
+    annotation = "annotation",
+    analysis_results = "analysis_results",
+    metadata = "metadata",
+    checkpoint_info = "checkpoint_info",
+    NULL
+  )
+  if (is.null(slot_name)) {
+    stop("Unknown ProtVis_dataset field: ", name, call. = FALSE)
+  }
+  methods::slot(x, slot_name) <- value
+  x
+}
+
+methods::setMethod(
+  "$", "ProtVis_dataset",
+  function(x, name) .protvis_get_field(x, name)
+)
+
+methods::setReplaceMethod(
+  "$", "ProtVis_dataset",
+  function(x, name, value) .protvis_set_field(x, name, value)
+)
+
+methods::setMethod(
+  "names", "ProtVis_dataset",
+  function(x) .protvis_dataset_fields
+)
+
+.protvis_state_key <- ".protvis_state"
+
+#' Convert a ProtVis object to an exact tidyMass mass_dataset.
+#'
+#' ProtVis-only state is embedded in `other_files` under a reserved key so
+#' that an RDS/RDA round trip retains the workflow while the serialized
+#' object's concrete class remains exactly `mass_dataset`.
+#' @param object A ProtVis_dataset or mass_dataset object.
+#' @return An S4 object whose concrete class is mass_dataset.
+#' @export
+protvis_as_mass_dataset <- function(object) {
+  object <- as_protvis_dataset(object)
+  validate_protvis_dataset(object)
+  other_files <- object$other_files %||% list()
+  other_files[[.protvis_state_key]] <- list(
+    schema_version = 1L,
+    analysis_results = object$analysis_results,
+    process_info = object$process_info,
+    metadata = object$metadata,
+    checkpoint_info = object$checkpoint_info,
+    annotation = object$annotation
+  )
+  result <- methods::new(
+    "mass_dataset",
+    expression_data = object$expression_data,
+    ms2_data = object$ms2_data,
+    annotation_table = object$annotation_table,
+    sample_info = object$sample_info,
+    variable_info = object$variable_info,
+    sample_info_note = object$sample_info_note,
+    variable_info_note = object$variable_info_note,
+    process_info = object$mass_process_info,
+    other_files = other_files,
+    version = object$version,
+    activated = object$activated
+  )
+  methods::validObject(result)
+  result
+}
+
 .protvis_safe_numeric <- function(x) {
   if (is.numeric(x)) return(as.numeric(x))
   value <- gsub(",", "", as.character(x), fixed = TRUE)
@@ -211,6 +359,7 @@
     )
     return(data.frame(
       sample_id = sample_id,
+      class = group,
       maxquant_id = samples,
       group = group,
       batch = batch,
@@ -297,6 +446,8 @@
     values <- info[[column]]
     result[[column]] <- ifelse(is.na(row_index), NA, values[row_index])
   }
+  # tidyMass requires `class`; ProtVis uses the biological group as that class.
+  result$class <- as.character(result$group)
   tissue_columns <- intersect(c("tissue2", "tissue", "organ", "organism_part"),
                               names(result))
   if (length(tissue_columns) > 0L) {
@@ -313,6 +464,7 @@
   protein_ids <- as.character(protein_ids)
   if (is.null(variable_info)) {
     return(data.frame(
+      variable_id = protein_ids,
       protein_id = protein_ids,
       accession = protein_ids,
       gene = NA_character_,
@@ -326,7 +478,7 @@
                                                                  protein_ids))
   id_col <- .protvis_find_column(
     names(info),
-    c("^protein_id$", "^ID$", "^Protein IDs?$", "^accession$",
+    c("^variable_id$", "^protein_id$", "^ID$", "^Protein IDs?$", "^accession$",
       "^ProteinName$", "^Protein$")
   )
   if (is.null(id_col)) {
@@ -346,32 +498,73 @@
   if (!is.null(id_col) && id_col != "protein_id") info[[id_col]] <- NULL
   info <- info[!duplicated(info$protein_id), , drop = FALSE]
   index <- match(protein_ids, info$protein_id)
-  result <- data.frame(protein_id = protein_ids, stringsAsFactors = FALSE,
-                       check.names = FALSE)
-  for (column in setdiff(names(info), "protein_id")) {
+  result <- data.frame(
+    variable_id = protein_ids,
+    protein_id = protein_ids,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  for (column in setdiff(names(info), c("variable_id", "protein_id"))) {
     values <- info[[column]]
     result[[column]] <- values[index]
   }
   if (!"accession" %in% names(result)) result$accession <- protein_ids
   if (!"gene" %in% names(result)) result$gene <- NA_character_
   if (!"description" %in% names(result)) result$description <- NA_character_
+  rownames(result) <- protein_ids
   result
 }
 
 .protvis_default_note <- function(kind) {
   if (identical(kind, "variable")) {
     return(data.frame(
-      Name = c("protein_id", "accession", "gene", "description"),
-      Meaning = c("Stable protein identifier", "Protein accession",
-                  "Gene symbol", "Protein description"),
-      stringsAsFactors = FALSE
+      name = c("variable_id", "protein_id", "accession", "gene", "description"),
+      meaning = c("tidyMass variable identifier", "Stable protein identifier",
+                  "Protein accession", "Gene symbol", "Protein description"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     ))
   }
   data.frame(
-    Name = c("sample_id", "group", "batch", "condition"),
-    Meaning = c("Sample identifier", "Experimental group", "Batch",
+    name = c("sample_id", "class", "maxquant_id", "group", "batch",
+             "condition"),
+    meaning = c("Sample identifier", "tidyMass sample class",
+                "Source sample identifier", "Experimental group", "Batch",
                 "Experimental condition"),
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+.protvis_normalise_note <- function(note, columns, kind) {
+  columns <- as.character(columns)
+  defaults <- .protvis_default_note(kind)
+  default_meaning <- stats::setNames(defaults$meaning, defaults$name)
+  meaning <- unname(default_meaning[columns])
+  meaning[is.na(meaning)] <- columns[is.na(meaning)]
+
+  if (!is.null(note)) {
+    note <- .protvis_as_data_frame(note)
+    names(note) <- tolower(names(note))
+    name_col <- .protvis_find_column(
+      names(note), c("^name$", "^field$", "^column$")
+    )
+    meaning_col <- .protvis_find_column(
+      names(note), c("^meaning$", "^description$", "^note$")
+    )
+    if (!is.null(name_col) && !is.null(meaning_col)) {
+      index <- match(tolower(columns), tolower(as.character(note[[name_col]])))
+      supplied <- as.character(note[[meaning_col]])[index]
+      use <- !is.na(supplied) & nzchar(trimws(supplied))
+      meaning[use] <- supplied[use]
+    }
+  }
+
+  data.frame(
+    name = columns,
+    meaning = meaning,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
   )
 }
 
@@ -430,6 +623,7 @@
 #' Return the human-readable name of a ProtVis_dataset object.
 #' @export
 protvis_dataset_name <- function(object) {
+  object <- as_protvis_dataset(object)
   validate_protvis_dataset(object)
   as.character(object$metadata$object_name %||% "ProtVis_dataset")
 }
@@ -469,7 +663,9 @@ protvis_dataset_name <- function(object) {
 #' @param annotation Optional annotation list or table.
 #' @param metadata Optional project metadata list.
 #' @param other_files Optional list of imported-file metadata.
-#' @return An object of class ProtVis_dataset.
+#' @param ms2_data,annotation_table,activated Canonical tidyMass mass_dataset
+#'   slots. They are optional for proteomics data without MS2 annotations.
+#' @return An S4 ProtVis_dataset that inherits from tidyMass mass_dataset.
 #' @export
 create_protvis_dataset <- function(expression_data, sample_info = NULL,
                                    variable_info = NULL,
@@ -477,7 +673,10 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
                                    sample_info_note = NULL,
                                    annotation = list(),
                                    metadata = list(),
-                                   other_files = list()) {
+                                   other_files = list(),
+                                   ms2_data = list(),
+                                   annotation_table = data.frame(),
+                                   activated = "expression_data") {
   sample_info_supplied <- !is.null(sample_info)
   expression_data <- .protvis_coerce_expression(expression_data)
   ids <- rownames(expression_data)
@@ -498,6 +697,12 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
   }
   samples <- colnames(expression_data)
   variable_info <- .protvis_normalise_variable_info(variable_info, ids)
+  sample_info_note <- .protvis_normalise_note(
+    sample_info_note, names(sample_info), "sample"
+  )
+  variable_info_note <- .protvis_normalise_note(
+    variable_info_note, names(variable_info), "variable"
+  )
   if (!is.list(metadata)) stop("metadata must be a list.", call. = FALSE)
   object_metadata <- utils::modifyList(
     list(
@@ -512,20 +717,51 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
   expression_data <- .protvis_normalise_dataset_missing_values(
     expression_data, source = object_metadata$source
   )
-  object <- list(
+  if (!is.list(other_files)) stop("other_files must be a list.", call. = FALSE)
+  if (!is.list(ms2_data)) stop("ms2_data must be a list.", call. = FALSE)
+  annotation_table <- if (is.null(annotation_table)) {
+    data.frame()
+  } else {
+    .protvis_as_data_frame(annotation_table)
+  }
+  activated <- as.character(activated %||% "expression_data")[[1L]]
+  if (!activated %in% c(
+    "expression_data", "sample_info", "variable_info", "annotation_table"
+  )) activated <- "expression_data"
+
+  mass_object <- massdataset::create_mass_dataset(
     expression_data = expression_data,
     sample_info = sample_info,
     variable_info = variable_info,
-    variable_info_note = variable_info_note %||% .protvis_default_note("variable"),
-    sample_info_note = sample_info_note %||% .protvis_default_note("sample"),
-    annotation = annotation %||% list(),
-    analysis_results = list(),
-    process_info = list(parameters = list(), time = list(), history = list()),
-    metadata = object_metadata,
-    other_files = other_files %||% list(),
-    checkpoint_info = list()
+    sample_info_note = sample_info_note,
+    variable_info_note = variable_info_note
   )
-  class(object) <- c("ProtVis_dataset", "list")
+  methods::slot(mass_object, "ms2_data") <- ms2_data
+  methods::slot(mass_object, "annotation_table") <- annotation_table
+  methods::slot(mass_object, "other_files") <- other_files
+  methods::slot(mass_object, "activated") <- activated
+
+  object <- methods::new(
+    "ProtVis_dataset",
+    expression_data = methods::slot(mass_object, "expression_data"),
+    ms2_data = methods::slot(mass_object, "ms2_data"),
+    annotation_table = methods::slot(mass_object, "annotation_table"),
+    sample_info = methods::slot(mass_object, "sample_info"),
+    variable_info = methods::slot(mass_object, "variable_info"),
+    sample_info_note = methods::slot(mass_object, "sample_info_note"),
+    variable_info_note = methods::slot(mass_object, "variable_info_note"),
+    process_info = methods::slot(mass_object, "process_info"),
+    other_files = methods::slot(mass_object, "other_files"),
+    version = methods::slot(mass_object, "version"),
+    activated = methods::slot(mass_object, "activated"),
+    analysis_results = list(),
+    protvis_process_info = list(
+      parameters = list(), time = list(), history = list()
+    ),
+    metadata = object_metadata,
+    checkpoint_info = list(),
+    annotation = annotation %||% list()
+  )
   object <- .protvis_append_process(
     object, "creation", status = "success",
     parameters = list(n_proteins = nrow(expression_data),
@@ -543,6 +779,158 @@ ProtVis_dataset <- function(...) create_protvis_dataset(...)
 #' @export
 create_dataset <- function(...) create_protvis_dataset(...)
 
+#' Convert an existing tidyMass or legacy ProtVis object.
+#'
+#' Native mass_dataset slots are preserved. Legacy list-based ProtVis objects
+#' are upgraded in memory so old checkpoints remain readable.
+#' @param object A mass_dataset or legacy ProtVis_dataset object.
+#' @return An S4 ProtVis_dataset inheriting from mass_dataset.
+#' @export
+as_protvis_dataset <- function(object) {
+  if (isS4(object) && methods::is(object, "ProtVis_dataset")) {
+    validate_protvis_dataset(object)
+    return(object)
+  }
+
+  if (isS4(object) && methods::is(object, "mass_dataset")) {
+    other_files <- methods::slot(object, "other_files")
+    state <- other_files[[.protvis_state_key]] %||% list()
+    other_files[[.protvis_state_key]] <- NULL
+    sample_info <- methods::slot(object, "sample_info")
+    if (!"group" %in% names(sample_info)) {
+      sample_info$group <- as.character(sample_info$class)
+    }
+    variable_info <- methods::slot(object, "variable_info")
+    if (!"protein_id" %in% names(variable_info)) {
+      variable_info$protein_id <- as.character(variable_info$variable_id)
+    }
+    result <- create_protvis_dataset(
+      expression_data = methods::slot(object, "expression_data"),
+      sample_info = sample_info,
+      variable_info = variable_info,
+      sample_info_note = methods::slot(object, "sample_info_note"),
+      variable_info_note = methods::slot(object, "variable_info_note"),
+      annotation = state$annotation %||% list(),
+      metadata = state$metadata %||% list(
+        source = "tidyMass",
+        object_name = "ProtVis_dataset__tidymass_import__v1",
+        object_version = 1L
+      ),
+      other_files = other_files,
+      ms2_data = methods::slot(object, "ms2_data"),
+      annotation_table = methods::slot(object, "annotation_table"),
+      activated = methods::slot(object, "activated") %||% "expression_data"
+    )
+    # Keep tidyMass' native processing records separate from ProtVis history.
+    methods::slot(result, "process_info") <- methods::slot(object, "process_info")
+    result$analysis_results <- state$analysis_results %||% list()
+    result$checkpoint_info <- state$checkpoint_info %||% list()
+    if (length(state$process_info %||% list()) > 0L) {
+      result$process_info <- state$process_info
+    } else {
+      result <- .protvis_append_process(
+        result, "mass_dataset_import", status = "success",
+        parameters = list(source_class = class(object)[[1L]])
+      )
+    }
+    validate_protvis_dataset(result)
+    return(result)
+  }
+
+  if (inherits(object, "ProtVis_dataset") && is.list(object)) {
+    expression_data <- object[["expression_data"]]
+    if (is.null(expression_data)) {
+      stop("Legacy ProtVis_dataset has no expression_data.", call. = FALSE)
+    }
+    metadata <- object[["metadata"]] %||% list(source = "legacy")
+    result <- create_protvis_dataset(
+      expression_data = expression_data,
+      sample_info = object[["sample_info"]],
+      variable_info = object[["variable_info"]],
+      sample_info_note = object[["sample_info_note"]],
+      variable_info_note = object[["variable_info_note"]],
+      annotation = object[["annotation"]] %||% list(),
+      metadata = metadata,
+      other_files = object[["other_files"]] %||% list(),
+      ms2_data = object[["ms2_data"]] %||% list(),
+      annotation_table = object[["annotation_table"]] %||% data.frame(),
+      activated = object[["activated"]] %||% "expression_data"
+    )
+    result$analysis_results <- object[["analysis_results"]] %||% list()
+    result$process_info <- object[["process_info"]] %||% list(
+      parameters = list(), time = list(), history = list()
+    )
+    result$checkpoint_info <- object[["checkpoint_info"]] %||% list()
+    result <- .protvis_append_process(
+      result, "legacy_object_migration", status = "success",
+      parameters = list(target_class = "mass_dataset")
+    )
+    validate_protvis_dataset(result)
+    return(result)
+  }
+
+  stop("Object is neither a mass_dataset nor a legacy ProtVis_dataset.",
+       call. = FALSE)
+}
+
+# Replace an expression matrix while keeping both tidyMass metadata tables in
+# exact row/column order. This is used by Shiny stages that may remove rows.
+.protvis_update_expression <- function(dataset, expression_data) {
+  dataset <- as_protvis_dataset(dataset)
+  raw <- .protvis_as_data_frame(expression_data)
+  id_col <- .protvis_find_column(
+    names(raw),
+    c("^ID$", "^variable_id$", "^protein_id$", "^Protein IDs?$")
+  )
+  value_columns <- setdiff(names(raw), id_col %||% character())
+  sample_info <- dataset$sample_info
+  sample_id <- as.character(sample_info$sample_id)
+  source_id <- if ("maxquant_id" %in% names(sample_info)) {
+    as.character(sample_info$maxquant_id)
+  } else {
+    sample_id
+  }
+  matched <- match(value_columns, sample_id)
+  source_match <- match(value_columns, source_id)
+  matched[is.na(matched)] <- source_match[is.na(matched)]
+
+  # Drop annotation columns accidentally carried by legacy MaxQuant tables.
+  if (any(!is.na(matched))) {
+    keep_values <- value_columns[!is.na(matched)]
+    raw <- raw[, c(id_col %||% character(), keep_values), drop = FALSE]
+  }
+  expression <- .protvis_coerce_expression(raw)
+  expression_columns <- colnames(expression)
+  matched <- match(expression_columns, sample_id)
+  source_match <- match(expression_columns, source_id)
+  matched[is.na(matched)] <- source_match[is.na(matched)]
+  if (all(!is.na(matched))) {
+    colnames(expression) <- sample_id[matched]
+    sample_info <- sample_info[matched, , drop = FALSE]
+    sample_info$sample_id <- colnames(expression)
+  } else if (ncol(expression) == nrow(sample_info)) {
+    colnames(expression) <- sample_id
+  } else {
+    sample_info <- .protvis_normalise_sample_info(NULL, colnames(expression))
+  }
+  sample_info$class <- as.character(sample_info$group)
+
+  variable_info <- .protvis_normalise_variable_info(
+    dataset$variable_info, rownames(expression)
+  )
+  dataset$expression_data <- expression
+  dataset$sample_info <- sample_info
+  dataset$variable_info <- variable_info
+  dataset$sample_info_note <- .protvis_normalise_note(
+    dataset$sample_info_note, names(sample_info), "sample"
+  )
+  dataset$variable_info_note <- .protvis_normalise_note(
+    dataset$variable_info_note, names(variable_info), "variable"
+  )
+  validate_protvis_dataset(dataset)
+  dataset
+}
+
 #' Validate a ProtVis dataset object.
 #'
 #' @param object Object to validate.
@@ -551,8 +939,9 @@ create_dataset <- function(...) create_protvis_dataset(...)
 #' @return TRUE invisibly when validation succeeds.
 #' @export
 validate_protvis_dataset <- function(object, strict = TRUE) {
-  if (!inherits(object, "ProtVis_dataset") || !is.list(object)) {
-    stop("Object is not a ProtVis_dataset.", call. = FALSE)
+  if (!isS4(object) || !methods::is(object, "ProtVis_dataset") ||
+      !methods::is(object, "mass_dataset")) {
+    stop("Object is not an S4 ProtVis_dataset/mass_dataset.", call. = FALSE)
   }
   required <- c("expression_data", "sample_info", "variable_info",
                 "variable_info_note", "sample_info_note", "annotation",
@@ -590,19 +979,22 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
     }
   }
   if (!is.data.frame(object$sample_info) ||
-      !all(c("sample_id", "group") %in% names(object$sample_info))) {
-    stop("sample_info must contain sample_id and group columns.", call. = FALSE)
+      !all(c("sample_id", "class", "group") %in% names(object$sample_info))) {
+    stop("sample_info must contain sample_id, class, and group columns.",
+         call. = FALSE)
   }
-  if (!setequal(as.character(object$sample_info$sample_id),
-                colnames(expression_data))) {
-    stop("sample_info sample_id values must match expression_data columns.",
+  if (!identical(as.character(object$sample_info$sample_id),
+                 colnames(expression_data))) {
+    stop("sample_info sample_id order must match expression_data columns.",
          call. = FALSE)
   }
   if (!is.data.frame(object$variable_info) ||
-      !"protein_id" %in% names(object$variable_info) ||
-      !setequal(as.character(object$variable_info$protein_id),
-                rownames(expression_data))) {
-    stop("variable_info protein_id values must match expression_data rows.",
+      !all(c("variable_id", "protein_id") %in% names(object$variable_info)) ||
+      !identical(as.character(object$variable_info$variable_id),
+                 rownames(expression_data)) ||
+      !identical(as.character(object$variable_info$protein_id),
+                 rownames(expression_data))) {
+    stop("variable_info identifiers and order must match expression_data rows.",
          call. = FALSE)
   }
   if (!is.list(object$process_info) || !is.list(object$analysis_results) ||
@@ -611,12 +1003,30 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
     stop("process_info, analysis_results, metadata, other_files, and ",
          "checkpoint_info must be lists.", call. = FALSE)
   }
+  if (!is.data.frame(object$sample_info_note) ||
+      !identical(names(object$sample_info),
+                 as.character(object$sample_info_note$name))) {
+    stop("sample_info_note$name must exactly document sample_info columns.",
+         call. = FALSE)
+  }
+  if (!is.data.frame(object$variable_info_note) ||
+      !identical(names(object$variable_info),
+                 as.character(object$variable_info_note$name))) {
+    stop("variable_info_note$name must exactly document variable_info columns.",
+         call. = FALSE)
+  }
+  mass_valid <- methods::validObject(object, test = TRUE)
+  if (!identical(mass_valid, TRUE)) {
+    stop("Invalid tidyMass mass_dataset: ", paste(mass_valid, collapse = "; "),
+         call. = FALSE)
+  }
   invisible(TRUE)
 }
 
 #' Convert a ProtVis dataset into the legacy ID-plus-samples matrix format.
 #' @export
 protvis_expression_matrix <- function(object) {
+  object <- as_protvis_dataset(object)
   validate_protvis_dataset(object)
   out <- .protvis_normalise_dataset_missing_values(
     object$expression_data,
@@ -633,6 +1043,7 @@ protvis_expression_matrix <- function(object) {
 #' @export
 add_protvis_result <- function(object, name, value, stage = name,
                                parameters = list()) {
+  object <- as_protvis_dataset(object)
   validate_protvis_dataset(object)
   if (!nzchar(as.character(name))) stop("Result name cannot be empty.",
                                         call. = FALSE)
@@ -651,6 +1062,7 @@ add_protvis_result <- function(object, name, value, stage = name,
 #' Return process history as a compact data.frame.
 #' @export
 protvis_history <- function(object) {
+  object <- as_protvis_dataset(object)
   validate_protvis_dataset(object)
   history <- object$process_info$history %||% list()
   if (length(history) == 0L) {
@@ -687,6 +1099,7 @@ protvis_history <- function(object) {
 #' Subset a ProtVis dataset while retaining metadata and provenance.
 #' @export
 subset_protvis_dataset <- function(object, variables = NULL, samples = NULL) {
+  object <- as_protvis_dataset(object)
   validate_protvis_dataset(object)
   if (is.null(variables)) variables <- rownames(object$expression_data)
   if (is.numeric(variables)) variables <- rownames(object$expression_data)[variables]
@@ -716,13 +1129,13 @@ subset_protvis_dataset <- function(object, variables = NULL, samples = NULL) {
   tryCatch(protvis_auto_export_dataset(object), error = function(e) object)
 }
 
-print.ProtVis_dataset <- function(x, ...) {
-  validate_protvis_dataset(x)
-  cat("<ProtVis_dataset>\\n")
-  cat("  proteins:", nrow(x$expression_data),
-      " samples:", ncol(x$expression_data), "\\n")
-  cat("  source:", x$metadata$source %||% "unknown", "\\n")
-  cat("  last stage:", x$process_info$active_stage %||% "none",
-      " [", x$process_info$last_status %||% "unknown", "]\\n", sep = "")
-  invisible(x)
-}
+methods::setMethod("show", "ProtVis_dataset", function(object) {
+  validate_protvis_dataset(object)
+  cat("<ProtVis_dataset / tidyMass mass_dataset>\n")
+  cat("  proteins:", nrow(object$expression_data),
+      " samples:", ncol(object$expression_data), "\n")
+  cat("  source:", object$metadata$source %||% "unknown", "\n")
+  cat("  last stage:", object$process_info$active_stage %||% "none",
+      " [", object$process_info$last_status %||% "unknown", "]\n", sep = "")
+  invisible(object)
+})

@@ -209,39 +209,30 @@ data_normalization_server <- function(id, shared_state) {
       )
 
       if (base::file.exists(rda_path)) {
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "imputed_df"
+        )
+      } else if (inherits(shared_state$dataset, "ProtVis_dataset") &&
+                 identical(shared_state$dataset$process_info$active_stage,
+                           "imputation")) {
+        dataset <- shared_state$dataset
+      } else {
+        dataset <- NULL
+      }
 
-        if (base::exists("sample_info", envir = e)) {
-          rv$sample_info <- e$sample_info
-        } else {
-          rv$sample_info <- NULL
-        }
-
-        if (base::exists("imputed_df", envir = e)) {
-          rv$expression_matrix <- base::as.data.frame(
-            e$imputed_df,
-            stringsAsFactors = FALSE,
-            check.names = FALSE
-          )
-        } else {
-          rv$expression_matrix <- NULL
-          shiny::showNotification(
-            "⚠️ Step5_data_imputation.rda does not contain imputed_df.",
-            type = "warning"
-          )
-        }
+      if (!base::is.null(dataset)) {
+        shared_state$dataset <- dataset
+        rv$sample_info <- dataset$sample_info
+        rv$expression_matrix <- dataset$expression_data
 
         rv$normalized_matrix <- NULL
         rv$normalization_done <- FALSE
-        rv$load_success <- !base::is.null(rv$expression_matrix)
+        rv$load_success <- TRUE
 
-        if (isTRUE(rv$load_success)) {
-          shiny::showNotification(
-            "✅ Data loaded successfully.",
-            type = "message"
-          )
-        }
+        shiny::showNotification(
+          "✅ Imputed mass_dataset loaded successfully.",
+          type = "message"
+        )
       } else {
         rv$load_success <- FALSE
         shiny::showNotification(
@@ -330,14 +321,29 @@ data_normalization_server <- function(id, shared_state) {
       rv$normalized_matrix <- normalized_data
       rv$normalization_done <- TRUE
 
-      sample_info <- rv$sample_info
-
-      base::save(
-        sample_info,
-        normalized_data,
-        file = base::file.path(
-          shared_state$workdir,
-          "Step6_data_normalization.rda"
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          expr_df, sample_info = rv$sample_info
+        )
+      }
+      dataset <- .protvis_update_expression(dataset, normalized_data)
+      dataset <- .protvis_new_analysis_dataset(
+        dataset, "normalization", list(method = "median_subtraction")
+      )
+      dataset$analysis_results$normalization <- list(
+        status = "success", method = "median_subtraction"
+      )
+      dataset <- .protvis_append_process(
+        dataset, "normalization", status = "success",
+        parameters = list(method = "median_subtraction")
+      )
+      .protvis_ui_sync_state(dataset, shared_state)
+      .protvis_save_stage_dataset(
+        dataset,
+        base::file.path(
+          shared_state$workdir, "Step6_data_normalization.rda"
         )
       )
 

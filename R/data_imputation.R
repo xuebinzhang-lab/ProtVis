@@ -244,21 +244,13 @@ data_imputation_server <- function(id, shared_state) {
       )
 
       if (base::file.exists(rda_path)) {
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
-
-        if (base::exists("sample_info", envir = e)) {
-          rv$sample_info <- e$sample_info
-        } else {
-          rv$sample_info <- NULL
-        }
-
-        if (base::exists("transformed", envir = e)) {
-          rv$expression_matrix <- base::as.data.frame(
-            e$transformed,
-            stringsAsFactors = FALSE,
-            check.names = FALSE
-          )
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "transformed"
+        )
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
+          rv$expression_matrix <- protvis_expression_matrix(dataset)
           rv$expression_matrix <- clean_missing_sentinels(
             rv$expression_matrix
           )
@@ -270,7 +262,8 @@ data_imputation_server <- function(id, shared_state) {
           )
         }
 
-        rv$load_success <- !base::is.null(rv$expression_matrix)
+        rv$load_success <- !base::is.null(dataset) &&
+          !base::is.null(rv$expression_matrix)
 
         if (isTRUE(rv$load_success)) {
           shiny::showNotification(
@@ -534,12 +527,30 @@ data_imputation_server <- function(id, shared_state) {
         check.names = FALSE
       )
 
-      base::save(
-        sample_info,
-        imputed_df,
-        file = base::file.path(
-          shared_state$workdir,
-          "Step5_data_imputation.rda"
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          rv$expression_matrix,
+          sample_info = sample_info
+        )
+      }
+      dataset <- .protvis_update_expression(dataset, imputed_df)
+      dataset <- .protvis_new_analysis_dataset(
+        dataset, "imputation", list(method = input$choice_method)
+      )
+      dataset$analysis_results$imputation <- list(
+        status = "success", method = input$choice_method
+      )
+      dataset <- .protvis_append_process(
+        dataset, "imputation", status = "success",
+        parameters = list(method = input$choice_method)
+      )
+      .protvis_ui_sync_state(dataset, shared_state)
+      .protvis_save_stage_dataset(
+        dataset,
+        base::file.path(
+          shared_state$workdir, "Step5_data_imputation.rda"
         )
       )
 

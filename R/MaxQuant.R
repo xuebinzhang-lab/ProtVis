@@ -113,19 +113,29 @@ MaxQuant_server <- function(id, shared_state) {
     # Load data
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        rv$sample_info <- shared_state$dataset$sample_info
+        rv$expression_matrix <- protvis_expression_matrix(shared_state$dataset)
+        rv$expression_matrix_filtered <- rv$expression_matrix
+        filter_done(FALSE)
+        rv$load_success <- TRUE
+        shiny::showNotification("✅ mass_dataset loaded successfully.", type = "message")
+        return(invisible(NULL))
+      }
       rda_path <- base::file.path(shared_state$workdir, "Step1_project_init.rda")
       if (base::file.exists(rda_path)) {
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
-        if (base::exists("sample_info", envir = e)) {
-          rv$sample_info <- e$sample_info
-        }
-        if (base::exists("expression_matrix", envir = e)) {
-          rv$expression_matrix <- e$expression_matrix
-          rv$expression_matrix_filtered <- e$expression_matrix
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "expression_matrix",
+          metadata = list(source = "MaxQuant")
+        )
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
+          rv$expression_matrix <- protvis_expression_matrix(dataset)
+          rv$expression_matrix_filtered <- rv$expression_matrix
           filter_done(FALSE)
         }
-        rv$load_success <- TRUE
+        rv$load_success <- !base::is.null(dataset)
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
@@ -168,10 +178,29 @@ MaxQuant_server <- function(id, shared_state) {
       shiny::showNotification(paste("Unreliable peptides filtered, remaining rows:", nrow(filtered)), type = "message")
       # Save results
       save_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
-      sample_info <- rv$sample_info
-      expression_matrix <- rv$expression_matrix
-      expression_matrix_filtered <- rv$expression_matrix_filtered
-      base::save(sample_info, expression_matrix, expression_matrix_filtered, file = save_path)
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          rv$expression_matrix,
+          sample_info = rv$sample_info,
+          metadata = list(source = "MaxQuant")
+        )
+      }
+      dataset <- .protvis_update_expression(dataset, rv$expression_matrix_filtered)
+      dataset <- .protvis_new_analysis_dataset(
+        dataset, "filter_unreliable", list(method = selected_filters)
+      )
+      dataset$analysis_results$filter_unreliable <- list(
+        status = "success", filters = selected_filters,
+        retained_rows = nrow(dataset$expression_data)
+      )
+      dataset <- .protvis_append_process(
+        dataset, "filter_unreliable", status = "success",
+        parameters = list(filters = selected_filters)
+      )
+      .protvis_ui_sync_state(dataset, shared_state)
+      .protvis_save_stage_dataset(dataset, save_path)
       shiny::showNotification("✅ Saved to Step2_remove_unreliable_peptide.rda", type = "message")
     })
     # Display report results

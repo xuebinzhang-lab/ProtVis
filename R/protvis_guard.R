@@ -32,6 +32,7 @@ protvis_error_message <- function(error, label = NULL) {
 #' Return recorded node errors from a ProtVis_dataset.
 #' @export
 protvis_error_log <- function(dataset) {
+  dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
   events <- dataset$process_info$errors %||% list()
   if (length(events) == 0L) {

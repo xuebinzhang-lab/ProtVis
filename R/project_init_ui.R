@@ -212,7 +212,7 @@ project_init_server <- function(id, shared_state) {
         history <- shared_state$dataset_history %||% list()
         shared_state$dataset_history <- c(history, list(dataset))
         save_path <- file.path(directory, "Step1_project_init.rda")
-        base::save(sample_info, expression_matrix, data_source, file = save_path)
+        .protvis_save_stage_dataset(dataset, save_path)
         shiny::showNotification(
           paste("Project initialized:", protvis_dataset_name(dataset)), type = "message"
         )

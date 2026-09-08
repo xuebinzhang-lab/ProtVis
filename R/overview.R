@@ -305,146 +305,54 @@ overview_server <- function(id, shared_state) {
     )
 
     shiny::observeEvent(input$load_data, {
-      # ProtVis_dataset is the canonical source for current projects.  The
-      # Step5/Step6 files below are retained only for legacy projects.
-      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
-        matrix <- base::as.matrix(shared_state$dataset$expression_data)
-        storage.mode(matrix) <- "numeric"
-        imputed_matrix <- impute_overview_matrix(matrix)
-        normalized_matrix <- standardize_overview_matrix(imputed_matrix)
-        rv$sample_info <- shared_state$dataset$sample_info
-        rv$imputed_matrix <- imputed_matrix
-        rv$normalized_matrix <- normalized_matrix
-        rv$cor_results <- NULL
-        rv$exp_results <- NULL
-        rv$load_success <- TRUE
-        shiny::showNotification(
-          "✅ ProtVis_dataset loaded successfully.", type = "message"
-        )
-        return(invisible(NULL))
-      }
-      shiny::req(shared_state$workdir)
-
-      step5_path <- base::file.path(shared_state$workdir, "Step5_data_imputation.rda")
-      step6_path <- base::file.path(shared_state$workdir, "Step6_data_normalization.rda")
-
-      if (!base::file.exists(step5_path) || !base::file.exists(step6_path)) {
-        missing_files <- c(step5_path, step6_path)[
-          !base::file.exists(c(step5_path, step6_path))
-        ]
-
-        shiny::showNotification(
-          base::paste(
-            "File(s) not found:",
-            base::paste(base::basename(missing_files), collapse = ", ")
-          ),
-          type = "error"
-        )
-        rv$load_success <- FALSE
-        rv$cor_results <- NULL
-        rv$exp_results <- NULL
-        return()
-      }
-
       tryCatch({
-        e5 <- base::new.env()
-        base::load(step5_path, envir = e5)
-
-        e6 <- base::new.env()
-        base::load(step6_path, envir = e6)
-
-        if (!base::exists("sample_info", envir = e5) ||
-            !base::exists("imputed_df", envir = e5)) {
-          shiny::showNotification(
-            "Required data not found in Step5 file.",
-            type = "error"
+        step5 <- NULL
+        step6 <- NULL
+        if (!base::is.null(shared_state$workdir)) {
+          step5_path <- base::file.path(
+            shared_state$workdir, "Step5_data_imputation.rda"
           )
-          rv$load_success <- FALSE
-          rv$cor_results <- NULL
-          rv$exp_results <- NULL
-          return()
-        }
-
-        if (!base::exists("normalized_data", envir = e6)) {
-          shiny::showNotification(
-            "Required data not found in Step6 file.",
-            type = "error"
+          step6_path <- base::file.path(
+            shared_state$workdir, "Step6_data_normalization.rda"
           )
-          rv$load_success <- FALSE
-          rv$cor_results <- NULL
-          rv$exp_results <- NULL
-          return()
-        }
-
-        imputed_mat <- base::as.data.frame(
-          e5$imputed_df,
-          stringsAsFactors = FALSE
-        )
-        normalized_mat <- base::as.data.frame(
-          e6$normalized_data,
-          stringsAsFactors = FALSE
-        )
-
-        if ("ID" %in% base::colnames(imputed_mat)) {
-          ids <- imputed_mat$ID
-          imputed_mat <- imputed_mat[, base::setdiff(base::colnames(imputed_mat), "ID"), drop = FALSE]
-          base::rownames(imputed_mat) <- ids
-        }
-
-        if ("ID" %in% base::colnames(normalized_mat)) {
-          ids <- normalized_mat$ID
-          normalized_mat <- normalized_mat[, base::setdiff(base::colnames(normalized_mat), "ID"), drop = FALSE]
-          base::rownames(normalized_mat) <- ids
-        }
-
-        imputed_ids <- base::rownames(imputed_mat)
-        normalized_ids <- base::rownames(normalized_mat)
-
-        imputed_mat <- base::as.data.frame(
-          base::lapply(imputed_mat, function(x) base::as.numeric(base::as.character(x))),
-          stringsAsFactors = FALSE
-        )
-        normalized_mat <- base::as.data.frame(
-          base::lapply(normalized_mat, function(x) base::as.numeric(base::as.character(x))),
-          stringsAsFactors = FALSE
-        )
-
-        base::rownames(imputed_mat) <- imputed_ids
-        base::rownames(normalized_mat) <- normalized_ids
-
-        if (!base::identical(base::colnames(imputed_mat), base::colnames(normalized_mat))) {
-          shiny::showNotification(
-            "Sample names don't match between imputed and normalized data.",
-            type = "error"
+          step5 <- .protvis_load_stage_dataset(
+            step5_path, expression_names = "imputed_df"
           )
-          rv$load_success <- FALSE
-          rv$cor_results <- NULL
-          rv$exp_results <- NULL
-          return()
-        }
-
-        if (!base::identical(base::rownames(imputed_mat), base::rownames(normalized_mat))) {
-          shiny::showNotification(
-            "Feature IDs don't match between imputed and normalized data.",
-            type = "error"
+          step6 <- .protvis_load_stage_dataset(
+            step6_path, expression_names = "normalized_data"
           )
-          rv$load_success <- FALSE
-          rv$cor_results <- NULL
-          rv$exp_results <- NULL
-          return()
         }
 
-        rv$sample_info <- e5$sample_info
-        rv$imputed_matrix <- imputed_mat
-        rv$normalized_matrix <- normalized_mat
+        if (!base::is.null(step5) && !base::is.null(step6)) {
+          imputed_mat <- base::as.matrix(step5$expression_data)
+          normalized_mat <- base::as.matrix(step6$expression_data)
+          storage.mode(imputed_mat) <- "numeric"
+          storage.mode(normalized_mat) <- "numeric"
+          if (!base::identical(dimnames(imputed_mat), dimnames(normalized_mat))) {
+            stop("Step5 and Step6 mass_dataset dimensions or identifiers differ.")
+          }
+          rv$sample_info <- step6$sample_info
+          rv$imputed_matrix <- imputed_mat
+          rv$normalized_matrix <- normalized_mat
+          shared_state$dataset <- step6
+          notice <- "✅ Imputed and normalized mass_dataset stages loaded."
+        } else if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+          matrix <- base::as.matrix(shared_state$dataset$expression_data)
+          storage.mode(matrix) <- "numeric"
+          rv$sample_info <- shared_state$dataset$sample_info
+          rv$imputed_matrix <- impute_overview_matrix(matrix)
+          rv$normalized_matrix <- standardize_overview_matrix(rv$imputed_matrix)
+          notice <- paste0(
+            "⚠️ Stage snapshots were unavailable; overview was derived from ",
+            "the current mass_dataset."
+          )
+        } else {
+          stop("Run imputation and normalization before loading the overview.")
+        }
         rv$cor_results <- NULL
         rv$exp_results <- NULL
         rv$load_success <- TRUE
-
-        shiny::showNotification(
-          "✅ Both datasets loaded successfully.",
-          type = "message"
-        )
+        shiny::showNotification(notice, type = "message")
       }, error = function(e) {
         shiny::showNotification(
           base::paste("Error loading data:", e$message),

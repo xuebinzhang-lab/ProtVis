@@ -156,18 +156,20 @@ missing_value_server <- function(id, shared_state) {
       shiny::req(shared_state$workdir)
       rda_path <- base::file.path(shared_state$workdir, "Step4_select_protein_id.rda")
       if (base::file.exists(rda_path)) {
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
-        if (base::exists("sample_info", envir = e)) rv$sample_info <- e$sample_info
-        if (base::exists("expression_matrix", envir = e)) {
-          rv$expression_matrix <- e$expression_matrix
-          rv$expression_matrix_filtered <- e$expression_matrix
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "expression_matrix"
+        )
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
+          rv$expression_matrix <- protvis_expression_matrix(dataset)
+          rv$expression_matrix_filtered <- rv$expression_matrix
           # Initialize step data
           rv$step1_zero_na <- NULL
           rv$step2_group_na <- NULL
           rv$step3_imputed <- NULL
         }
-        rv$load_success <- TRUE
+        rv$load_success <- !base::is.null(dataset)
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
       } else {
         rv$load_success <- FALSE
@@ -280,21 +282,33 @@ missing_value_server <- function(id, shared_state) {
     shiny::observeEvent(input$export_remove_noise_data, {
       shiny::req(shared_state$workdir)
       save_path <- base::file.path(shared_state$workdir, "Step5_missing_value_processed.rda")
-      # Get data to save
-      sample_info <- rv$sample_info
-      expression_matrix <- rv$expression_matrix
-      step1_zero_na <- rv$step1_zero_na
-      step2_group_na <- rv$step2_group_na
-      step3_imputed <- rv$step3_imputed
-      # Save to RDA file
-      base::save(
-        sample_info,
-        expression_matrix,
-        step1_zero_na,
-        step2_group_na,
-        step3_imputed,
-        file = save_path
+      processed <- rv$step4_transformed %||% rv$step3_imputed %||%
+        rv$step2_group_na %||% rv$step1_zero_na %||% rv$expression_matrix
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          rv$expression_matrix, sample_info = rv$sample_info
+        )
+      }
+      dataset <- .protvis_update_expression(dataset, processed)
+      dataset <- .protvis_new_analysis_dataset(
+        dataset, "missing_value_processing",
+        list(method = input$data_transformed %||% "none")
       )
+      dataset$analysis_results$missing_value_processing <- list(
+        status = "success",
+        zero_to_na = isTRUE(input$zero_to_na),
+        filter_half_na = isTRUE(input$filter_half_na),
+        impute_mean = isTRUE(input$impute_mean),
+        transformation = input$data_transformed %||% "none"
+      )
+      dataset <- .protvis_append_process(
+        dataset, "missing_value_processing", status = "success",
+        parameters = dataset$analysis_results$missing_value_processing
+      )
+      .protvis_ui_sync_state(dataset, shared_state)
+      .protvis_save_stage_dataset(dataset, save_path)
       shiny::showNotification(paste0("✅ Exported to: ", save_path), type = "message")
       # Update UI status
       output$export_remove_noise_data_status_panel <- shiny::renderUI({

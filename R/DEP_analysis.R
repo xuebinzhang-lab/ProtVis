@@ -374,8 +374,9 @@ DEP_analysis_server <- function(id, shared_state) {
           total = 100
         )
 
-        e <- base::new.env()
-        base::load(rda_path, envir = e)
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "normalized_data"
+        )
 
         shinyWidgets::updateProgressBar(
           session = session,
@@ -384,8 +385,9 @@ DEP_analysis_server <- function(id, shared_state) {
           total = 100
         )
 
-        if (base::exists("sample_info", envir = e)) {
-          rv$sample_info <- e$sample_info
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
           if ("tissue" %in% base::colnames(rv$sample_info)) {
             rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue)
           } else if ("tissue2" %in% base::colnames(rv$sample_info)) {
@@ -395,8 +397,10 @@ DEP_analysis_server <- function(id, shared_state) {
           rv$sample_info <- NULL
         }
 
-        if (base::exists("normalized_data", envir = e)) {
-          rv$normalized_matrix <- numeric_expression_matrix(e$normalized_data)
+        if (!base::is.null(dataset)) {
+          rv$normalized_matrix <- numeric_expression_matrix(
+            dataset$expression_data
+          )
         } else {
           rv$normalized_matrix <- NULL
           shiny::showNotification(

@@ -83,6 +83,35 @@ release_data_server <- function(id, shared_state) {
         for (obj_name in obj_names) {
           obj <- env[[obj_name]]
           out_file <- base::file.path(out_dir, paste0(obj_name, ".", format))
+          if (inherits(obj, "mass_dataset")) {
+            obj <- as_protvis_dataset(obj)
+            if (format == "xlsx") {
+              openxlsx::write.xlsx(
+                list(
+                  expression_data = protvis_expression_matrix(obj),
+                  sample_info = obj$sample_info,
+                  variable_info = obj$variable_info,
+                  process_history = protvis_history(obj)
+                ),
+                out_file
+              )
+            } else {
+              utils::write.csv(
+                protvis_expression_matrix(obj), out_file, row.names = FALSE
+              )
+              utils::write.csv(
+                obj$sample_info,
+                base::file.path(out_dir, paste0(obj_name, "_sample_info.csv")),
+                row.names = FALSE
+              )
+              utils::write.csv(
+                obj$variable_info,
+                base::file.path(out_dir, paste0(obj_name, "_variable_info.csv")),
+                row.names = FALSE
+              )
+            }
+            next
+          }
           if (format == "xlsx") {
             if (base::is.data.frame(obj)) {
               openxlsx::write.xlsx(obj, out_file)

@@ -191,16 +191,15 @@ protvis_dataset_ui <- function(id) {
   if (is.null(shared_state) || is.null(shared_state$workdir) ||
       !dir.exists(shared_state$workdir)) return(invisible(NULL))
   directory <- shared_state$workdir
-  sample_info <- dataset$sample_info
-  expression_matrix <- protvis_expression_matrix(dataset)
-  expression_matrix_filtered <- expression_matrix
-  data_source <- dataset$metadata$source %||% "ProtVis_dataset"
   tryCatch({
-    save(sample_info, expression_matrix, data_source,
-         file = file.path(directory, "Step1_project_init.rda"))
-    save(sample_info, expression_matrix, expression_matrix_filtered,
-         file = file.path(directory, "Step2_remove_unreliable_peptide.rda"))
-    saveRDS(dataset, file = file.path(directory, "ProtVis_dataset.rds"),
+    .protvis_save_stage_dataset(
+      dataset, file.path(directory, "Step1_project_init.rda")
+    )
+    .protvis_save_stage_dataset(
+      dataset, file.path(directory, "Step2_remove_unreliable_peptide.rda")
+    )
+    saveRDS(protvis_as_mass_dataset(dataset),
+            file = file.path(directory, "ProtVis_dataset.rds"),
             compress = TRUE)
     invisible(TRUE)
   }, error = function(e) invisible(FALSE))
@@ -577,7 +576,7 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
       filename = function() "ProtVis_dataset.rds",
       content = function(file) {
         if (is.null(rv$dataset)) stop("No dataset is loaded.", call. = FALSE)
-        saveRDS(rv$dataset, file, compress = TRUE)
+        saveRDS(protvis_as_mass_dataset(rv$dataset), file, compress = TRUE)
       }
     )
     output$download_report <- shiny::downloadHandler(

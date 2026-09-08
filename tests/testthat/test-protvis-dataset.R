@@ -12,12 +12,21 @@ test_that("ProtVis_dataset has the standard schema", {
     stringsAsFactors = FALSE
   )
   object <- create_protvis_dataset(expression, sample_info = sample_info)
-  expect_s3_class(object, "ProtVis_dataset")
+  expect_true(methods::is(object, "ProtVis_dataset"))
+  expect_true(methods::is(object, "mass_dataset"))
   expect_true(validate_protvis_dataset(object))
   expect_equal(dim(object$expression_data), c(3, 2))
-  expect_true(all(c("sample_id", "group") %in% names(object$sample_info)))
-  expect_true(all(c("protein_id", "accession", "gene", "description") %in%
+  expect_true(all(c("sample_id", "class", "group") %in%
+                    names(object$sample_info)))
+  expect_true(all(c("variable_id", "protein_id", "accession", "gene",
+                    "description") %in%
                     names(object$variable_info)))
+  expect_identical(object$sample_info$sample_id,
+                   colnames(object$expression_data))
+  expect_identical(object$variable_info$variable_id,
+                   rownames(object$expression_data))
+  expect_identical(object$sample_info_note$name, names(object$sample_info))
+  expect_identical(object$variable_info_note$name, names(object$variable_info))
   expect_true(all(c("analysis_results", "process_info", "metadata",
                     "other_files", "checkpoint_info") %in% names(object)))
 })
@@ -47,7 +56,8 @@ test_that("all tabular source adapters produce a common object", {
   )
   for (i in seq_along(sources)) {
     object <- import_protvis(sources[[i]], source = source_names[[i]])
-    expect_s3_class(object, "ProtVis_dataset")
+    expect_true(methods::is(object, "ProtVis_dataset"))
+    expect_true(methods::is(object, "mass_dataset"))
     expect_equal(ncol(object$expression_data), 2)
     expect_true(validate_protvis_dataset(object))
   }
@@ -131,7 +141,7 @@ test_that("bundled software fixtures import and enter the pipeline", {
   expect_true(all(nzchar(fixture_paths) & file.exists(fixture_paths)))
   for (source in unique(manifest$source)) {
     object <- load_protvis_builtin_data(source = source)
-    expect_s3_class(object, "ProtVis_dataset")
+    expect_true(methods::is(object, "ProtVis_dataset"))
     expect_true(validate_protvis_dataset(object))
     expect_gte(nrow(object$expression_data), 4)
     expect_gte(ncol(object$expression_data), 2)
@@ -169,7 +179,7 @@ test_that("node failures are recorded without invalidating the object", {
   failed <- run_protvis_step(
     object, "normalization", params = list(method = "not-a-method")
   )
-  expect_s3_class(failed, "ProtVis_dataset")
+  expect_true(methods::is(failed, "ProtVis_dataset"))
   expect_true(nrow(protvis_error_log(failed)) >= 1)
   retried <- run_protvis_step(
     failed, "normalization", params = list(method = "none")
@@ -188,7 +198,7 @@ test_that("each analysis returns a named dataset and auto-exports it", {
     object, "transformation", params = list(method = "log2"),
     checkpoint_dir = output
   )
-  expect_s3_class(result, "ProtVis_dataset")
+  expect_true(methods::is(result, "ProtVis_dataset"))
   expect_match(protvis_dataset_name(result),
                "ProtVis_dataset__transformation__log2__v2")
   expect_identical(result$metadata$parent_object_name,
@@ -196,6 +206,8 @@ test_that("each analysis returns a named dataset and auto-exports it", {
   expect_true(dir.exists(result$metadata$auto_export_directory))
   saved <- readRDS(file.path(result$metadata$auto_export_directory,
                              "ProtVis_dataset.rds"))
+  expect_identical(class(saved)[[1L]], "mass_dataset")
+  expect_false(methods::is(saved, "ProtVis_dataset"))
   expect_identical(protvis_dataset_name(saved), protvis_dataset_name(result))
 })
 
@@ -211,8 +223,85 @@ test_that("checkpoint save, list, restore, and export are recoverable", {
   expect_true(file.exists(path))
   expect_true(nrow(list_protvis_checkpoints(directory)) >= 1)
   restored <- restore_protvis_checkpoint(directory)
-  expect_s3_class(restored, "ProtVis_dataset")
+  expect_true(methods::is(restored, "ProtVis_dataset"))
   export_dir <- export_protvis_dataset(restored, tempfile("protvis_export_"))
   expect_true(file.exists(file.path(export_dir, "ProtVis_dataset.rds")))
   expect_true(file.exists(file.path(export_dir, "process_history.csv")))
+})
+
+test_that("stage files contain one exact mass_dataset and round-trip state", {
+  object <- create_protvis_dataset(
+    data.frame(ID = c("P1", "P2"), S1 = c(1, NA), S2 = c(2, 3),
+               check.names = FALSE),
+    sample_info = data.frame(
+      sample_id = c("S1", "S2"), group = c("A", "B"),
+      stringsAsFactors = FALSE
+    ),
+    metadata = list(project = "round-trip")
+  )
+  object$analysis_results$example <- data.frame(value = 1)
+  path <- tempfile(fileext = ".rda")
+  ProtVis:::.protvis_save_stage_dataset(object, path)
+
+  environment <- new.env(parent = emptyenv())
+  expect_identical(load(path, envir = environment), "ProtVis_dataset")
+  stored <- environment$ProtVis_dataset
+  expect_identical(class(stored)[[1L]], "mass_dataset")
+  expect_false(methods::is(stored, "ProtVis_dataset"))
+  expect_true(methods::validObject(stored, test = TRUE))
+  expect_identical(massdataset::check_mass_dataset_class(stored), TRUE)
+  processing_dir <- tempfile("mass_dataset_processing_")
+  dir.create(processing_dir)
+  processed <- run_protvis_step(
+    stored, "transformation", params = list(method = "none"),
+    checkpoint_dir = processing_dir
+  )
+  expect_true(methods::is(processed, "ProtVis_dataset"))
+
+  restored <- ProtVis:::.protvis_load_stage_dataset(path)
+  expect_true(methods::is(restored, "ProtVis_dataset"))
+  expect_identical(restored$metadata$project, "round-trip")
+  expect_identical(restored$analysis_results$example$value, 1)
+  expect_identical(restored$expression_data, object$expression_data)
+})
+
+test_that("legacy split stage workspaces migrate to mass_dataset", {
+  expression_matrix <- data.frame(
+    ID = c("P1", "P2"), S1 = c(1, 2), S2 = c(3, 4),
+    check.names = FALSE
+  )
+  sample_info <- data.frame(
+    sample_id = c("S1", "S2"), group = c("A", "B"),
+    stringsAsFactors = FALSE
+  )
+  path <- tempfile(fileext = ".rda")
+  save(expression_matrix, sample_info, file = path)
+  migrated <- ProtVis:::.protvis_load_stage_dataset(path)
+  expect_true(methods::is(migrated, "mass_dataset"))
+  expect_true(methods::is(migrated, "ProtVis_dataset"))
+  expect_true(validate_protvis_dataset(migrated))
+})
+
+test_that("legacy list objects migrate without losing workflow state", {
+  legacy <- structure(
+    list(
+      expression_data = data.frame(
+        S1 = c(1, 2), S2 = c(3, 4), row.names = c("P1", "P2"),
+        check.names = FALSE
+      ),
+      sample_info = data.frame(
+        sample_id = c("S1", "S2"), group = c("A", "B"),
+        stringsAsFactors = FALSE
+      ),
+      analysis_results = list(old_result = 42),
+      process_info = list(parameters = list(), time = list(), history = list()),
+      metadata = list(source = "legacy", project = "preserved")
+    ),
+    class = c("ProtVis_dataset", "list")
+  )
+  migrated <- as_protvis_dataset(legacy)
+  expect_true(methods::is(migrated, "mass_dataset"))
+  expect_identical(migrated$analysis_results$old_result, 42)
+  expect_identical(migrated$metadata$project, "preserved")
+  expect_true(validate_protvis_dataset(migrated))
 })

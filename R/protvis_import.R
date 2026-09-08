@@ -464,6 +464,13 @@ import_protvis <- function(path = NULL, source = "MaxQuant",
                             sample_info = NULL, filename = NULL,
                             maxquant_filters = c("site", "reverse", "contaminant"),
                             sheet = 1L, auto_export = TRUE) {
+  if (inherits(path, "mass_dataset") || inherits(path, "ProtVis_dataset")) {
+    object <- as_protvis_dataset(path)
+    if (isTRUE(auto_export)) {
+      object <- protvis_auto_export_dataset(object)
+    }
+    return(object)
+  }
   source <- .protvis_normalise_source(source)
   if (is.null(path)) {
     if (identical(source, "MaxQuant")) path <- protvis_builtin_data_path()

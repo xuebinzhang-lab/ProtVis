@@ -26,7 +26,10 @@
 # Read a checkpoint written by the current format, while retaining a safe
 # migration path for older releases that used save() with an .rds suffix.
 .protvis_read_checkpoint_file <- function(path) {
-  result <- tryCatch(readRDS(path), error = function(e) NULL)
+  result <- tryCatch(
+    as_protvis_dataset(readRDS(path)),
+    error = function(e) NULL
+  )
   if (!is.null(result)) return(result)
 
   workspace <- new.env(parent = emptyenv())
@@ -36,13 +39,116 @@
          call. = FALSE)
   }
   values <- mget(loaded, envir = workspace, inherits = FALSE)
-  candidates <- values[vapply(values, function(x) inherits(x, "ProtVis_dataset"),
-                              logical(1))]
+  candidates <- values[vapply(values, function(x) {
+    inherits(x, "ProtVis_dataset") || inherits(x, "mass_dataset")
+  }, logical(1))]
   if (length(candidates) != 1L) {
     stop("The legacy checkpoint does not contain exactly one ProtVis_dataset.",
          call. = FALSE)
   }
-  candidates[[1L]]
+  as_protvis_dataset(candidates[[1L]])
+}
+
+# Save one exact mass_dataset per stage file. The temporary-file validation
+# prevents a partially written workspace from replacing a valid stage.
+.protvis_save_stage_dataset <- function(dataset, path) {
+  dataset <- as_protvis_dataset(dataset)
+  validate_protvis_dataset(dataset)
+  stored_dataset <- protvis_as_mass_dataset(dataset)
+  directory <- dirname(path)
+  if (!dir.exists(directory) &&
+      !dir.create(directory, recursive = TRUE, showWarnings = FALSE)) {
+    stop("Unable to create stage directory: ", directory, call. = FALSE)
+  }
+  temporary <- tempfile(pattern = ".protvis_stage_", tmpdir = directory,
+                        fileext = ".rda")
+  on.exit(unlink(temporary, force = TRUE), add = TRUE)
+  workspace <- new.env(parent = emptyenv())
+  workspace$ProtVis_dataset <- stored_dataset
+  save(
+    list = "ProtVis_dataset", envir = workspace, file = temporary,
+    compress = TRUE, version = 3
+  )
+
+  check <- new.env(parent = emptyenv())
+  loaded <- load(temporary, envir = check)
+  if (!identical(loaded, "ProtVis_dataset")) {
+    stop("Stage file must contain exactly one ProtVis_dataset object.",
+         call. = FALSE)
+  }
+  if (!methods::is(check$ProtVis_dataset, "mass_dataset") ||
+      methods::is(check$ProtVis_dataset, "ProtVis_dataset")) {
+    stop("Stage file is not an exact tidyMass mass_dataset.", call. = FALSE)
+  }
+  validate_protvis_dataset(as_protvis_dataset(check$ProtVis_dataset))
+  if (!file.rename(temporary, path)) {
+    if (!file.copy(temporary, path, overwrite = TRUE)) {
+      stop("Unable to publish stage file: ", path, call. = FALSE)
+    }
+    unlink(temporary, force = TRUE)
+  }
+  normalizePath(path, winslash = "/", mustWork = TRUE)
+}
+
+# Read current one-object stages and transparently migrate historical stages
+# that stored expression/sample data as separate workspace variables.
+.protvis_load_stage_dataset <- function(
+    path,
+    expression_names = c(
+      "normalized_data", "imputed_df", "transformed", "correct_noise_result",
+      "expression_matrix_filtered", "expression_matrix"
+    ),
+    sample_info_names = "sample_info",
+    metadata = list()) {
+  if (!file.exists(path)) return(NULL)
+  workspace <- new.env(parent = emptyenv())
+  loaded <- load(path, envir = workspace)
+  values <- mget(loaded, envir = workspace, inherits = FALSE)
+  object_index <- vapply(values, function(value) {
+    inherits(value, "ProtVis_dataset") || inherits(value, "mass_dataset")
+  }, logical(1))
+  if (any(object_index)) {
+    preferred <- match("ProtVis_dataset", names(values))
+    object <- if (!is.na(preferred) && object_index[[preferred]]) {
+      values[[preferred]]
+    } else {
+      values[[which(object_index)[[1L]]]]
+    }
+    return(as_protvis_dataset(object))
+  }
+
+  expression_candidates <- expression_names[expression_names %in% loaded]
+  expression_name <- if (length(expression_candidates)) {
+    expression_candidates[[1L]]
+  } else {
+    NULL
+  }
+  if (is.null(expression_name)) return(NULL)
+  sample_candidates <- sample_info_names[sample_info_names %in% loaded]
+  sample_name <- if (length(sample_candidates)) sample_candidates[[1L]] else NULL
+  sample_info <- if (is.null(sample_name)) NULL else values[[sample_name]]
+  migration_metadata <- utils::modifyList(
+    list(
+      source = "legacy_stage",
+      migrated_from = basename(path),
+      object_name = paste0(
+        "ProtVis_dataset__legacy_stage__",
+        .protvis_object_label(tools::file_path_sans_ext(basename(path))),
+        "__v1"
+      ),
+      object_version = 1L
+    ),
+    metadata
+  )
+  object <- create_protvis_dataset(
+    expression_data = values[[expression_name]],
+    sample_info = sample_info,
+    metadata = migration_metadata
+  )
+  .protvis_append_process(
+    object, "legacy_stage_migration", status = "success",
+    parameters = list(file = basename(path), expression = expression_name)
+  )
 }
 
 #' Resolve the output directory used by automatic dataset persistence.
@@ -106,6 +212,7 @@ protvis_output_directory <- function(directory = NULL) {
 #' @export
 save_protvis_checkpoint <- function(dataset, directory = NULL, stage = "manual",
                                     keep = 20L) {
+  dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
   directory <- protvis_output_directory(directory)
   keep <- max(1L, as.integer(keep[[1L]] %||% 20L))
@@ -126,7 +233,7 @@ save_protvis_checkpoint <- function(dataset, directory = NULL, stage = "manual",
   temporary <- tempfile(pattern = ".protvis_checkpoint_", tmpdir = directory,
                         fileext = ".tmp")
   on.exit(unlink(temporary, force = TRUE), add = TRUE)
-  saveRDS(dataset, temporary, compress = TRUE)
+  saveRDS(protvis_as_mass_dataset(dataset), temporary, compress = TRUE)
   if (!file.rename(temporary, path)) {
     if (!file.copy(temporary, path, overwrite = TRUE)) {
       stop("Unable to publish checkpoint: ", path, call. = FALSE)
@@ -239,6 +346,7 @@ restore_protvis_checkpoint <- function(path_or_directory, stage = NULL,
 #' @export
 attach_protvis_file <- function(dataset, path, name = basename(path),
                                 kind = "imported") {
+  dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
   if (length(path) != 1L || !file.exists(path)) {
     stop("Attached file does not exist.", call. = FALSE)
@@ -271,6 +379,7 @@ attach_protvis_file <- function(dataset, path, name = basename(path),
 #' Export a dataset and its provenance into a portable directory.
 #' @export
 export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
+  dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
   if (is.null(directory) || !nzchar(as.character(directory))) {
     stop("An export directory is required.", call. = FALSE)
@@ -285,7 +394,8 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
       !dir.exists(root)) {
     stop("Unable to create export directory.", call. = FALSE)
   }
-  saveRDS(dataset, file.path(root, "ProtVis_dataset.rds"), compress = TRUE)
+  saveRDS(protvis_as_mass_dataset(dataset),
+          file.path(root, "ProtVis_dataset.rds"), compress = TRUE)
   utils::write.csv(protvis_expression_matrix(dataset),
                    file.path(root, "expression_data.csv"), row.names = FALSE)
   utils::write.csv(dataset$sample_info, file.path(root, "sample_info.csv"),
@@ -337,6 +447,7 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
 #' @export
 protvis_auto_export_dataset <- function(dataset, directory = NULL,
                                         include_raw = FALSE) {
+  dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
   directory <- protvis_output_directory(directory)
   exported <- export_protvis_dataset(dataset, directory,
@@ -346,6 +457,7 @@ protvis_auto_export_dataset <- function(dataset, directory = NULL,
   dataset$metadata$auto_exported_at <- as.character(Sys.time())
   dataset$checkpoint_info$output_directory <- directory
   dataset$checkpoint_info$latest_export <- exported
-  saveRDS(dataset, file.path(exported, "ProtVis_dataset.rds"), compress = TRUE)
+  saveRDS(protvis_as_mass_dataset(dataset),
+          file.path(exported, "ProtVis_dataset.rds"), compress = TRUE)
   dataset
 }
