@@ -100,6 +100,23 @@ test_that("MaxQuant zero abundances remain NA before imputation", {
   expect_true(is.na(shown$S2[[1]]))
 })
 
+test_that("built-in-style sample names receive usable annotations", {
+  object <- create_protvis_dataset(
+    data.frame(
+      ID = c("P1", "P2"),
+      `1_B73_TMT1` = c(1, 2),
+      `2_Y12_TMT1` = c(3, 4),
+      check.names = FALSE
+    ),
+    metadata = list(source = "MaxQuant")
+  )
+  expect_true(all(c("group", "batch", "tissue", "species") %in%
+                  names(object$sample_info)))
+  expect_equal(object$sample_info$group, c("B73", "Y12"))
+  expect_equal(object$sample_info$species,
+               c("Zea mays ssp. mays", "Zea mays ssp. mexicana"))
+})
+
 test_that("bundled software fixtures import and enter the pipeline", {
   manifest <- protvis_builtin_datasets()
   expect_gte(nrow(manifest), 8)

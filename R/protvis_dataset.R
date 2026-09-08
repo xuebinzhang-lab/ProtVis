@@ -168,12 +168,26 @@
 .protvis_normalise_sample_info <- function(sample_info, samples) {
   samples <- as.character(samples)
   if (is.null(sample_info)) {
+    group <- ifelse(grepl("B73", samples, ignore.case = TRUE), "B73",
+                    ifelse(grepl("Y12", samples, ignore.case = TRUE),
+                           "Y12", "Unassigned"))
+    species <- ifelse(group == "B73", "Zea mays ssp. mays",
+                      ifelse(group == "Y12", "Zea mays ssp. mexicana",
+                             "All samples"))
+    tissue <- ifelse(grepl("root", samples, ignore.case = TRUE), "Root",
+                     ifelse(grepl("leaf", samples, ignore.case = TRUE),
+                            "Leaf", "All samples"))
+    batch <- sub("^.*(TMT[0-9]+).*$", "\\1", samples,
+                 ignore.case = TRUE)
+    batch[batch == samples] <- NA_character_
     return(data.frame(
       sample_id = samples,
       maxquant_id = samples,
-      group = rep("Unassigned", length(samples)),
-      batch = rep(NA_character_, length(samples)),
+      group = group,
+      batch = batch,
       condition = rep(NA_character_, length(samples)),
+      tissue = tissue,
+      species = species,
       stringsAsFactors = FALSE,
       check.names = FALSE
     ))

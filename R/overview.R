@@ -457,21 +457,49 @@ overview_server <- function(id, shared_state) {
     })
 
     make_metadata_annotation <- function(matrix) {
-      metadata_share <- dplyr::left_join(
-        base::data.frame(sample_id = base::colnames(matrix)),
-        rv$sample_info,
-        by = "sample_id"
+      metadata_share <- base::data.frame(
+        sample_id = base::colnames(matrix), stringsAsFactors = FALSE
       )
+      info <- rv$sample_info
+      info_index <- match(metadata_share$sample_id, info$sample_id)
+      if ("maxquant_id" %in% base::colnames(info)) {
+        fallback_index <- match(metadata_share$sample_id, info$maxquant_id)
+        info_index[is.na(info_index)] <- fallback_index[is.na(info_index)]
+      }
+      for (column in base::setdiff(base::colnames(info), "sample_id")) {
+        metadata_share[[column]] <- info[[column]][info_index]
+      }
       metadata_share$tissue2 <- if ("tissue" %in% names(metadata_share)) {
         sub("_.*$", "", as.character(metadata_share$tissue))
       } else {
-        "All samples"
+        ifelse(grepl("root", metadata_share$sample_id, ignore.case = TRUE),
+               "Root",
+               ifelse(grepl("leaf", metadata_share$sample_id,
+                            ignore.case = TRUE), "Leaf", "All samples"))
       }
       metadata_share$species <- if ("species" %in% names(metadata_share)) {
         as.character(metadata_share$species)
       } else {
-        "All samples"
+        ifelse(grepl("B73", metadata_share$sample_id, ignore.case = TRUE),
+               "Zea mays ssp. mays",
+               ifelse(grepl("Y12", metadata_share$sample_id,
+                            ignore.case = TRUE),
+                      "Zea mays ssp. mexicana", "All samples"))
       }
+      fallback_tissue <- ifelse(
+        grepl("root", metadata_share$sample_id, ignore.case = TRUE), "Root",
+        ifelse(grepl("leaf", metadata_share$sample_id, ignore.case = TRUE),
+               "Leaf", "All samples")
+      )
+      metadata_share$tissue2[
+        is.na(metadata_share$tissue2) |
+          !nzchar(metadata_share$tissue2) |
+          metadata_share$tissue2 == "NA"
+      ] <- fallback_tissue[
+        is.na(metadata_share$tissue2) |
+          !nzchar(metadata_share$tissue2) |
+          metadata_share$tissue2 == "NA"
+      ]
       metadata_share$tissue2[is.na(metadata_share$tissue2) |
                                !nzchar(metadata_share$tissue2)] <- "All samples"
       metadata_share$species[is.na(metadata_share$species) |
@@ -631,18 +659,38 @@ overview_server <- function(id, shared_state) {
         "Expression color limits must be finite and min < max."
       ))
       mid_break <- (min_break + max_break) / 2
+      heatmap_matrix <- base::t(base::as.matrix(rv$exp_results))
+      cluster_matrix <- heatmap_matrix
+      for (i in base::seq_len(base::nrow(cluster_matrix))) {
+        missing <- !is.finite(cluster_matrix[i, ])
+        if (base::any(missing)) {
+          replacement <- stats::median(cluster_matrix[i, !missing], na.rm = TRUE)
+          if (!is.finite(replacement)) replacement <- 0
+          cluster_matrix[i, missing] <- replacement
+        }
+      }
+      row_dend <- if (isTRUE(input$exp_cluster_rows) &&
+                      base::nrow(cluster_matrix) > 1L) {
+        stats::hclust(stats::dist(cluster_matrix))
+      } else FALSE
+      column_dend <- if (isTRUE(input$exp_cluster_columns) &&
+                         base::ncol(cluster_matrix) > 1L) {
+        stats::hclust(stats::dist(base::t(cluster_matrix)))
+      } else FALSE
 
       ComplexHeatmap::Heatmap(
-        base::t(base::as.matrix(rv$exp_results)),
+        heatmap_matrix,
         right_annotation = ha,
-        cluster_rows = isTRUE(input$exp_cluster_rows),
-        cluster_columns = isTRUE(input$exp_cluster_columns),
+        cluster_rows = row_dend,
+        cluster_columns = column_dend,
         show_row_names = TRUE,
         show_column_names = isTRUE(input$exp_show_feature_names),
         row_names_gp = grid::gpar(fontsize = 6),
         border = "black",
         na_col = "#d1d5db",
-        name = ifelse(isTRUE(input$exp_scale), "Z-score", "Intensity"),
+        name = ifelse(isTRUE(input$exp_scale) &&
+                        input$exp_scale_method != "none",
+                      "Z-score", "Intensity"),
         col = circlize::colorRamp2(
           breaks = c(min_break, mid_break, max_break),
           colors = c(
@@ -879,15 +927,31 @@ overview_server <- function(id, shared_state) {
         ggplot2::theme_bw()
     }
 
-    output$DR_BeforeNormalization <- shiny::renderPlot({
-      shiny::req(DR_results$before)
-      print(plot_DR_results(DR_results$before, "Before Normalization"))
-    })
+    safe_dr_plot <- function(result, title_suffix) {
+      tryCatch({
+        shiny::validate(shiny::need(
+          !base::is.null(result),
+          "Run dimensionality reduction to display this plot."
+        ))
+        print(plot_DR_results(result, title_suffix))
+      }, error = function(e) {
+        graphics::plot.new()
+        graphics::text(
+          0.5, 0.5,
+          paste("Dimensionality reduction unavailable:",
+                conditionMessage(e)),
+          cex = 0.85
+        )
+      })
+    }
 
-    output$DR_AfterNormalization <- shiny::renderPlot({
-      shiny::req(DR_results$after)
-      print(plot_DR_results(DR_results$after, "After Normalization"))
-    })
+    output$DR_BeforeNormalization <- shiny::renderPlot(
+      safe_dr_plot(DR_results$before, "Before Normalization")
+    )
+
+    output$DR_AfterNormalization <- shiny::renderPlot(
+      safe_dr_plot(DR_results$after, "After Normalization")
+    )
 
     output$dr_download_before_pdf <- shiny::downloadHandler(
       filename = function() {
