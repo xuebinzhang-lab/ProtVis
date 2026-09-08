@@ -179,6 +179,15 @@ data_transformed_ui <- function(id) {
 #' @export
 data_transformed_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
+    # DT requires a data.frame with no row.names attribute. Keep row names
+    # internally for matrix calculations, but strip them at the display edge.
+    display_data_frame <- function(x) {
+      result <- as.data.frame(x, check.names = FALSE,
+                              stringsAsFactors = FALSE)
+      rownames(result) <- NULL
+      result
+    }
+
     rv <- shiny::reactiveValues(
       correct_noise_result = NULL,
       sample_info = NULL,
@@ -306,7 +315,8 @@ data_transformed_server <- function(id, shared_state) {
     output$originalData <- DT::renderDT({
       shiny::req(original_matrix_show())
       DT::datatable(
-        original_matrix_show(),
+        display_data_frame(original_matrix_show()),
+        rownames = FALSE,
         options = list(scrollX = TRUE, pageLength = 10)
       )
     })
@@ -323,7 +333,8 @@ data_transformed_server <- function(id, shared_state) {
       }
 
       DT::datatable(
-        show_df,
+        display_data_frame(show_df),
+        rownames = FALSE,
         options = list(scrollX = TRUE, pageLength = 10)
       )
     })
