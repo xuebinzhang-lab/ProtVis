@@ -362,7 +362,7 @@ data_normalization_server <- function(id, shared_state) {
 
       expmat_before <- original_matrix_numeric()
 
-      expmat_before_long <- tibble::rownames_to_column(expmat_before, var = "ID")
+      expmat_before_long <- .protvis_rownames_to_column(expmat_before, "ID")
       expmat_before_long <- tidyr::pivot_longer(
         expmat_before_long,
         cols = -ID,
@@ -394,7 +394,7 @@ data_normalization_server <- function(id, shared_state) {
 
       plot_df <- rv$normalized_matrix
 
-      plot_long <- tibble::rownames_to_column(plot_df, var = "ID")
+      plot_long <- .protvis_rownames_to_column(plot_df, "ID")
       plot_long <- tidyr::pivot_longer(
         plot_long,
         cols = -ID,
@@ -436,7 +436,7 @@ data_normalization_server <- function(id, shared_state) {
 
         expmat_before <- original_matrix_numeric()
 
-        expmat_before_long <- tibble::rownames_to_column(expmat_before, var = "ID")
+        expmat_before_long <- .protvis_rownames_to_column(expmat_before, "ID")
         expmat_before_long <- tidyr::pivot_longer(
           expmat_before_long,
           cols = -ID,
@@ -483,7 +483,7 @@ data_normalization_server <- function(id, shared_state) {
 
         plot_df <- rv$normalized_matrix
 
-        plot_long <- tibble::rownames_to_column(plot_df, var = "ID")
+        plot_long <- .protvis_rownames_to_column(plot_df, "ID")
         plot_long <- tidyr::pivot_longer(
           plot_long,
           cols = -ID,

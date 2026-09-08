@@ -65,6 +65,36 @@
   stop("Expression data must be a data.frame or matrix.", call. = FALSE)
 }
 
+# Keep row names as an internal matrix concern only.  Shiny/DT/tibble
+# boundaries receive ordinary data frames with an explicit ID column.  This
+# also makes objects read from older RDA/RDS files safe to reuse.
+.protvis_rownames_to_column <- function(data, var = "rowname") {
+  data <- .protvis_as_data_frame(data)
+  ids <- rownames(data)
+  if (is.null(ids) || length(ids) != nrow(data)) {
+    ids <- as.character(seq_len(nrow(data)))
+  }
+  rownames(data) <- NULL
+  data[[var]] <- as.character(ids)
+  data <- data[, c(var, setdiff(names(data), var)), drop = FALSE]
+  rownames(data) <- NULL
+  data
+}
+
+.protvis_column_to_rownames <- function(data, var) {
+  data <- .protvis_as_data_frame(data)
+  if (!var %in% names(data)) {
+    stop("Column not found: ", var, call. = FALSE)
+  }
+  ids <- as.character(data[[var]])
+  data[[var]] <- NULL
+  if (anyNA(ids) || any(!nzchar(ids)) || anyDuplicated(ids)) {
+    stop("Values in ", var, " must be unique and non-empty.", call. = FALSE)
+  }
+  rownames(data) <- ids
+  data
+}
+
 .protvis_coerce_expression <- function(expression_data) {
   df <- .protvis_as_data_frame(expression_data)
   id_col <- .protvis_find_column(
@@ -498,8 +528,11 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
 protvis_expression_matrix <- function(object) {
   validate_protvis_dataset(object)
   out <- object$expression_data
-  out <- cbind(ID = rownames(out), out, stringsAsFactors = FALSE)
-  as.data.frame(out, check.names = FALSE, stringsAsFactors = FALSE)
+  ids <- rownames(out)
+  out <- base::data.frame(ID = ids, out, check.names = FALSE,
+                          stringsAsFactors = FALSE)
+  rownames(out) <- NULL
+  out
 }
 
 #' Add a named analysis result and provenance event.

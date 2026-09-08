@@ -185,11 +185,10 @@ missing_value_server <- function(id, shared_state) {
       expression_matrix <- rv$expression_matrix_filtered
 
       # Step 1: Merge data
-      merged <- expression_matrix %>%
-        tibble::column_to_rownames("ID") %>%
+      merged <- .protvis_column_to_rownames(expression_matrix, "ID") %>%
         base::t() %>%
         base::as.data.frame() %>%
-        tibble::rownames_to_column("maxquant_id") %>%
+        .protvis_rownames_to_column("maxquant_id") %>%
         dplyr::left_join(sample_info %>% dplyr::select(sample_id, maxquant_id, group), by = "maxquant_id") %>%
         dplyr::select(sample_id, group, dplyr::everything(), -maxquant_id)
       # Step 1: Replace 0 with NA if checked
@@ -198,7 +197,7 @@ missing_value_server <- function(id, shared_state) {
           dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~na_if(., 0)))
         rv$step1_zero_na <- merged %>%
           dplyr::select(-group) %>%
-          tibble::column_to_rownames("sample_id") %>%
+          .protvis_column_to_rownames("sample_id") %>%
           base::t()
       } else {
         rv$step1_zero_na <- NULL

@@ -309,8 +309,7 @@ data_imputation_server <- function(id, shared_state) {
       output$originalPlot <- shiny::renderPlot({
         shiny::req(expression_matrix_display())
 
-        plot_df <- expression_matrix_display() %>%
-          tibble::rownames_to_column(var = "ID")
+        plot_df <- .protvis_rownames_to_column(expression_matrix_display(), "ID")
 
         visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
@@ -518,7 +517,7 @@ data_imputation_server <- function(id, shared_state) {
       shiny::req(imputed_data())
 
       plot_df <- imputed_data()
-      plot_df <- tibble::rownames_to_column(plot_df, var = "ID")
+      plot_df <- .protvis_rownames_to_column(plot_df, "ID")
 
       visdat::vis_dat(base::data.frame(plot_df)) +
         ggplot2::scale_fill_manual(
@@ -538,7 +537,7 @@ data_imputation_server <- function(id, shared_state) {
       },
       content = function(file) {
         plot_df <- expression_matrix_display() %>%
-          tibble::rownames_to_column(var = "ID")
+          .protvis_rownames_to_column("ID")
 
         g <- visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
@@ -569,7 +568,7 @@ data_imputation_server <- function(id, shared_state) {
         shiny::req(imputed_data())
 
         plot_df <- imputed_data()
-        plot_df <- tibble::rownames_to_column(plot_df, var = "ID")
+        plot_df <- .protvis_rownames_to_column(plot_df, "ID")
 
         g <- visdat::vis_dat(base::data.frame(plot_df)) +
           ggplot2::scale_fill_manual(
