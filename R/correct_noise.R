@@ -57,53 +57,43 @@ correct_values <- function(raw_mat) {
   # with an empty selection.
   if (base::length(replicate_cols) == 0L) return(clean_mat)
 
-  replicate_tables <- base::lapply(replicate_cols, function(columns) {
-    table <- dplyr::select(clean_mat, ID, dplyr::all_of(columns))
-    table %>%
-      dplyr::rowwise() %>%
-      dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
-      dplyr::ungroup()
-  })
-  mv_mat <- base::Reduce(function(left, right) {
-    dplyr::full_join(left, right, by = "ID")
-  }, replicate_tables)
-  if (base::ncol(mv_mat) <= 1L) return(clean_mat)
+  replicate_names <- base::unlist(replicate_cols, use.names = FALSE)
+  replicate_names <- intersect(sample_cols, replicate_names)
+  if (base::length(replicate_names) == 0L) return(clean_mat)
 
-  long_df <- tidyr::pivot_longer(
-    mv_mat,
-    cols = -ID,
-    names_to = "sample",
-    values_to = "value"
-  ) %>%
-    dplyr::mutate(value = tidyr::replace_na(value, 0)) %>%
-    dplyr::mutate(
-      sample_group = base::sub("^([123])_", "", sample),
-      sample_group = base::sub("_[123]$", "", sample_group),
-      tag = dplyr::if_else(value > 0, 1L, 0L)
-    )
+  # Keep the original rule, but operate directly on a numeric matrix. This
+  # avoids creating one joined table and two reshaped copies of the data.
+  values <- as.matrix(clean_mat[, sample_cols, drop = FALSE])
+  suppressWarnings(storage.mode(values) <- "double")
+  values[is.na(values)] <- 0
+  replicate_index <- match(replicate_names, sample_cols)
+  replicate_groups <- base::sub("^([123])_", "", replicate_names)
+  replicate_groups <- base::sub("_[123]$", "", replicate_groups)
 
-  value_fix_df <- long_df %>%
-    dplyr::group_by(ID, sample_group) %>%
-    dplyr::mutate(
-      tag_sum = base::sum(tag),
-      value_fix = dplyr::case_when(
-        tag_sum >= 2 & value == 0 ~ base::sum(value[tag == 1]) / 2,
-        tag_sum >= 2 & value != 0 ~ value,
-        tag_sum == 3 ~ value,
-        TRUE ~ 0
-      )
-    ) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(ID, sample, value_fix)
+  for (group in unique(replicate_groups)) {
+    indices <- replicate_index[replicate_groups == group]
+    group_values <- values[, indices, drop = FALSE]
+    nonzero <- group_values > 0
+    tag_sum <- rowSums(nonzero)
+    replacement <- rowSums(group_values * nonzero) / 2
+    zero_cells <- group_values == 0 & tag_sum >= 2
+    if (any(zero_cells)) {
+      group_values[zero_cells] <- replacement[row(zero_cells)[zero_cells]]
+    }
+    # This is equivalent to the original case_when(TRUE ~ 0) branch for
+    # groups with fewer than two non-zero replicates.
+    group_values[tag_sum < 2, ] <- 0
+    values[, indices] <- group_values
+  }
 
-  final_mat <- tidyr::pivot_wider(
-    value_fix_df,
-    names_from = sample,
-    values_from = value_fix
-  ) %>%
-    dplyr::mutate(dplyr::across(-ID, ~ dplyr::na_if(., 0)))
-
-  return(final_mat)
+  result <- clean_mat
+  result[, sample_cols] <- as.data.frame(values, check.names = FALSE)
+  result[, sample_cols] <- lapply(result[, sample_cols, drop = FALSE],
+                                  function(x) {
+                                    x[x == 0] <- NA_real_
+                                    x
+                                  })
+  result
 }
 
 #' UI for Noise Correction Module
