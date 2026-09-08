@@ -531,16 +531,18 @@ DEP_analysis_server <- function(id, shared_state) {
           tab_name,
           bslib::layout_column_wrap(
             width = 1/2,
-            gap = "1rem",
+            gap = "1.25rem",
 
             bslib::card(
-              height = "520px",
+              class = "pv-dep-card",
+              height = "560px",
               bslib::card_header(base::paste("DEP table -", tab_name)),
               bslib::card_body(DT::DTOutput(ns(base::paste0("dep_table_", i))))
             ),
 
             bslib::card(
-              height = "520px",
+              class = "pv-dep-card",
+              height = "560px",
               bslib::card_header(base::paste("Volcano plot -", tab_name)),
               bslib::card_body(
                 bslib::layout_sidebar(
@@ -616,7 +618,8 @@ DEP_analysis_server <- function(id, shared_state) {
             ),
 
             bslib::card(
-              height = "520px",
+              class = "pv-dep-card",
+              height = "560px",
               bslib::card_header(base::paste("Heatmap -", tab_name)),
               bslib::card_body(shiny::plotOutput(
                 ns(base::paste0("heatmap_", i)), height = "420px"
@@ -624,7 +627,8 @@ DEP_analysis_server <- function(id, shared_state) {
             ),
 
             bslib::card(
-              height = "520px",
+              class = "pv-dep-card",
+              height = "560px",
               bslib::card_header(base::paste("Bar of DEP -", tab_name)),
               bslib::card_body(
                 bslib::layout_sidebar(
@@ -929,8 +933,33 @@ DEP_analysis_server <- function(id, shared_state) {
                 ,
                 drop = FALSE
               ]
+              # Heatmap rendering must never receive NA/NaN/Inf.  Keep the
+              # DEP statistics unchanged and sanitize only this display copy.
+              storage.mode(heatmap_data) <- "numeric"
+              finite_rows <- apply(
+                heatmap_data, 1, function(x) any(is.finite(x))
+              )
+              heatmap_data <- heatmap_data[finite_rows, , drop = FALSE]
+              if (base::nrow(heatmap_data) > 0L) {
+                for (row_index in seq_len(base::nrow(heatmap_data))) {
+                  missing <- !is.finite(heatmap_data[row_index, ])
+                  if (any(missing)) {
+                    observed <- heatmap_data[row_index, !missing]
+                    heatmap_data[row_index, missing] <- stats::median(observed)
+                  }
+                }
+              }
+              variable_rows <- if (base::nrow(heatmap_data) > 0L) {
+                apply(heatmap_data, 1, function(x) {
+                  all(is.finite(x)) && length(unique(x)) > 1L
+                })
+              } else {
+                logical()
+              }
+              heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
 
-              if (base::nrow(heatmap_data) > 1) {
+              if (base::nrow(heatmap_data) > 1L &&
+                  base::ncol(heatmap_data) > 1L) {
                 pheatmap::pheatmap(
                   heatmap_data,
                   scale = "row",
