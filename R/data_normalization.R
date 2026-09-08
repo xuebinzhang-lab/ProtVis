@@ -230,7 +230,7 @@ data_normalization_server <- function(id, shared_state) {
         rv$load_success <- TRUE
 
         shiny::showNotification(
-          "✅ Imputed mass_dataset loaded successfully.",
+          "✅ Imputed ProtVis_dataset loaded successfully.",
           type = "message"
         )
       } else {

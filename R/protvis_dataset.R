@@ -5,32 +5,94 @@
   if (is.null(x) || length(x) == 0L) y else x
 }
 
-# ProtVis datasets are real tidyMass mass_dataset objects.  The additional
-# slots contain application state that has no direct tidyMass equivalent;
-# every scientific data slot remains the canonical mass_dataset slot.
+# ProtVis' native S4 container. It deliberately has no parent class: the
+# schema and validity rules belong to this proteomics application.
 methods::setClass(
   "ProtVis_dataset",
-  contains = "mass_dataset",
   slots = c(
+    expression_data = "data.frame",
+    sample_info = "data.frame",
+    variable_info = "data.frame",
+    sample_info_note = "data.frame",
+    variable_info_note = "data.frame",
+    annotation_table = "data.frame",
+    ms2_data = "list",
+    annotation = "ANY",
     analysis_results = "list",
-    protvis_process_info = "list",
+    process_info = "list",
     metadata = "list",
+    other_files = "list",
     checkpoint_info = "list",
-    annotation = "ANY"
+    version = "character",
+    activated = "character"
   ),
   prototype = list(
+    expression_data = data.frame(),
+    sample_info = data.frame(),
+    variable_info = data.frame(),
+    sample_info_note = data.frame(),
+    variable_info_note = data.frame(),
+    annotation_table = data.frame(),
+    ms2_data = list(),
+    annotation = list(),
     analysis_results = list(),
-    protvis_process_info = list(),
+    process_info = list(),
     metadata = list(),
+    other_files = list(),
     checkpoint_info = list(),
-    annotation = list()
+    version = "1.0.0",
+    activated = "expression_data"
   )
 )
 
+methods::setValidity("ProtVis_dataset", function(object) {
+  errors <- character()
+  expression <- object@expression_data
+  if (nrow(expression) < 1L || ncol(expression) < 1L) {
+    errors <- c(errors, "expression_data must be non-empty.")
+  }
+  if (is.null(rownames(expression)) ||
+      anyDuplicated(rownames(expression)) || anyNA(rownames(expression)) ||
+      any(!nzchar(rownames(expression)))) {
+    errors <- c(errors, "expression_data row names must be unique protein IDs.")
+  }
+  if (is.null(colnames(expression)) ||
+      anyDuplicated(colnames(expression)) || anyNA(colnames(expression)) ||
+      any(!nzchar(colnames(expression)))) {
+    errors <- c(errors, "expression_data columns must be unique sample IDs.")
+  }
+  if (!all(vapply(expression, is.numeric, logical(1)))) {
+    errors <- c(errors, "expression_data columns must all be numeric.")
+  }
+  if (!all(c("sample_id", "class", "group") %in%
+           names(object@sample_info)) ||
+      !identical(as.character(object@sample_info$sample_id),
+                 colnames(expression))) {
+    errors <- c(errors, "sample_info must align exactly with expression_data.")
+  }
+  if (!all(c("variable_id", "protein_id") %in%
+           names(object@variable_info)) ||
+      !identical(as.character(object@variable_info$variable_id),
+                 rownames(expression)) ||
+      !identical(as.character(object@variable_info$protein_id),
+                 rownames(expression))) {
+    errors <- c(errors, "variable_info must align exactly with expression_data.")
+  }
+  if (!identical(names(object@sample_info),
+                 as.character(object@sample_info_note$name))) {
+    errors <- c(errors, "sample_info_note must document sample_info in order.")
+  }
+  if (!identical(names(object@variable_info),
+                 as.character(object@variable_info_note$name))) {
+    errors <- c(errors, "variable_info_note must document variable_info in order.")
+  }
+  if (length(errors)) errors else TRUE
+})
+
 .protvis_dataset_fields <- c(
   "expression_data", "ms2_data", "annotation_table", "sample_info",
-  "variable_info", "sample_info_note", "variable_info_note",
-  "process_info", "mass_process_info", "other_files", "version",
+  "variable_info", "feature_info", "sample_info_note", "variable_info_note",
+  "process_info", "other_files", "version",
   "activated", "annotation", "analysis_results", "metadata",
   "checkpoint_info"
 )
@@ -44,10 +106,10 @@ methods::setClass(
     annotation_table = "annotation_table",
     sample_info = "sample_info",
     variable_info = "variable_info",
+    feature_info = "variable_info",
     sample_info_note = "sample_info_note",
     variable_info_note = "variable_info_note",
-    process_info = "protvis_process_info",
-    mass_process_info = "process_info",
+    process_info = "process_info",
     other_files = "other_files",
     version = "version",
     activated = "activated",
@@ -59,8 +121,7 @@ methods::setClass(
   )
   if (!is.null(slot_name)) return(methods::slot(x, slot_name))
 
-  # Preserve tidyMass' convenient `object$sample_name` access for expression
-  # columns that are not ProtVis fields.
+  # Convenient access to an expression column by sample identifier.
   if (name %in% colnames(methods::slot(x, "expression_data"))) {
     return(methods::slot(x, "expression_data")[[name]])
   }
@@ -78,10 +139,10 @@ methods::setClass(
     annotation_table = "annotation_table",
     sample_info = "sample_info",
     variable_info = "variable_info",
+    feature_info = "variable_info",
     sample_info_note = "sample_info_note",
     variable_info_note = "variable_info_note",
-    process_info = "protvis_process_info",
-    mass_process_info = "process_info",
+    process_info = "process_info",
     other_files = "other_files",
     version = "version",
     activated = "activated",
@@ -112,46 +173,6 @@ methods::setMethod(
   "names", "ProtVis_dataset",
   function(x) .protvis_dataset_fields
 )
-
-.protvis_state_key <- ".protvis_state"
-
-#' Convert a ProtVis object to an exact tidyMass mass_dataset.
-#'
-#' ProtVis-only state is embedded in `other_files` under a reserved key so
-#' that an RDS/RDA round trip retains the workflow while the serialized
-#' object's concrete class remains exactly `mass_dataset`.
-#' @param object A ProtVis_dataset or mass_dataset object.
-#' @return An S4 object whose concrete class is mass_dataset.
-#' @export
-protvis_as_mass_dataset <- function(object) {
-  object <- as_protvis_dataset(object)
-  validate_protvis_dataset(object)
-  other_files <- object$other_files %||% list()
-  other_files[[.protvis_state_key]] <- list(
-    schema_version = 1L,
-    analysis_results = object$analysis_results,
-    process_info = object$process_info,
-    metadata = object$metadata,
-    checkpoint_info = object$checkpoint_info,
-    annotation = object$annotation
-  )
-  result <- methods::new(
-    "mass_dataset",
-    expression_data = object$expression_data,
-    ms2_data = object$ms2_data,
-    annotation_table = object$annotation_table,
-    sample_info = object$sample_info,
-    variable_info = object$variable_info,
-    sample_info_note = object$sample_info_note,
-    variable_info_note = object$variable_info_note,
-    process_info = object$mass_process_info,
-    other_files = other_files,
-    version = object$version,
-    activated = object$activated
-  )
-  methods::validObject(result)
-  result
-}
 
 .protvis_safe_numeric <- function(x) {
   if (is.numeric(x)) return(as.numeric(x))
@@ -446,7 +467,7 @@ protvis_as_mass_dataset <- function(object) {
     values <- info[[column]]
     result[[column]] <- ifelse(is.na(row_index), NA, values[row_index])
   }
-  # tidyMass requires `class`; ProtVis uses the biological group as that class.
+  # Keep `class` as a compatibility alias for modules that use that name.
   result$class <- as.character(result$group)
   tissue_columns <- intersect(c("tissue2", "tissue", "organ", "organism_part"),
                               names(result))
@@ -519,7 +540,7 @@ protvis_as_mass_dataset <- function(object) {
   if (identical(kind, "variable")) {
     return(data.frame(
       name = c("variable_id", "protein_id", "accession", "gene", "description"),
-      meaning = c("tidyMass variable identifier", "Stable protein identifier",
+      meaning = c("ProtVis feature identifier", "Stable protein identifier",
                   "Protein accession", "Gene symbol", "Protein description"),
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -528,7 +549,7 @@ protvis_as_mass_dataset <- function(object) {
   data.frame(
     name = c("sample_id", "class", "maxquant_id", "group", "batch",
              "condition"),
-    meaning = c("Sample identifier", "tidyMass sample class",
+    meaning = c("Sample identifier", "Sample class",
                 "Source sample identifier", "Experimental group", "Batch",
                 "Experimental condition"),
     stringsAsFactors = FALSE,
@@ -663,9 +684,9 @@ protvis_dataset_name <- function(object) {
 #' @param annotation Optional annotation list or table.
 #' @param metadata Optional project metadata list.
 #' @param other_files Optional list of imported-file metadata.
-#' @param ms2_data,annotation_table,activated Canonical tidyMass mass_dataset
-#'   slots. They are optional for proteomics data without MS2 annotations.
-#' @return An S4 ProtVis_dataset that inherits from tidyMass mass_dataset.
+#' @param ms2_data,annotation_table Optional supplemental identification data.
+#' @param activated Name of the active core data component.
+#' @return An independent S4 ProtVis_dataset.
 #' @export
 create_protvis_dataset <- function(expression_data, sample_info = NULL,
                                    variable_info = NULL,
@@ -729,38 +750,25 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     "expression_data", "sample_info", "variable_info", "annotation_table"
   )) activated <- "expression_data"
 
-  mass_object <- massdataset::create_mass_dataset(
+  object <- methods::new(
+    "ProtVis_dataset",
     expression_data = expression_data,
     sample_info = sample_info,
     variable_info = variable_info,
     sample_info_note = sample_info_note,
-    variable_info_note = variable_info_note
-  )
-  methods::slot(mass_object, "ms2_data") <- ms2_data
-  methods::slot(mass_object, "annotation_table") <- annotation_table
-  methods::slot(mass_object, "other_files") <- other_files
-  methods::slot(mass_object, "activated") <- activated
-
-  object <- methods::new(
-    "ProtVis_dataset",
-    expression_data = methods::slot(mass_object, "expression_data"),
-    ms2_data = methods::slot(mass_object, "ms2_data"),
-    annotation_table = methods::slot(mass_object, "annotation_table"),
-    sample_info = methods::slot(mass_object, "sample_info"),
-    variable_info = methods::slot(mass_object, "variable_info"),
-    sample_info_note = methods::slot(mass_object, "sample_info_note"),
-    variable_info_note = methods::slot(mass_object, "variable_info_note"),
-    process_info = methods::slot(mass_object, "process_info"),
-    other_files = methods::slot(mass_object, "other_files"),
-    version = methods::slot(mass_object, "version"),
-    activated = methods::slot(mass_object, "activated"),
+    variable_info_note = variable_info_note,
+    annotation_table = annotation_table,
+    ms2_data = ms2_data,
+    annotation = annotation %||% list(),
     analysis_results = list(),
-    protvis_process_info = list(
+    process_info = list(
       parameters = list(), time = list(), history = list()
     ),
     metadata = object_metadata,
+    other_files = other_files,
     checkpoint_info = list(),
-    annotation = annotation %||% list()
+    version = "1.0.0",
+    activated = activated
   )
   object <- .protvis_append_process(
     object, "creation", status = "success",
@@ -779,23 +787,51 @@ ProtVis_dataset <- function(...) create_protvis_dataset(...)
 #' @export
 create_dataset <- function(...) create_protvis_dataset(...)
 
-#' Convert an existing tidyMass or legacy ProtVis object.
+#' Convert an existing or legacy dataset to ProtVis_dataset.
 #'
-#' Native mass_dataset slots are preserved. Legacy list-based ProtVis objects
-#' are upgraded in memory so old checkpoints remain readable.
+#' Legacy list-based ProtVis objects and previously saved mass_dataset objects
+#' are upgraded in memory so old projects remain readable.
 #' @param object A mass_dataset or legacy ProtVis_dataset object.
-#' @return An S4 ProtVis_dataset inheriting from mass_dataset.
+#' @return An independent S4 ProtVis_dataset.
 #' @export
 as_protvis_dataset <- function(object) {
+  # Migrate the short-lived implementation that inherited from mass_dataset
+  # and stored ProtVis history in a separate protvis_process_info slot.
+  if (isS4(object) && methods::is(object, "ProtVis_dataset") &&
+      "protvis_process_info" %in% names(attributes(object))) {
+    result <- create_protvis_dataset(
+      expression_data = methods::slot(object, "expression_data"),
+      sample_info = methods::slot(object, "sample_info"),
+      variable_info = methods::slot(object, "variable_info"),
+      sample_info_note = methods::slot(object, "sample_info_note"),
+      variable_info_note = methods::slot(object, "variable_info_note"),
+      annotation = methods::slot(object, "annotation"),
+      metadata = methods::slot(object, "metadata"),
+      other_files = methods::slot(object, "other_files"),
+      ms2_data = methods::slot(object, "ms2_data"),
+      annotation_table = methods::slot(object, "annotation_table"),
+      activated = methods::slot(object, "activated") %||% "expression_data"
+    )
+    result$analysis_results <- methods::slot(object, "analysis_results")
+    result$process_info <- attr(object, "protvis_process_info", exact = TRUE)
+    result$checkpoint_info <- methods::slot(object, "checkpoint_info")
+    result <- .protvis_append_process(
+      result, "inherited_class_migration", status = "success",
+      parameters = list(target_class = "ProtVis_dataset")
+    )
+    validate_protvis_dataset(result)
+    return(result)
+  }
+
   if (isS4(object) && methods::is(object, "ProtVis_dataset")) {
     validate_protvis_dataset(object)
     return(object)
   }
 
-  if (isS4(object) && methods::is(object, "mass_dataset")) {
+  if (isS4(object) && inherits(object, "mass_dataset")) {
     other_files <- methods::slot(object, "other_files")
-    state <- other_files[[.protvis_state_key]] %||% list()
-    other_files[[.protvis_state_key]] <- NULL
+    state <- other_files[[".protvis_state"]] %||% list()
+    other_files[[".protvis_state"]] <- NULL
     sample_info <- methods::slot(object, "sample_info")
     if (!"group" %in% names(sample_info)) {
       sample_info$group <- as.character(sample_info$class)
@@ -821,15 +857,13 @@ as_protvis_dataset <- function(object) {
       annotation_table = methods::slot(object, "annotation_table"),
       activated = methods::slot(object, "activated") %||% "expression_data"
     )
-    # Keep tidyMass' native processing records separate from ProtVis history.
-    methods::slot(result, "process_info") <- methods::slot(object, "process_info")
     result$analysis_results <- state$analysis_results %||% list()
     result$checkpoint_info <- state$checkpoint_info %||% list()
     if (length(state$process_info %||% list()) > 0L) {
       result$process_info <- state$process_info
     } else {
       result <- .protvis_append_process(
-        result, "mass_dataset_import", status = "success",
+        result, "legacy_mass_dataset_import", status = "success",
         parameters = list(source_class = class(object)[[1L]])
       )
     }
@@ -863,18 +897,18 @@ as_protvis_dataset <- function(object) {
     result$checkpoint_info <- object[["checkpoint_info"]] %||% list()
     result <- .protvis_append_process(
       result, "legacy_object_migration", status = "success",
-      parameters = list(target_class = "mass_dataset")
+      parameters = list(target_class = "ProtVis_dataset")
     )
     validate_protvis_dataset(result)
     return(result)
   }
 
-  stop("Object is neither a mass_dataset nor a legacy ProtVis_dataset.",
+  stop("Object is neither a ProtVis_dataset nor a supported legacy object.",
        call. = FALSE)
 }
 
-# Replace an expression matrix while keeping both tidyMass metadata tables in
-# exact row/column order. This is used by Shiny stages that may remove rows.
+# Replace an expression matrix while keeping metadata tables in exact
+# row/column order. This is used by Shiny stages that may remove rows.
 .protvis_update_expression <- function(dataset, expression_data) {
   dataset <- as_protvis_dataset(dataset)
   raw <- .protvis_as_data_frame(expression_data)
@@ -939,9 +973,8 @@ as_protvis_dataset <- function(object) {
 #' @return TRUE invisibly when validation succeeds.
 #' @export
 validate_protvis_dataset <- function(object, strict = TRUE) {
-  if (!isS4(object) || !methods::is(object, "ProtVis_dataset") ||
-      !methods::is(object, "mass_dataset")) {
-    stop("Object is not an S4 ProtVis_dataset/mass_dataset.", call. = FALSE)
+  if (!isS4(object) || !methods::is(object, "ProtVis_dataset")) {
+    stop("Object is not an S4 ProtVis_dataset.", call. = FALSE)
   }
   required <- c("expression_data", "sample_info", "variable_info",
                 "variable_info_note", "sample_info_note", "annotation",
@@ -1015,9 +1048,9 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
     stop("variable_info_note$name must exactly document variable_info columns.",
          call. = FALSE)
   }
-  mass_valid <- methods::validObject(object, test = TRUE)
-  if (!identical(mass_valid, TRUE)) {
-    stop("Invalid tidyMass mass_dataset: ", paste(mass_valid, collapse = "; "),
+  class_valid <- methods::validObject(object, test = TRUE)
+  if (!identical(class_valid, TRUE)) {
+    stop("Invalid ProtVis_dataset: ", paste(class_valid, collapse = "; "),
          call. = FALSE)
   }
   invisible(TRUE)
@@ -1131,7 +1164,7 @@ subset_protvis_dataset <- function(object, variables = NULL, samples = NULL) {
 
 methods::setMethod("show", "ProtVis_dataset", function(object) {
   validate_protvis_dataset(object)
-  cat("<ProtVis_dataset / tidyMass mass_dataset>\n")
+  cat("<ProtVis_dataset>\n")
   cat("  proteins:", nrow(object$expression_data),
       " samples:", ncol(object$expression_data), "\n")
   cat("  source:", object$metadata$source %||% "unknown", "\n")

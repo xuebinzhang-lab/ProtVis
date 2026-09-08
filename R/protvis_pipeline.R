@@ -626,7 +626,8 @@ run_protvis_pipeline <- function(dataset, stages = NULL, params = list(),
 #' @export
 restore_protvis_stage <- function(dataset_or_directory, stage = NULL,
                                    version = "latest") {
-  if (inherits(dataset_or_directory, "mass_dataset")) {
+  if (inherits(dataset_or_directory, "ProtVis_dataset") ||
+      inherits(dataset_or_directory, "mass_dataset")) {
     dataset_or_directory <- as_protvis_dataset(dataset_or_directory)
     directory <- dataset_or_directory$checkpoint_info$directory %||%
       dataset_or_directory$metadata$checkpoint_dir
@@ -654,7 +655,8 @@ resume_protvis_pipeline <- function(dataset_or_directory, stages = NULL,
                                     from_stage = NULL, params = list(),
                                     checkpoint_dir = NULL,
                                     continue_on_error = FALSE, ...) {
-  if (inherits(dataset_or_directory, "mass_dataset")) {
+  if (inherits(dataset_or_directory, "ProtVis_dataset") ||
+      inherits(dataset_or_directory, "mass_dataset")) {
     current <- as_protvis_dataset(dataset_or_directory)
   } else {
     current <- restore_protvis_checkpoint(dataset_or_directory)
@@ -688,7 +690,8 @@ rerun_protvis_downstream <- function(dataset_or_directory, from_stage,
                                      params = list(), checkpoint_dir = NULL,
                                      ...) {
   from_stage <- normalise_protvis_stage(from_stage)
-  if (inherits(dataset_or_directory, "mass_dataset")) {
+  if (inherits(dataset_or_directory, "ProtVis_dataset") ||
+      inherits(dataset_or_directory, "mass_dataset")) {
     current <- as_protvis_dataset(dataset_or_directory)
     directory <- checkpoint_dir %||% current$checkpoint_info$directory %||%
       current$metadata$checkpoint_dir

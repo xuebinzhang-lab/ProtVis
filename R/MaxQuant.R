@@ -119,7 +119,7 @@ MaxQuant_server <- function(id, shared_state) {
         rv$expression_matrix_filtered <- rv$expression_matrix
         filter_done(FALSE)
         rv$load_success <- TRUE
-        shiny::showNotification("✅ mass_dataset loaded successfully.", type = "message")
+        shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
         return(invisible(NULL))
       }
       rda_path <- base::file.path(shared_state$workdir, "Step1_project_init.rda")

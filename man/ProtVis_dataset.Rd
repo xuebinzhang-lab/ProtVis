@@ -2,12 +2,17 @@
 \alias{ProtVis_dataset}
 \alias{create_protvis_dataset}
 \alias{as_protvis_dataset}
-\alias{protvis_as_mass_dataset}
 \alias{validate_protvis_dataset}
 \title{Create and validate a ProtVis dataset}
 \description{
-  Creates a tidyMass-compatible S4 dataset for proteomics expression data,
+  Creates an independent ProtVis S4 dataset for proteomics expression data,
   metadata, annotations, analysis results, checkpoints, and provenance.
+}
+\details{
+  ProtVis_dataset does not inherit from mass_dataset or require the
+  massdataset package. Its validity method enforces exact alignment between
+  expression columns and sample_info, and between expression rows and
+  variable_info. The feature_info field is an alias of variable_info.
 }
 \usage{
 create_protvis_dataset(expression_data, sample_info = NULL,
@@ -20,8 +25,6 @@ ProtVis_dataset(...)
 
 as_protvis_dataset(object)
 
-protvis_as_mass_dataset(object)
-
 validate_protvis_dataset(object, strict = TRUE)
 }
 \arguments{
@@ -33,18 +36,17 @@ validate_protvis_dataset(object, strict = TRUE)
   \item{annotation}{Optional annotation list or table.}
   \item{metadata}{Optional project metadata list.}
   \item{other_files}{Optional imported-file provenance list.}
-  \item{ms2_data}{Optional tidyMass MS2 data list.}
-  \item{annotation_table}{Optional tidyMass annotation table.}
-  \item{activated}{The activated tidyMass slot.}
+  \item{ms2_data}{Optional supplemental MS2 data list.}
+  \item{annotation_table}{Optional supplemental annotation table.}
+  \item{activated}{Name of the active core data component.}
   \item{object}{A ProtVis_dataset, mass_dataset, or legacy ProtVis object.}
   \item{strict}{Whether to reject malformed non-numeric expression columns.}
   \item{...}{Arguments passed to create_protvis_dataset.}
 }
 \value{
-  create_protvis_dataset and ProtVis_dataset return an S4 ProtVis_dataset that
-  inherits from mass_dataset. protvis_as_mass_dataset returns an exact
-  mass_dataset suitable for persistent storage. validate_protvis_dataset
-  returns TRUE invisibly on success and signals a descriptive error otherwise.
+  create_protvis_dataset and ProtVis_dataset return an independent S4
+  ProtVis_dataset. validate_protvis_dataset returns TRUE invisibly on success
+  and signals a descriptive error otherwise.
 }
 \seealso{
   \code{\link{import_protvis}},

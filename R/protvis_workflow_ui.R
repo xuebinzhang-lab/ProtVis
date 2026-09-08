@@ -198,8 +198,7 @@ protvis_dataset_ui <- function(id) {
     .protvis_save_stage_dataset(
       dataset, file.path(directory, "Step2_remove_unreliable_peptide.rda")
     )
-    saveRDS(protvis_as_mass_dataset(dataset),
-            file = file.path(directory, "ProtVis_dataset.rds"),
+    saveRDS(dataset, file = file.path(directory, "ProtVis_dataset.rds"),
             compress = TRUE)
     invisible(TRUE)
   }, error = function(e) invisible(FALSE))
@@ -576,7 +575,7 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
       filename = function() "ProtVis_dataset.rds",
       content = function(file) {
         if (is.null(rv$dataset)) stop("No dataset is loaded.", call. = FALSE)
-        saveRDS(protvis_as_mass_dataset(rv$dataset), file, compress = TRUE)
+        saveRDS(rv$dataset, file, compress = TRUE)
       }
     )
     output$download_report <- shiny::downloadHandler(

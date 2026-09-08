@@ -329,13 +329,13 @@ overview_server <- function(id, shared_state) {
           storage.mode(imputed_mat) <- "numeric"
           storage.mode(normalized_mat) <- "numeric"
           if (!base::identical(dimnames(imputed_mat), dimnames(normalized_mat))) {
-            stop("Step5 and Step6 mass_dataset dimensions or identifiers differ.")
+            stop("Step5 and Step6 dataset dimensions or identifiers differ.")
           }
           rv$sample_info <- step6$sample_info
           rv$imputed_matrix <- imputed_mat
           rv$normalized_matrix <- normalized_mat
           shared_state$dataset <- step6
-          notice <- "✅ Imputed and normalized mass_dataset stages loaded."
+          notice <- "✅ Imputed and normalized ProtVis_dataset stages loaded."
         } else if (inherits(shared_state$dataset, "ProtVis_dataset")) {
           matrix <- base::as.matrix(shared_state$dataset$expression_data)
           storage.mode(matrix) <- "numeric"
@@ -344,7 +344,7 @@ overview_server <- function(id, shared_state) {
           rv$normalized_matrix <- standardize_overview_matrix(rv$imputed_matrix)
           notice <- paste0(
             "⚠️ Stage snapshots were unavailable; overview was derived from ",
-            "the current mass_dataset."
+            "the current ProtVis_dataset."
           )
         } else {
           stop("Run imputation and normalization before loading the overview.")

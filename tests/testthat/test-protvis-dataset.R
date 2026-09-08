@@ -13,7 +13,7 @@ test_that("ProtVis_dataset has the standard schema", {
   )
   object <- create_protvis_dataset(expression, sample_info = sample_info)
   expect_true(methods::is(object, "ProtVis_dataset"))
-  expect_true(methods::is(object, "mass_dataset"))
+  expect_false(inherits(object, "mass_dataset"))
   expect_true(validate_protvis_dataset(object))
   expect_equal(dim(object$expression_data), c(3, 2))
   expect_true(all(c("sample_id", "class", "group") %in%
@@ -25,10 +25,15 @@ test_that("ProtVis_dataset has the standard schema", {
                    colnames(object$expression_data))
   expect_identical(object$variable_info$variable_id,
                    rownames(object$expression_data))
+  expect_identical(object$feature_info, object$variable_info)
   expect_identical(object$sample_info_note$name, names(object$sample_info))
   expect_identical(object$variable_info_note$name, names(object$variable_info))
   expect_true(all(c("analysis_results", "process_info", "metadata",
                     "other_files", "checkpoint_info") %in% names(object)))
+
+  broken <- object
+  methods::slot(broken, "sample_info") <- broken$sample_info[2:1, , drop = FALSE]
+  expect_false(isTRUE(methods::validObject(broken, test = TRUE)))
 })
 
 test_that("all tabular source adapters produce a common object", {
@@ -57,7 +62,7 @@ test_that("all tabular source adapters produce a common object", {
   for (i in seq_along(sources)) {
     object <- import_protvis(sources[[i]], source = source_names[[i]])
     expect_true(methods::is(object, "ProtVis_dataset"))
-    expect_true(methods::is(object, "mass_dataset"))
+    expect_false(inherits(object, "mass_dataset"))
     expect_equal(ncol(object$expression_data), 2)
     expect_true(validate_protvis_dataset(object))
   }
@@ -206,8 +211,8 @@ test_that("each analysis returns a named dataset and auto-exports it", {
   expect_true(dir.exists(result$metadata$auto_export_directory))
   saved <- readRDS(file.path(result$metadata$auto_export_directory,
                              "ProtVis_dataset.rds"))
-  expect_identical(class(saved)[[1L]], "mass_dataset")
-  expect_false(methods::is(saved, "ProtVis_dataset"))
+  expect_identical(class(saved)[[1L]], "ProtVis_dataset")
+  expect_true(methods::is(saved, "ProtVis_dataset"))
   expect_identical(protvis_dataset_name(saved), protvis_dataset_name(result))
 })
 
@@ -229,7 +234,7 @@ test_that("checkpoint save, list, restore, and export are recoverable", {
   expect_true(file.exists(file.path(export_dir, "process_history.csv")))
 })
 
-test_that("stage files contain one exact mass_dataset and round-trip state", {
+test_that("stage files contain one exact ProtVis_dataset and round-trip state", {
   object <- create_protvis_dataset(
     data.frame(ID = c("P1", "P2"), S1 = c(1, NA), S2 = c(2, 3),
                check.names = FALSE),
@@ -246,11 +251,11 @@ test_that("stage files contain one exact mass_dataset and round-trip state", {
   environment <- new.env(parent = emptyenv())
   expect_identical(load(path, envir = environment), "ProtVis_dataset")
   stored <- environment$ProtVis_dataset
-  expect_identical(class(stored)[[1L]], "mass_dataset")
-  expect_false(methods::is(stored, "ProtVis_dataset"))
+  expect_identical(class(stored)[[1L]], "ProtVis_dataset")
+  expect_true(methods::is(stored, "ProtVis_dataset"))
+  expect_false(inherits(stored, "mass_dataset"))
   expect_true(methods::validObject(stored, test = TRUE))
-  expect_identical(massdataset::check_mass_dataset_class(stored), TRUE)
-  processing_dir <- tempfile("mass_dataset_processing_")
+  processing_dir <- tempfile("protvis_dataset_processing_")
   dir.create(processing_dir)
   processed <- run_protvis_step(
     stored, "transformation", params = list(method = "none"),
@@ -265,7 +270,7 @@ test_that("stage files contain one exact mass_dataset and round-trip state", {
   expect_identical(restored$expression_data, object$expression_data)
 })
 
-test_that("legacy split stage workspaces migrate to mass_dataset", {
+test_that("legacy split stage workspaces migrate to ProtVis_dataset", {
   expression_matrix <- data.frame(
     ID = c("P1", "P2"), S1 = c(1, 2), S2 = c(3, 4),
     check.names = FALSE
@@ -277,8 +282,8 @@ test_that("legacy split stage workspaces migrate to mass_dataset", {
   path <- tempfile(fileext = ".rda")
   save(expression_matrix, sample_info, file = path)
   migrated <- ProtVis:::.protvis_load_stage_dataset(path)
-  expect_true(methods::is(migrated, "mass_dataset"))
   expect_true(methods::is(migrated, "ProtVis_dataset"))
+  expect_false(inherits(migrated, "mass_dataset"))
   expect_true(validate_protvis_dataset(migrated))
 })
 
@@ -300,7 +305,7 @@ test_that("legacy list objects migrate without losing workflow state", {
     class = c("ProtVis_dataset", "list")
   )
   migrated <- as_protvis_dataset(legacy)
-  expect_true(methods::is(migrated, "mass_dataset"))
+  expect_false(inherits(migrated, "mass_dataset"))
   expect_identical(migrated$analysis_results$old_result, 42)
   expect_identical(migrated$metadata$project, "preserved")
   expect_true(validate_protvis_dataset(migrated))

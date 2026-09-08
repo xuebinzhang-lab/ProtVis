@@ -49,12 +49,11 @@
   as_protvis_dataset(candidates[[1L]])
 }
 
-# Save one exact mass_dataset per stage file. The temporary-file validation
+# Save one exact ProtVis_dataset per stage file. The temporary-file validation
 # prevents a partially written workspace from replacing a valid stage.
 .protvis_save_stage_dataset <- function(dataset, path) {
   dataset <- as_protvis_dataset(dataset)
   validate_protvis_dataset(dataset)
-  stored_dataset <- protvis_as_mass_dataset(dataset)
   directory <- dirname(path)
   if (!dir.exists(directory) &&
       !dir.create(directory, recursive = TRUE, showWarnings = FALSE)) {
@@ -64,7 +63,7 @@
                         fileext = ".rda")
   on.exit(unlink(temporary, force = TRUE), add = TRUE)
   workspace <- new.env(parent = emptyenv())
-  workspace$ProtVis_dataset <- stored_dataset
+  workspace$ProtVis_dataset <- dataset
   save(
     list = "ProtVis_dataset", envir = workspace, file = temporary,
     compress = TRUE, version = 3
@@ -76,11 +75,10 @@
     stop("Stage file must contain exactly one ProtVis_dataset object.",
          call. = FALSE)
   }
-  if (!methods::is(check$ProtVis_dataset, "mass_dataset") ||
-      methods::is(check$ProtVis_dataset, "ProtVis_dataset")) {
-    stop("Stage file is not an exact tidyMass mass_dataset.", call. = FALSE)
+  if (!methods::is(check$ProtVis_dataset, "ProtVis_dataset")) {
+    stop("Stage file is not a ProtVis_dataset.", call. = FALSE)
   }
-  validate_protvis_dataset(as_protvis_dataset(check$ProtVis_dataset))
+  validate_protvis_dataset(check$ProtVis_dataset)
   if (!file.rename(temporary, path)) {
     if (!file.copy(temporary, path, overwrite = TRUE)) {
       stop("Unable to publish stage file: ", path, call. = FALSE)
@@ -233,7 +231,7 @@ save_protvis_checkpoint <- function(dataset, directory = NULL, stage = "manual",
   temporary <- tempfile(pattern = ".protvis_checkpoint_", tmpdir = directory,
                         fileext = ".tmp")
   on.exit(unlink(temporary, force = TRUE), add = TRUE)
-  saveRDS(protvis_as_mass_dataset(dataset), temporary, compress = TRUE)
+  saveRDS(dataset, temporary, compress = TRUE)
   if (!file.rename(temporary, path)) {
     if (!file.copy(temporary, path, overwrite = TRUE)) {
       stop("Unable to publish checkpoint: ", path, call. = FALSE)
@@ -394,8 +392,7 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
       !dir.exists(root)) {
     stop("Unable to create export directory.", call. = FALSE)
   }
-  saveRDS(protvis_as_mass_dataset(dataset),
-          file.path(root, "ProtVis_dataset.rds"), compress = TRUE)
+  saveRDS(dataset, file.path(root, "ProtVis_dataset.rds"), compress = TRUE)
   utils::write.csv(protvis_expression_matrix(dataset),
                    file.path(root, "expression_data.csv"), row.names = FALSE)
   utils::write.csv(dataset$sample_info, file.path(root, "sample_info.csv"),
@@ -457,7 +454,6 @@ protvis_auto_export_dataset <- function(dataset, directory = NULL,
   dataset$metadata$auto_exported_at <- as.character(Sys.time())
   dataset$checkpoint_info$output_directory <- directory
   dataset$checkpoint_info$latest_export <- exported
-  saveRDS(protvis_as_mass_dataset(dataset),
-          file.path(exported, "ProtVis_dataset.rds"), compress = TRUE)
+  saveRDS(dataset, file.path(exported, "ProtVis_dataset.rds"), compress = TRUE)
   dataset
 }
