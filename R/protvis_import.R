@@ -454,12 +454,13 @@ protvis_read_table <- function(path, filename = NULL, sheet = 1L) {
 #' @param filename Original filename when path is a Shiny temporary upload.
 #' @param maxquant_filters MaxQuant flags to remove: site, reverse, contaminant.
 #' @param sheet Excel sheet number or name.
+#' @param auto_export Whether to persist the imported object immediately.
 #' @return A ProtVis_dataset.
 #' @export
 import_protvis <- function(path = NULL, source = "MaxQuant",
                             sample_info = NULL, filename = NULL,
                             maxquant_filters = c("site", "reverse", "contaminant"),
-                            sheet = 1L) {
+                            sheet = 1L, auto_export = TRUE) {
   source <- .protvis_normalise_source(source)
   if (is.null(path)) {
     if (identical(source, "MaxQuant")) path <- protvis_builtin_data_path()
@@ -507,16 +508,18 @@ import_protvis <- function(path = NULL, source = "MaxQuant",
     object <- attach_protvis_file(object, path, name = filename,
                                   kind = "imported")
   }
-  object <- tryCatch(
-    protvis_auto_export_dataset(object, directory = object$metadata$output_directory),
-    error = function(e) {
-      .protvis_append_process(
-        object, "auto_export", status = "error",
-        error = conditionMessage(e),
-        message = "Automatic export failed; the in-memory dataset remains available."
-      )
-    }
-  )
+  if (isTRUE(auto_export)) {
+    object <- tryCatch(
+      protvis_auto_export_dataset(object, directory = object$metadata$output_directory),
+      error = function(e) {
+        .protvis_append_process(
+          object, "auto_export", status = "error",
+          error = conditionMessage(e),
+          message = "Automatic export failed; the in-memory dataset remains available."
+        )
+      }
+    )
+  }
   object
 }
 
@@ -549,7 +552,8 @@ protvis_builtin_data_path <- function(source = "MaxQuant", format = NULL) {
 #' @param source Source name returned by protvis_builtin_datasets().
 #' @export
 load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
-                                      format = NULL, file = NULL) {
+                                      format = NULL, file = NULL,
+                                      auto_export = TRUE) {
   source <- .protvis_normalise_source(source)
   path <- if (!is.null(file)) {
     .protvis_builtin_fixture_path(source, file = file)
@@ -568,7 +572,7 @@ load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
   }
   object <- import_protvis(path, source = source,
                  sample_info = sample_info,
-                 filename = file_name)
+                 filename = file_name, auto_export = auto_export)
   object$metadata$builtin_fixture <- TRUE
   object$metadata$builtin_reference <- manifest$reference[match(
     source, manifest$source

@@ -946,12 +946,6 @@ app_ui <- function(request) {
         data_input_ui("data_input")
       ),
 
-      bslib::nav_panel(
-        "ProtVis_dataset",
-        icon = bsicons::bs_icon("database"),
-        protvis_dataset_ui("dataset")
-      ),
-
       bslib::nav_menu(
         "Pre-processing",
         icon = bsicons::bs_icon("wrench"),

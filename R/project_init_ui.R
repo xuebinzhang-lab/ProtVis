@@ -35,6 +35,20 @@ project_init_ui <- function(id) {
       ),
       tags$small("Confirm expression matrix", style = "color: #6c757d"),
       shiny::selectInput(
+        inputId = ns("builtin_dataset"),
+        label = "Built-in example",
+        choices = stats::setNames(
+          protvis_builtin_datasets()$file,
+          paste(protvis_builtin_datasets()$source,
+                "—", protvis_builtin_datasets()$file)
+        ),
+        selected = protvis_builtin_datasets()$file[[1L]]
+      ),
+      shiny::actionButton(
+        ns("load_builtin"), "Load selected built-in example",
+        class = "btn btn-outline-primary w-100"
+      ),
+      shiny::selectInput(
         inputId = ns("data_source"),
         label = "Select data source",
         choices = c(
@@ -134,11 +148,38 @@ project_init_server <- function(id, shared_state) {
     shiny::observeEvent(input$data_source, {
       shared_state$data_source <- input$data_source
     })
-    # On clicking the init button, save all data to Step1_project_init.rda in selected workdir
+    # Load a bundled, source-specific example into the shared project state.
+    shiny::observeEvent(input$load_builtin, {
+      tryCatch({
+        selected <- as.character(input$builtin_dataset %||% "")
+        manifest <- protvis_builtin_datasets()
+        row <- manifest[manifest$file == selected, , drop = FALSE]
+        if (nrow(row) != 1L) stop("Please select a valid built-in example.", call. = FALSE)
+        dataset <- load_protvis_builtin_data(
+          source = row$source[[1L]], file = row$file[[1L]], auto_export = FALSE
+        )
+        shared_state$sample_info <- dataset$sample_info
+        shared_state$expression_matrix <- dataset$expression_data
+        shared_state$expression_matrix_filtered <- dataset$expression_data
+        shared_state$data_source <- row$source[[1L]]
+        shared_state$workdir <- protvis_output_directory(shared_state$workdir %||% getwd())
+        shiny::showNotification(
+          paste(row$source[[1L]], "built-in example loaded; click Project init to create ProtVis_dataset."),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(paste("Built-in example failed:", conditionMessage(e)),
+                                type = "error")
+      })
+    }, ignoreInit = TRUE)
+
+    # On clicking init, validate the current inputs and create one canonical
+    # ProtVis_dataset for the project. Later analyses create new versions only.
     shiny::observeEvent(input$run_button, {
       tryCatch({
-        shiny::req(shared_state$workdir, shared_state$sample_info,
-                   shared_state$expression_matrix, shared_state$data_source)
+        directory <- protvis_output_directory(shared_state$workdir %||% getwd())
+        shiny::req(shared_state$sample_info, shared_state$expression_matrix,
+                   shared_state$data_source)
         validated <- validate_protvis_data(
           shared_state$expression_matrix, shared_state$sample_info
         )
@@ -147,9 +188,26 @@ project_init_server <- function(id, shared_state) {
         shared_state$sample_info <- sample_info
         shared_state$expression_matrix <- expression_matrix
         data_source <- shared_state$data_source
-        save_path <- file.path(shared_state$workdir, "Step1_project_init.rda")
+        shared_state$workdir <- directory
+        dataset <- create_protvis_dataset(
+          expression_data = expression_matrix,
+          sample_info = sample_info,
+          metadata = list(source = data_source, output_directory = directory)
+        )
+        dataset$metadata$object_name <- paste0(
+          "ProtVis_dataset__project_init__", .protvis_object_label(data_source), "__v1"
+        )
+        dataset$metadata$object_version <- 1L
+        dataset <- protvis_auto_export_dataset(dataset, directory = directory)
+        shared_state$dataset <- dataset
+        shared_state$dataset_name <- protvis_dataset_name(dataset)
+        history <- shared_state$dataset_history %||% list()
+        shared_state$dataset_history <- c(history, list(dataset))
+        save_path <- file.path(directory, "Step1_project_init.rda")
         base::save(sample_info, expression_matrix, data_source, file = save_path)
-        shiny::showNotification("Project initialized successfully!", type = "message")
+        shiny::showNotification(
+          paste("Project initialized:", protvis_dataset_name(dataset)), type = "message"
+        )
         message("✅ Step1_project_init.rda saved to: ", save_path)
       }, error = function(e) {
         shiny::showNotification(paste("❌ Save failed:", e$message), type = "error")
