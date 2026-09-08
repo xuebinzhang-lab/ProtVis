@@ -312,13 +312,15 @@ correct_noise_server <- function(id, shared_state) {
 
     output$tbl_sample_info <- DT::renderDT({
       shiny::req(shared_state$sample_info)
-      DT::datatable(shared_state$sample_info, options = list(pageLength = 10))
+      DT::datatable(shared_state$sample_info, rownames = FALSE,
+                    options = list(pageLength = 10))
     })
 
     output$expression_matrix_filtered <- DT::renderDT({
       shiny::req(shared_state$expression_matrix_filtered)
       DT::datatable(
         shared_state$expression_matrix_filtered,
+        rownames = FALSE,
         options = list(scrollX = TRUE, pageLength = 10)
       )
     })
@@ -377,6 +379,7 @@ correct_noise_server <- function(id, shared_state) {
         shiny::req(shared_state$rename_result)
         DT::datatable(
           shared_state$rename_result,
+          rownames = FALSE,
           options = list(scrollX = TRUE, pageLength = 10)
         )
       }
@@ -386,8 +389,8 @@ correct_noise_server <- function(id, shared_state) {
       if (isTRUE(rv$noise_requested)) {
         shiny::req(shared_state$correct_noise_result)
         DT::datatable(
-          shared_state$correct_noise_result %>%
-            tibble::column_to_rownames("ID"),
+          shared_state$correct_noise_result,
+          rownames = FALSE,
           options = list(scrollX = TRUE, pageLength = 10)
         )
       }
