@@ -1,6 +1,6 @@
 Package: ProtVis
 Title: ProtVis Shiny App
-Version: 0.1.0
+Version: 0.2.0
 Authors@R:
     person(given = "Fei",
            family = "Liang",
@@ -10,7 +10,8 @@ Description: ProtVis is an interactive visualization tool designed for exploring
     and presenting proteomics data in an intuitive and user-friendly manner.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+LazyLoad: false
+LazyData: false
 RoxygenNote: 7.3.3
 Imports:
     AnnotationDbi,

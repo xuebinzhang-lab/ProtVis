@@ -173,8 +173,18 @@ project_init_server <- function(id, shared_state) {
           type = "message"
         )
       }, error = function(e) {
-        shiny::showNotification(paste("Built-in example failed:", conditionMessage(e)),
-                                type = "error")
+        error_message <- conditionMessage(e)
+        if (grepl("lazy-load database.*is corrupt|internal error.*R_decompress",
+                  error_message, ignore.case = TRUE)) {
+          error_message <- paste0(
+            "The installed ProtVis package is stale or corrupt. Close every R ",
+            "session using ProtVis, reinstall ProtVis 0.2.0 or later, and start ",
+            "a new R session. The current release no longer uses a lazy-load ",
+            "database. Original error: ", error_message
+          )
+        }
+        shiny::showNotification(paste("Built-in example failed:", error_message),
+                                type = "error", duration = NULL)
       })
     }, ignoreInit = TRUE)
 
