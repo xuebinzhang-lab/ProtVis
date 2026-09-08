@@ -95,8 +95,8 @@ protvis_dataset_ui <- function(id) {
             max = 1, step = 0.01
           ),
           shiny::textInput(
-            ns("checkpoint_dir"), "Checkpoint directory",
-            value = "", placeholder = "Optional; defaults to project workdir"
+            ns("checkpoint_dir"), "Output directory",
+            value = "", placeholder = "Optional; defaults to R getwd()"
           ),
           shiny::fileInput(
             ns("checkpoint_upload"), "Restore uploaded checkpoint (.rds)",
@@ -116,9 +116,10 @@ protvis_dataset_ui <- function(id) {
           shiny::actionButton(ns("rerun"), "Re-run downstream from node",
                               class = "btn btn-outline-warning w-100"),
           shiny::hr(),
-          shiny::downloadButton(ns("download_rds"), "Download RDS"),
-          shiny::downloadButton(ns("download_bundle"), "Download export bundle"),
-          shiny::downloadButton(ns("download_report"), "Download HTML report")
+          shiny::p(
+            "Every loaded or processed dataset is automatically saved to the output directory.",
+            class = "protvis-dataset-help"
+          )
         ),
         bslib::card(
           bslib::card_header(
@@ -168,10 +169,9 @@ protvis_dataset_ui <- function(id) {
 .protvis_ui_checkpoint_dir <- function(input, shared_state) {
   candidate <- input$checkpoint_dir
   if (is.null(candidate) || !nzchar(trimws(as.character(candidate)))) {
-    candidate <- shared_state$workdir
+    candidate <- shared_state$workdir %||% getwd()
   }
-  if (is.null(candidate) || !nzchar(trimws(as.character(candidate)))) NULL
-  else path.expand(as.character(candidate))
+  protvis_output_directory(candidate)
 }
 
 .protvis_ui_sync_state <- function(dataset, shared_state) {
@@ -180,6 +180,10 @@ protvis_dataset_ui <- function(id) {
   shared_state$sample_info <- dataset$sample_info
   shared_state$expression_matrix <- protvis_expression_matrix(dataset)
   shared_state$expression_matrix_filtered <- protvis_expression_matrix(dataset)
+  shared_state$dataset_name <- protvis_dataset_name(dataset)
+  history <- shared_state$dataset_history %||% list()
+  history[[length(history) + 1L]] <- dataset
+  shared_state$dataset_history <- history
   invisible(NULL)
 }
 
@@ -219,8 +223,22 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
                error = function(e) invisible(NULL))
     }
 
-    set_dataset <- function(dataset, message = NULL) {
+    set_dataset <- function(dataset, message = NULL, auto_export = TRUE) {
       validate_protvis_dataset(dataset)
+      if (isTRUE(auto_export)) {
+        dataset <- tryCatch(
+          protvis_auto_export_dataset(
+            dataset, directory = .protvis_ui_checkpoint_dir(input, shared_state)
+          ),
+          error = function(e) {
+            .protvis_append_process(
+              dataset, "auto_export", status = "error",
+              error = conditionMessage(e),
+              message = "Automatic export failed; the in-memory dataset remains available."
+            )
+          }
+        )
+      }
       rv$dataset <- dataset
       rv$error <- NULL
       .protvis_ui_sync_state(dataset, shared_state)
@@ -286,6 +304,9 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
         )
         if (!is.null(info)) {
           current <- rv$dataset
+          current <- .protvis_new_analysis_dataset(
+            current, "sample_info", list(method = "sample_info")
+          )
           current$sample_info <- .protvis_normalise_sample_info(
             info, colnames(current$expression_data)
           )
@@ -356,7 +377,7 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
                          checkpoint_dir = directory)
       )
       if (!is.null(current)) {
-        set_dataset(current)
+        set_dataset(current, auto_export = FALSE)
         event <- .protvis_last_event(current)
         if (!is.null(event) && identical(event$status, "error")) {
           rv$error <- protvis_error_message(event$error, stage)
@@ -402,7 +423,8 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
                                ))
         )
         if (!is.null(current)) {
-          set_dataset(current, "Pipeline run finished; inspect history for skipped nodes.")
+          set_dataset(current, "Pipeline run finished; inspect history for skipped nodes.",
+                      auto_export = FALSE)
           event <- .protvis_last_event(current)
           if (!is.null(event) && identical(event$status, "error")) {
             rv$error <- protvis_error_message(event$error, event$stage)
@@ -421,7 +443,8 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
           "Retry ProtVis node",
           retry_protvis_step(rv$dataset, checkpoint_dir = directory)
         )
-        if (!is.null(current)) set_dataset(current, "Failed node retried.")
+        if (!is.null(current)) set_dataset(current, "Failed node retried.",
+                                            auto_export = FALSE)
       }
     }, ignoreInit = TRUE)
 
@@ -438,7 +461,8 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
             params = .protvis_ui_dataset_parameters(input, stage)
           )
         )
-        if (!is.null(current)) set_dataset(current, "Downstream nodes re-run.")
+        if (!is.null(current)) set_dataset(current, "Downstream nodes re-run.",
+                                            auto_export = FALSE)
       }
     }, ignoreInit = TRUE)
 
@@ -452,10 +476,12 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
       dataset <- rv$dataset
       event <- .protvis_last_event(dataset)
       text <- paste0(
+        protvis_dataset_name(dataset), " | ",
         nrow(dataset$expression_data), " proteins × ",
         ncol(dataset$expression_data), " samples | source: ",
         dataset$metadata$source %||% "unknown", " | last node: ",
-        event$stage %||% "none", " (", event$status %||% "unknown", ")"
+        event$stage %||% "none", " (", event$status %||% "unknown", ") | output: ",
+        dataset$metadata$auto_export_directory %||% getwd()
       )
       shiny::div(class = "protvis-dataset-status", text)
     })

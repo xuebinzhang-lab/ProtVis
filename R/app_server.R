@@ -14,7 +14,9 @@ app_server <- function(input, output, session) {
     expression_matrix = NULL,
     expression_matrix_filtered = NULL,
     data_source = NULL,
-    dataset = NULL
+    dataset = NULL,
+    dataset_history = list(),
+    dataset_name = NULL
   )
   project_init_server("project_init", shared_state = shared_state)
   data_input_server(

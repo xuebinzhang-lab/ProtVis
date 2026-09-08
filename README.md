@@ -71,6 +71,15 @@ Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
 `run_protvis_pipeline()`, `save_protvis_checkpoint()`, and
 `export_protvis_dataset()`.
 
+All ProtVis operations use `ProtVis_dataset` as the primary state container.
+Each processing node returns a new version with a name such as
+`ProtVis_dataset__transformation__log2__v2` and records its parent, method,
+parameters, timestamps, results, and errors. Successful and failed nodes are
+automatically persisted as an RDS plus a portable export bundle. If no output
+directory is supplied, `getwd()` is used; `protvis_output_directory()` exposes
+the same resolution rule for scripts and extensions. The Shiny interface
+therefore does not require a manual export step.
+
 ------------------------------------------------------------------------
 
 ## Installation

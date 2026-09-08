@@ -120,6 +120,28 @@ test_that("node failures are recorded without invalidating the object", {
   expect_identical(retried$process_info$last_status, "success")
 })
 
+test_that("each analysis returns a named dataset and auto-exports it", {
+  object <- create_protvis_dataset(data.frame(
+    ID = paste0("P", 1:6), S1 = 1:6, S2 = 2:7, S3 = 3:8,
+    check.names = FALSE
+  ))
+  output <- tempfile("protvis_auto_output_")
+  dir.create(output)
+  result <- run_protvis_step(
+    object, "transformation", params = list(method = "log2"),
+    checkpoint_dir = output
+  )
+  expect_s3_class(result, "ProtVis_dataset")
+  expect_match(protvis_dataset_name(result),
+               "ProtVis_dataset__transformation__log2__v2")
+  expect_identical(result$metadata$parent_object_name,
+                   "ProtVis_dataset__creation__v1")
+  expect_true(dir.exists(result$metadata$auto_export_directory))
+  saved <- readRDS(file.path(result$metadata$auto_export_directory,
+                             "ProtVis_dataset.rds"))
+  expect_identical(protvis_dataset_name(saved), protvis_dataset_name(result))
+})
+
 test_that("checkpoint save, list, restore, and export are recoverable", {
   expression <- data.frame(
     ID = paste0("P", 1:8), S1 = 1:8, S2 = 2:9, S3 = 3:10,

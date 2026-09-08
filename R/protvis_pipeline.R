@@ -509,7 +509,9 @@ run_protvis_step <- function(dataset, stage, params = list(),
   stage <- normalise_protvis_stage(stage)
   params <- .protvis_stage_parameters(stage, params, method, list(...))
   started <- Sys.time()
-  candidate <- .protvis_clear_downstream(dataset, stage)
+  candidate <- .protvis_new_analysis_dataset(
+    .protvis_clear_downstream(dataset, stage), stage, params
+  )
   result <- tryCatch(
     .protvis_run_stage(candidate, stage, params),
     error = function(e) e
@@ -517,23 +519,45 @@ run_protvis_step <- function(dataset, stage, params = list(),
   if (inherits(result, "error")) {
     message_text <- conditionMessage(result)
     failed <- .protvis_append_process(
-      dataset, stage, status = "error", parameters = params,
-      error = message_text, message = "Node failed; previous data retained.",
+      candidate, stage, status = "error", parameters = params,
+      error = message_text, message = "Node failed; previous valid data retained.",
       started_at = started, finished_at = Sys.time()
     )
     failed$metadata$last_error <- message_text
     failed$metadata$last_error_stage <- stage
     failed$analysis_results$errors <- failed$process_info$errors
+    directory <- protvis_output_directory(
+      checkpoint_dir %||% failed$checkpoint_info$directory %||%
+        failed$metadata$checkpoint_dir
+    )
+    failed <- tryCatch(
+      protvis_auto_export_dataset(failed, directory = directory),
+      error = function(e) .protvis_append_process(
+        failed, "auto_export", status = "error",
+        parameters = list(directory = directory), error = conditionMessage(e)
+      )
+    )
     if (isTRUE(stop_on_error)) stop(message_text, call. = FALSE)
+    validate_protvis_dataset(failed)
     return(failed)
   }
   candidate <- .protvis_append_process(
     result, stage, status = "success", parameters = params,
     started_at = started, finished_at = Sys.time()
   )
-  directory <- checkpoint_dir %||% candidate$checkpoint_info$directory %||%
-    candidate$metadata$checkpoint_dir
-  if (!is.null(directory) && nzchar(as.character(directory))) {
+  directory <- protvis_output_directory(
+    checkpoint_dir %||% candidate$checkpoint_info$directory %||%
+      candidate$metadata$checkpoint_dir
+  )
+  candidate <- tryCatch(
+    protvis_auto_export_dataset(candidate, directory = directory),
+    error = function(e) .protvis_append_process(
+      candidate, "auto_export", status = "error",
+      parameters = list(directory = directory), error = conditionMessage(e),
+      message = "Automatic export failed; the in-memory dataset remains available."
+    )
+  )
+  if (nzchar(as.character(directory))) {
     checkpoint <- tryCatch(
       save_protvis_checkpoint(candidate, directory, stage),
       error = function(e) e

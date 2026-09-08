@@ -23,6 +23,25 @@
   )
 }
 
+#' Resolve the output directory used by automatic dataset persistence.
+#'
+#' An explicitly supplied directory wins; otherwise the current R working
+#' directory is used. The directory is created on demand.
+#' @export
+protvis_output_directory <- function(directory = NULL) {
+  directory <- directory %||% getwd()
+  if (length(directory) != 1L || is.na(directory) ||
+      !nzchar(trimws(as.character(directory)))) directory <- getwd()
+  directory <- normalizePath(path.expand(as.character(directory)),
+                             winslash = "/", mustWork = FALSE)
+  if (!dir.exists(directory) && !dir.create(directory, recursive = TRUE,
+                                             showWarnings = FALSE)) {
+    stop("Unable to create ProtVis output directory: ", directory,
+         call. = FALSE)
+  }
+  directory
+}
+
 .protvis_checkpoint_metadata <- function(path) {
   info <- tryCatch({
     object <- readRDS(path)
@@ -63,19 +82,10 @@
 #' @param keep Maximum number of checkpoint files retained.
 #' @return The published checkpoint path.
 #' @export
-save_protvis_checkpoint <- function(dataset, directory, stage = "manual",
+save_protvis_checkpoint <- function(dataset, directory = NULL, stage = "manual",
                                     keep = 20L) {
   validate_protvis_dataset(dataset)
-  if (is.null(directory) || !nzchar(as.character(directory))) {
-    stop("A checkpoint directory is required.", call. = FALSE)
-  }
-  directory <- normalizePath(
-    path.expand(as.character(directory)), winslash = "/", mustWork = FALSE
-  )
-  if (!dir.exists(directory) && !dir.create(directory, recursive = TRUE,
-                                             showWarnings = FALSE)) {
-    stop("Unable to create checkpoint directory: ", directory, call. = FALSE)
-  }
+  directory <- protvis_output_directory(directory)
   keep <- max(1L, as.integer(keep[[1L]] %||% 20L))
   stage <- as.character(stage[[1L]] %||% "manual")
   timestamp <- format(Sys.time(), "%Y%m%d%H%M%S")
@@ -245,7 +255,9 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
   }
   root <- file.path(
     path.expand(as.character(directory)),
-    paste0("ProtVis_dataset_export_", format(Sys.time(), "%Y%m%d_%H%M%S"))
+    paste0(.protvis_safe_file_name(dataset$metadata$object_name %||%
+                                     "ProtVis_dataset"), "_export_",
+           format(Sys.time(), "%Y%m%d_%H%M%S"))
   )
   if (!dir.create(root, recursive = TRUE, showWarnings = FALSE) &&
       !dir.exists(root)) {
@@ -292,4 +304,26 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
   ), file.path(root, "metadata.json"))
   write_protvis_report(dataset, file.path(root, "report.html"))
   normalizePath(root, winslash = "/", mustWork = TRUE)
+}
+
+#' Automatically persist a ProtVis_dataset and its portable export bundle.
+#'
+#' @param dataset A ProtVis_dataset.
+#' @param directory Output directory; defaults to getwd().
+#' @param include_raw Whether to copy the original imported files.
+#' @return The updated dataset, invisibly carrying the output paths.
+#' @export
+protvis_auto_export_dataset <- function(dataset, directory = NULL,
+                                        include_raw = FALSE) {
+  validate_protvis_dataset(dataset)
+  directory <- protvis_output_directory(directory)
+  exported <- export_protvis_dataset(dataset, directory,
+                                     include_raw = include_raw)
+  dataset$metadata$output_directory <- directory
+  dataset$metadata$auto_export_directory <- exported
+  dataset$metadata$auto_exported_at <- as.character(Sys.time())
+  dataset$checkpoint_info$output_directory <- directory
+  dataset$checkpoint_info$latest_export <- exported
+  saveRDS(dataset, file.path(exported, "ProtVis_dataset.rds"), compress = TRUE)
+  dataset
 }

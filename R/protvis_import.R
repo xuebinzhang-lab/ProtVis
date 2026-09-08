@@ -499,10 +499,24 @@ import_protvis <- function(path = NULL, source = "MaxQuant",
     message = paste0("Imported ", parsed$retained_rows,
                      " protein rows from ", source, ".")
   )
+  object$metadata$object_name <- paste0(
+    "ProtVis_dataset__import__", .protvis_object_label(source), "__v1"
+  )
+  object$metadata$object_version <- 1L
   if (!is.data.frame(path) && !is.matrix(path) && file.exists(path)) {
     object <- attach_protvis_file(object, path, name = filename,
                                   kind = "imported")
   }
+  object <- tryCatch(
+    protvis_auto_export_dataset(object, directory = object$metadata$output_directory),
+    error = function(e) {
+      .protvis_append_process(
+        object, "auto_export", status = "error",
+        error = conditionMessage(e),
+        message = "Automatic export failed; the in-memory dataset remains available."
+      )
+    }
+  )
   object
 }
 

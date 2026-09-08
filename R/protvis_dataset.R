@@ -293,6 +293,10 @@
     finished_at = as.character(finished_at),
     duration_seconds = as.numeric(difftime(finished_at, started_at,
                                             units = "secs")),
+    object_name = as.character(dataset$metadata$object_name %||%
+                                 "ProtVis_dataset"),
+    parent_object_name = as.character(dataset$metadata$parent_object_name %||%
+                                        NA_character_),
     error = if (is.null(error)) NA_character_ else as.character(error),
     message = if (is.null(message)) NA_character_ else as.character(message)
   )
@@ -309,6 +313,46 @@
     errors[[length(errors) + 1L]] <- event
     dataset$process_info$errors <- errors
   }
+  dataset
+}
+
+.protvis_object_label <- function(x) {
+  x <- trimws(as.character(x %||% "analysis"))
+  x <- gsub("[^A-Za-z0-9.-]+", "_", x)
+  x <- gsub("_+", "_", x)
+  x <- gsub("^[_ .-]+|[_ .-]+$", "", x)
+  if (!nzchar(x)) "analysis" else x
+}
+
+#' Return the human-readable name of a ProtVis_dataset object.
+#' @export
+protvis_dataset_name <- function(object) {
+  validate_protvis_dataset(object)
+  as.character(object$metadata$object_name %||% "ProtVis_dataset")
+}
+
+.protvis_new_analysis_dataset <- function(dataset, stage, parameters = list()) {
+  validate_protvis_dataset(dataset)
+  method <- parameters$method %||% stage
+  if (length(method) != 1L || is.na(method) || !nzchar(as.character(method))) {
+    method <- stage
+  }
+  old_name <- dataset$metadata$object_name %||% "ProtVis_dataset"
+  version <- as.integer(dataset$metadata$object_version %||% 1L) + 1L
+  object_name <- paste0(
+    "ProtVis_dataset__", .protvis_object_label(stage), "__",
+    .protvis_object_label(method), "__v", version
+  )
+  dataset$metadata <- utils::modifyList(
+    dataset$metadata,
+    list(
+      object_name = object_name,
+      parent_object_name = as.character(old_name),
+      object_version = version,
+      last_analysis = as.character(stage),
+      last_method = as.character(method)
+    )
+  )
   dataset
 }
 
@@ -341,7 +385,9 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     list(
       object = "ProtVis_dataset",
       created_at = as.character(Sys.time()),
-      source = "user"
+      source = "user",
+      object_name = "ProtVis_dataset__creation__v1",
+      object_version = 1L
     ),
     metadata
   )
@@ -463,9 +509,16 @@ add_protvis_result <- function(object, name, value, stage = name,
   validate_protvis_dataset(object)
   if (!nzchar(as.character(name))) stop("Result name cannot be empty.",
                                         call. = FALSE)
+  object <- .protvis_new_analysis_dataset(object, stage, parameters)
   object$analysis_results[[as.character(name)]] <- value
-  .protvis_append_process(object, stage, status = "success",
-                          parameters = parameters)
+  object <- .protvis_append_process(object, stage, status = "success",
+                                    parameters = parameters)
+  tryCatch(
+    protvis_auto_export_dataset(object),
+    error = function(e) .protvis_append_process(
+      object, "auto_export", status = "error", error = conditionMessage(e)
+    )
+  )
 }
 
 #' Return process history as a compact data.frame.
@@ -485,7 +538,15 @@ protvis_history <- function(object) {
     status = vapply(history, function(x) as.character(x$status %||% ""),
                     character(1)),
     time = vapply(history, function(x) as.character(x$time %||% ""),
-                  character(1)),
+                   character(1)),
+    object_name = vapply(
+      history, function(x) as.character(x$object_name %||% NA_character_),
+      character(1)
+    ),
+    parent_object_name = vapply(
+      history, function(x) as.character(x$parent_object_name %||% NA_character_),
+      character(1)
+    ),
     duration_seconds = vapply(
       history, function(x) as.numeric(x$duration_seconds %||% NA_real_),
       numeric(1)
@@ -518,10 +579,14 @@ subset_protvis_dataset <- function(object, variables = NULL, samples = NULL) {
     match(variables, object$variable_info$protein_id), , drop = FALSE
   ]
   object$analysis_results <- list()
-  .protvis_append_process(
+  object <- .protvis_new_analysis_dataset(
+    object, "subset", list(method = "subset")
+  )
+  object <- .protvis_append_process(
     object, "subset", status = "success",
     parameters = list(n_proteins = length(variables), n_samples = length(samples))
   )
+  tryCatch(protvis_auto_export_dataset(object), error = function(e) object)
 }
 
 print.ProtVis_dataset <- function(x, ...) {
