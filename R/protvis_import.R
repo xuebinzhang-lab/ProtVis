@@ -59,6 +59,73 @@ protvis_supported_sources <- function() {
   )
 }
 
+#' List the small, bundled demonstration files for each supported source.
+#'
+#' These fixtures intentionally contain only a few proteins and samples. They
+#' are real-world-shaped exports, not synthetic wide matrices, so every file
+#' can be used to exercise the source adapter and the downstream pipeline.
+#' @return A data.frame with source, file, format, and provenance fields.
+#' @export
+protvis_builtin_datasets <- function() {
+  data.frame(
+    source = c("MaxQuant", "Proteome Discoverer", "DIA-NN", "Spectronaut",
+               "FragPipe", "Skyline", "OpenMS", "OpenMS"),
+    file = c(
+      "Maxquant_Export.xlsx", "ProteomeDiscoverer_proteins.txt",
+      "DIA-NN_report.tsv", "Spectronaut_report.tsv",
+      "FragPipe_combined_protein.tsv", "Skyline_report.csv",
+      "OpenMS_protein_quantification.tsv", "OpenMS_proteins.mzTab"
+    ),
+    format = c("xlsx", "txt", "tsv", "tsv", "tsv", "csv", "tsv", "mzTab"),
+    description = c(
+      "MaxQuant reporter-intensity protein export",
+      "Proteome Discoverer protein result export",
+      "DIA-NN long-format protein-group report",
+      "Spectronaut long-format protein-group report",
+      "FragPipe combined protein report",
+      "Skyline protein report export",
+      "OpenMS protein quantification table",
+      "HUPO-PSI mzTab protein quantification export"
+    ),
+    reference = c(
+      "https://www.maxquant.org/",
+      "https://docs.thermofisher.com/r/Proteome-Discoverer-3.1-User-Guide/en-US1325293963v1",
+      "https://github.com/vdemichev/DiaNN",
+      "https://biognosys.com/software/spectronaut/",
+      "https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html",
+      "https://skyline.ms/",
+      "https://openms.de/documentation/TOPP_ProteinQuantifier.html",
+      "https://www.psidev.info/mztab-specifications"
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+.protvis_builtin_fixture_path <- function(source, format = NULL, file = NULL) {
+  source <- .protvis_normalise_source(source)
+  manifest <- protvis_builtin_datasets()
+  row <- manifest[manifest$source == source, , drop = FALSE]
+  if (!is.null(file)) row <- row[row$file == as.character(file), , drop = FALSE]
+  if (!is.null(format)) row <- row[tolower(row$format) ==
+                                     tolower(as.character(format)), , drop = FALSE]
+  if (nrow(row) == 0L) stop("No built-in fixture is registered for ", source,
+                            ".", call. = FALSE)
+  installed <- system.file("extdata", row$file[[1L]], package = "ProtVis")
+  candidates <- c(
+    installed,
+    file.path(getwd(), "inst", "extdata", row$file[[1L]]),
+    file.path(getwd(), "..", "inst", "extdata", row$file[[1L]]),
+    file.path(getwd(), "..", "..", "inst", "extdata", row$file[[1L]])
+  )
+  candidates <- candidates[nzchar(candidates) & file.exists(candidates)]
+  if (length(candidates) == 0L) {
+    stop("Built-in fixture not found for ", source, ": ", row$file[[1L]],
+         call. = FALSE)
+  }
+  normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
+}
+
 .protvis_mztab_table <- function(path) {
   lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
   if (length(lines) == 0L) stop("The mzTab file is empty.", call. = FALSE)
@@ -441,7 +508,10 @@ import_protvis <- function(path = NULL, source = "MaxQuant",
 
 #' Resolve the bundled MaxQuant workbook.
 #' @export
-protvis_builtin_data_path <- function() {
+protvis_builtin_data_path <- function(source = "MaxQuant", format = NULL) {
+  if (!identical(.protvis_normalise_source(source), "MaxQuant")) {
+    return(.protvis_builtin_fixture_path(source, format = format))
+  }
   installed <- system.file("extdata", "Maxquant_Export.xlsx", package = "ProtVis")
   if (nzchar(installed) && file.exists(installed)) {
     return(normalizePath(installed, winslash = "/", mustWork = TRUE))
@@ -460,12 +530,29 @@ protvis_builtin_data_path <- function() {
               "package or place it in inst/extdata."), call. = FALSE)
 }
 
-#' Load the bundled MaxQuant demonstration dataset.
+#' Load a bundled demonstration dataset.
+#'
+#' @param source Source name returned by protvis_builtin_datasets().
 #' @export
-load_protvis_builtin_data <- function(sample_info = NULL) {
-  import_protvis(protvis_builtin_data_path(), source = "MaxQuant",
+load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
+                                      format = NULL, file = NULL) {
+  source <- .protvis_normalise_source(source)
+  path <- if (!is.null(file)) {
+    .protvis_builtin_fixture_path(source, file = file)
+  } else {
+    protvis_builtin_data_path(source, format = format)
+  }
+  manifest <- protvis_builtin_datasets()
+  file_name <- if (!is.null(file)) as.character(file) else
+    manifest$file[match(source, manifest$source)]
+  object <- import_protvis(path, source = source,
                  sample_info = sample_info,
-                 filename = "Maxquant_Export.xlsx")
+                 filename = file_name)
+  object$metadata$builtin_fixture <- TRUE
+  object$metadata$builtin_reference <- manifest$reference[match(
+    source, manifest$source
+  )]
+  object
 }
 
 #' Compatibility alias for import_protvis.

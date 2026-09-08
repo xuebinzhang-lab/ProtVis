@@ -1,0 +1,5 @@
+Master Protein Accessions	Protein Description	Abundance S1 Control	Abundance S2 Control	Abundance S3 Treatment	Abundance S4 Treatment	Gene Symbol
+P00001	Example protein alpha	1200	1300	2400	2500	GENE1
+P00002	Example protein beta	900	950	700	680	GENE2
+P00003	Example protein gamma	450	470	900	940	GENE3
+P00004	Example protein delta	1800	1750	1600	1580	GENE4

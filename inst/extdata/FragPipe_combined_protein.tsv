@@ -1,0 +1,5 @@
+Protein	Gene	Protein Description	S1_Control Intensity	S2_Control Intensity	S3_Treatment Intensity	S4_Treatment Intensity	S1_Control LFQ Intensity	S2_Control LFQ Intensity	S3_Treatment LFQ Intensity	S4_Treatment LFQ Intensity
+P00001	GENE1	Example protein alpha	1200	1300	2400	2500	1100	1200	2200	2300
+P00002	GENE2	Example protein beta	900	950	700	680	850	900	650	630
+P00003	GENE3	Example protein gamma	450	470	900	940	400	420	850	890
+P00004	GENE4	Example protein delta	1800	1750	1600	1580	1700	1650	1500	1480

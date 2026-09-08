@@ -1,0 +1,10 @@
+MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Summary
+MTD	mzTab-type	Quantification
+MTD	assay[1]-quantification_mod	label-free
+MTD	assay[2]-quantification_mod	label-free
+PRT	accession	description	abundance_assay[1]	abundance_assay[2]
+PRT	P00001	Example protein alpha	1200	1300
+PRT	P00002	Example protein beta	900	950
+PRT	P00003	Example protein gamma	450	470
+PRT	P00004	Example protein delta	1800	1750

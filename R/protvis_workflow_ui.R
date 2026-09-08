@@ -22,6 +22,7 @@
 protvis_dataset_ui <- function(id) {
   ns <- shiny::NS(id)
   sources <- protvis_supported_sources()
+  builtin <- protvis_builtin_datasets()
   stages <- protvis_stage_labels()
   stage_choices <- stats::setNames(names(stages), unname(stages))
   shiny::tagList(
@@ -44,8 +45,16 @@ protvis_dataset_ui <- function(id) {
             selected = "MaxQuant"
           ),
           shiny::actionButton(
-            ns("load_builtin"), "Load built-in MaxQuant workbook",
+            ns("load_builtin"), "Load selected built-in example",
             class = "btn btn-primary w-100"
+          ),
+          shiny::selectInput(
+            ns("builtin_source"), "Built-in example",
+            choices = stats::setNames(
+              builtin$file,
+              paste0(builtin$source, " — ", builtin$file)
+            ),
+            selected = "Maxquant_Export.xlsx"
           ),
           shiny::fileInput(
             ns("data_file"), "Upload source table",
@@ -199,6 +208,7 @@ protvis_dataset_ui <- function(id) {
 #' @export
 protvis_dataset_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
+    builtin <- protvis_builtin_datasets()
     rv <- shiny::reactiveValues(
       dataset = NULL, error = NULL, message = NULL
     )
@@ -231,10 +241,22 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
     }
 
     shiny::observeEvent(input$load_builtin, {
-      dataset <- safe_call("Built-in MaxQuant import",
-                           load_protvis_builtin_data())
+      selected_file <- as.character(input$builtin_source %||%
+                                      "Maxquant_Export.xlsx")
+      selected_row <- builtin[builtin$file == selected_file, , drop = FALSE]
+      if (nrow(selected_row) != 1L) {
+        notify("The selected built-in example is not available.", "error")
+        return(invisible(NULL))
+      }
+      selected_source <- selected_row$source[[1L]]
+      dataset <- safe_call(
+        paste0("Built-in ", selected_source, " import"),
+        load_protvis_builtin_data(source = selected_source,
+                                   file = selected_file)
+      )
       if (!is.null(dataset)) set_dataset(
-        dataset, "Built-in MaxQuant workbook loaded."
+        dataset, paste0("Built-in ", selected_source, " example loaded: ",
+                        selected_file)
       )
     }, ignoreInit = TRUE)
 

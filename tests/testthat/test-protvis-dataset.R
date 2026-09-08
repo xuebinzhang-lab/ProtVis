@@ -65,6 +65,43 @@ test_that("MaxQuant built-in workbook is complete and filtered", {
   expect_true(file.exists(path))
 })
 
+test_that("bundled software fixtures import and enter the pipeline", {
+  manifest <- protvis_builtin_datasets()
+  expect_gte(nrow(manifest), 8)
+  fixture_paths <- vapply(manifest$file, function(name) {
+    system.file("extdata", name, package = "ProtVis")
+  }, character(1))
+  expect_true(all(nzchar(fixture_paths) & file.exists(fixture_paths)))
+  for (source in unique(manifest$source)) {
+    object <- load_protvis_builtin_data(source = source)
+    expect_s3_class(object, "ProtVis_dataset")
+    expect_true(validate_protvis_dataset(object))
+    expect_gte(nrow(object$expression_data), 4)
+    expect_gte(ncol(object$expression_data), 2)
+    processed <- run_protvis_pipeline(
+      object,
+      stages = c("noise_correction", "transformation", "imputation",
+                 "normalization", "dimensionality_reduction"),
+      params = list(
+        noise_correction = list(max_missing = 0.99),
+        transformation = list(method = "log2"),
+        imputation = list(method = "median"),
+        normalization = list(method = "median")
+      )
+    )
+    expect_identical(processed$process_info$last_status, "success")
+    expect_true("dimensionality_reduction" %in%
+                  names(processed$analysis_results))
+  }
+  mztab <- manifest[manifest$format == "mzTab", , drop = FALSE]
+  mz_object <- load_protvis_builtin_data(
+    source = mztab$source[[1L]], file = mztab$file[[1L]]
+  )
+  expect_equal(nrow(mz_object$expression_data), 4)
+  expect_equal(ncol(mz_object$expression_data), 2)
+  expect_true(validate_protvis_dataset(mz_object))
+})
+
 test_that("node failures are recorded without invalidating the object", {
   expression <- data.frame(
     ID = paste0("P", 1:10),

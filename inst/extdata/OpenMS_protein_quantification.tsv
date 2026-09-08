@@ -1,0 +1,5 @@
+ProteinName	ProteinAccession	map_S1_Control	map_S2_Control	map_S3_Treatment	map_S4_Treatment	Peptides
+P00001	P00001	1200	1300	2400	2500	3
+P00002	P00002	900	950	700	680	2
+P00003	P00003	450	470	900	940	2
+P00004	P00004	1800	1750	1600	1580	4

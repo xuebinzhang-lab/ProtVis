@@ -49,14 +49,27 @@ ProtVis supports the following data-source options from **Project init → Selec
 
 Parser-backed imports are converted into a common ProtVis expression matrix and sample metadata schema. When a working directory is available, ProtVis writes preprocessing-compatible handoff files so the imported data can continue into the **Pre-processing** menu.
 
-The ProtVis_dataset tab also loads the bundled Maxquant_Export.xlsx example
-without requiring an upload. The workbook is filtered for the standard
-MaxQuant flags and then processed through a transactional, checkpointed
-pipeline. A failed node records the error context while preserving the last
-valid object; users can restore a checkpoint, retry the node, or re-run only
-downstream stages. Script users can call load_protvis_builtin_data(),
-run_protvis_pipeline(), save_protvis_checkpoint(), and
-export_protvis_dataset() directly.
+The ProtVis_dataset tab also loads bundled examples for every supported source
+without requiring an upload. `protvis_builtin_datasets()` lists the files,
+formats, descriptions, and official documentation links. The fixtures are
+deliberately small (four proteins and four samples) and include:
+
+- MaxQuant `Maxquant_Export.xlsx`
+- Proteome Discoverer `ProteomeDiscoverer_proteins.txt`
+- DIA-NN `DIA-NN_report.tsv`
+- Spectronaut `Spectronaut_report.tsv`
+- FragPipe `FragPipe_combined_protein.tsv`
+- Skyline `Skyline_report.csv`
+- OpenMS `OpenMS_protein_quantification.tsv`
+- HUPO-PSI mzTab `OpenMS_proteins.mzTab`
+
+Each fixture is parsed into `ProtVis_dataset` and can continue through the
+same QC, transformation, imputation, normalization, dimensionality reduction,
+differential analysis, enrichment, network, checkpoint, and export functions.
+The full MaxQuant workbook remains available for a larger reproducible example.
+Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
+`run_protvis_pipeline()`, `save_protvis_checkpoint()`, and
+`export_protvis_dataset()`.
 
 ------------------------------------------------------------------------
 
