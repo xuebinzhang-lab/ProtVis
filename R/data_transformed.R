@@ -321,6 +321,38 @@ data_transformed_server <- function(id, shared_state) {
       )
       base::rownames(rv$transformed) <- NULL
 
+      # Commit one completed analysis to the canonical object.  Legacy RDA
+      # files remain a read-only compatibility path for old projects.
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        ids <- rv$protein_ids %||% base::paste0(
+          "P", base::seq_len(base::nrow(rv$transformed))
+        )
+        transformed_matrix <- as.matrix(rv$transformed)
+        storage.mode(transformed_matrix) <- "numeric"
+        base::rownames(transformed_matrix) <- as.character(ids)
+        base::colnames(transformed_matrix) <- base::colnames(
+          shared_state$dataset$expression_data
+        )
+        dataset <- .protvis_new_analysis_dataset(
+          shared_state$dataset, "transformation",
+          list(method = input$data_transformed)
+        )
+        dataset <- .protvis_replace_expression(dataset, transformed_matrix)
+        dataset$analysis_results$transformation <- list(
+          status = "success", method = input$data_transformed
+        )
+        dataset <- .protvis_append_process(
+          dataset, "transformation", status = "success",
+          parameters = list(method = input$data_transformed)
+        )
+        directory <- protvis_output_directory(shared_state$workdir %||% getwd())
+        dataset <- tryCatch(
+          protvis_auto_export_dataset(dataset, directory = directory),
+          error = function(e) dataset
+        )
+        .protvis_ui_sync_state(dataset, shared_state)
+      }
+
       rv$transformation_done <- TRUE
 
       shiny::showNotification(

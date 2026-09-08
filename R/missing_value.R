@@ -139,6 +139,20 @@ missing_value_server <- function(id, shared_state) {
     )
     # Load data when button is clicked
     shiny::observeEvent(input$load_data, {
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        rv$sample_info <- shared_state$dataset$sample_info
+        rv$expression_matrix <- protvis_expression_matrix(shared_state$dataset)
+        rv$expression_matrix_filtered <- rv$expression_matrix
+        rv$step1_zero_na <- NULL
+        rv$step2_group_na <- NULL
+        rv$step3_imputed <- NULL
+        rv$step4_transformed <- NULL
+        rv$load_success <- TRUE
+        shiny::showNotification(
+          "✅ ProtVis_dataset loaded successfully.", type = "message"
+        )
+        return(invisible(NULL))
+      }
       shiny::req(shared_state$workdir)
       rda_path <- base::file.path(shared_state$workdir, "Step4_select_protein_id.rda")
       if (base::file.exists(rda_path)) {
