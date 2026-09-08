@@ -653,27 +653,6 @@ app_ui <- function(request) {
         success = "#2fb176",
         info = "#56b6d9"
       ),
-      footer = shiny::tags$footer(
-        class = "protvis-site-footer",
-        shiny::div(
-          class = "footer-inner",
-          shiny::div(
-            class = "footer-title", "ProtVis",
-            shiny::p(
-              class = "footer-text",
-              "Integrated proteomics processing, interpretation, and visualization."
-            )
-          ),
-          shiny::div(
-            class = "footer-title", "Developer",
-            shiny::p(
-              class = "footer-text",
-              "Fei Liang | Henan University | fyliangfei@163.com"
-            )
-          ),
-          shiny::div(class = "footer-small", "© 2026 ProtVis. All rights reserved.")
-        )
-      ),
 
       bslib::nav_panel(
         "Homepage",
@@ -1075,6 +1054,28 @@ app_ui <- function(request) {
       ),
 
       help_ui()
+    ),
+
+    shiny::tags$footer(
+      class = "protvis-site-footer",
+      shiny::div(
+        class = "footer-inner",
+        shiny::div(
+          class = "footer-title", "ProtVis",
+          shiny::p(
+            class = "footer-text",
+            "Integrated proteomics processing, interpretation, and visualization."
+          )
+        ),
+        shiny::div(
+          class = "footer-title", "Developer",
+          shiny::p(
+            class = "footer-text",
+            "Fei Liang | Henan University | fyliangfei@163.com"
+          )
+        ),
+        shiny::div(class = "footer-small", "© 2026 ProtVis. All rights reserved.")
+      )
     )
   )
 }
