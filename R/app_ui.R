@@ -653,6 +653,27 @@ app_ui <- function(request) {
         success = "#2fb176",
         info = "#56b6d9"
       ),
+      footer = shiny::tags$footer(
+        class = "protvis-site-footer",
+        shiny::div(
+          class = "footer-inner",
+          shiny::div(
+            class = "footer-title", "ProtVis",
+            shiny::p(
+              class = "footer-text",
+              "Integrated proteomics processing, interpretation, and visualization."
+            )
+          ),
+          shiny::div(
+            class = "footer-title", "Developer",
+            shiny::p(
+              class = "footer-text",
+              "Fei Liang | Henan University | fyliangfei@163.com"
+            )
+          ),
+          shiny::div(class = "footer-small", "© 2026 ProtVis. All rights reserved.")
+        )
+      ),
 
       bslib::nav_panel(
         "Homepage",
@@ -928,59 +949,6 @@ app_ui <- function(request) {
                   class = "protvis-note",
                   "Suggested path: Project init → Data input → Pre-processing → Downstream analysis → Multi-omics / Toolkits → Protein Structure / PTM."
                 )
-              )
-            )
-          ),
-
-          shiny::tags$footer(
-            class = "protvis-site-footer",
-            shiny::div(
-              class = "footer-inner",
-              bslib::layout_columns(
-                col_widths = c(4, 5, 3),
-
-                shiny::div(
-                  shiny::div(class = "footer-title", "ProtVis"),
-                  shiny::p(
-                    class = "footer-text",
-                    "ProtVis is an integrated platform for proteomics data processing, differential analysis, functional interpretation, protein 3D and PTM visualization, multi-omics analysis, and downstream visualization."
-                  )
-                ),
-
-                shiny::div(
-                  shiny::div(class = "footer-title", "Developer"),
-                  shiny::p(
-                    class = "footer-text",
-                    shiny::strong("Fei Liang"),
-                    shiny::br(),
-                    "State Key Laboratory of Crop Stress Adaptation and Improvement,",
-                    shiny::br(),
-                    "Henan Joint International Laboratory for Crop Multi‐Omics Research,",
-                    shiny::br(),
-                    "School of Life Sciences, Henan University,",
-                    shiny::br(),
-                    "Kaifeng 475004, China"
-                  )
-                ),
-
-                shiny::div(
-                  shiny::div(class = "footer-title", "Contact"),
-                  shiny::p(
-                    class = "footer-text",
-                    shiny::strong("Fei Liang"),
-                    shiny::br(),
-                    "Email: fyliangfei@163.com",
-                    shiny::br(),
-                    "Platform: ProtVis",
-                    shiny::br(),
-                    "For research and visualization use"
-                  )
-                )
-              ),
-
-              shiny::div(
-                class = "footer-small",
-                "© 2026 ProtVis. All rights reserved."
               )
             )
           )

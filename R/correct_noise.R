@@ -17,25 +17,41 @@
 utils::globalVariables(c("ID", "sample_id", "value", "value_fix", "sample_group", ".", "tag", "tag_sum"))
 
 correct_values <- function(raw_mat) {
+  if (base::is.null(raw_mat) || !base::is.data.frame(raw_mat)) {
+    stop("Noise correction requires a data frame with an ID column and sample columns.",
+         call. = FALSE)
+  }
+  if (!"ID" %in% base::names(raw_mat)) {
+    base::names(raw_mat)[1] <- "ID"
+  }
   clean_mat <- raw_mat
 
-  rep1 <- dplyr::select(clean_mat, ID, dplyr::contains("_1")) %>%
-    dplyr::rowwise() %>%
-    dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
-    dplyr::ungroup()
+  sample_cols <- base::setdiff(base::names(clean_mat), "ID")
+  if (base::length(sample_cols) == 0L) return(clean_mat)
 
-  rep2 <- dplyr::select(clean_mat, ID, dplyr::contains("_2")) %>%
-    dplyr::rowwise() %>%
-    dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
-    dplyr::ungroup()
+  replicate_cols <- base::lapply(seq_len(3L), function(replicate) {
+    pattern <- paste0("(^|_)", replicate, "(_|$)|_", replicate, "$|",
+                      "_", replicate, "_")
+    sample_cols[base::grepl(pattern, sample_cols, perl = TRUE)]
+  })
+  replicate_cols <- replicate_cols[base::lengths(replicate_cols) > 0L]
+  # Not every imported matrix uses _1/_2/_3 replicate suffixes. In that case
+  # there is no replicate-level correction to perform, but the app must remain
+  # usable and return the validated matrix instead of calling pivot_longer()
+  # with an empty selection.
+  if (base::length(replicate_cols) == 0L) return(clean_mat)
 
-  rep3 <- dplyr::select(clean_mat, ID, dplyr::contains("_3")) %>%
-    dplyr::rowwise() %>%
-    dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
-    dplyr::ungroup()
-
-  mv_mat <- dplyr::full_join(rep1, rep2, by = "ID") %>%
-    dplyr::full_join(rep3, by = "ID")
+  replicate_tables <- base::lapply(replicate_cols, function(columns) {
+    table <- dplyr::select(clean_mat, ID, dplyr::all_of(columns))
+    table %>%
+      dplyr::rowwise() %>%
+      dplyr::filter(base::any(dplyr::c_across(-ID) != 0)) %>%
+      dplyr::ungroup()
+  })
+  mv_mat <- base::Reduce(function(left, right) {
+    dplyr::full_join(left, right, by = "ID")
+  }, replicate_tables)
+  if (base::ncol(mv_mat) <= 1L) return(clean_mat)
 
   long_df <- tidyr::pivot_longer(
     mv_mat,
@@ -45,7 +61,8 @@ correct_values <- function(raw_mat) {
   ) %>%
     dplyr::mutate(value = tidyr::replace_na(value, 0)) %>%
     dplyr::mutate(
-      sample_group = stringr::str_sub(sample, 1, -3),
+      sample_group = base::sub("^([123])_", "", sample),
+      sample_group = base::sub("_[123]$", "", sample_group),
       tag = dplyr::if_else(value > 0, 1L, 0L)
     )
 
@@ -347,20 +364,23 @@ correct_noise_server <- function(id, shared_state) {
 
     shiny::observeEvent(input$correct_noise, {
       if (isTRUE(input$correct_noise)) {
-        shiny::req(correct_noise_step1())
-
-        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 15)
-
-        dat <- correct_noise_step1()
-
-        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 45)
-
-        result <- correct_values(dat)
-
-        shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 100)
-
-        shared_state$correct_noise_result <- result
-        shiny::showNotification("✅ Noise correction completed.", type = "message")
+        tryCatch({
+          shiny::req(correct_noise_step1())
+          shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 15)
+          dat <- correct_noise_step1()
+          shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 45)
+          result <- correct_values(dat)
+          shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 100)
+          shared_state$correct_noise_result <- result
+          shiny::showNotification("✅ Noise correction completed.", type = "message")
+        }, error = function(e) {
+          shared_state$correct_noise_result <- NULL
+          shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 0)
+          shiny::showNotification(
+            paste0("Noise correction failed: ", conditionMessage(e)),
+            type = "error"
+          )
+        })
       } else {
         shared_state$correct_noise_result <- NULL
         shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 0)
