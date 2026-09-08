@@ -240,6 +240,15 @@ overview_server <- function(id, shared_state) {
       if (base::ncol(matrix) == 0L) return(matrix)
       for (j in base::seq_len(base::ncol(matrix))) {
         observed <- matrix[, j]
+        missing <- !is.finite(observed)
+        if (base::any(missing)) {
+          replacement <- if (base::any(!missing)) {
+            stats::median(observed[!missing])
+          } else {
+            0
+          }
+          observed[missing] <- replacement
+        }
         center <- if (base::any(is.finite(observed))) {
           stats::median(observed[is.finite(observed)])
         } else {
@@ -912,13 +921,20 @@ overview_server <- function(id, shared_state) {
         Sample = sample_names,
         SampleType = vapply(base::strsplit(sample_names, "_", fixed = TRUE),
                             function(value) value[[1L]], character(1)),
-        Type = dplyr::if_else(
-          !is.null(rv$sample_info$group) &&
-            sample_names %in% rv$sample_info$sample_id,
-          as.character(rv$sample_info$group)[match(sample_names,
-                                                   rv$sample_info$sample_id)],
-          stringr::str_remove_all(sample_names, "^....|..$")
-        ),
+        Type = {
+          group_values <- rep(NA_character_, length(sample_names))
+          if (!is.null(rv$sample_info) &&
+              is.data.frame(rv$sample_info) &&
+              all(c("sample_id", "group") %in% names(rv$sample_info))) {
+            group_values <- as.character(rv$sample_info$group)[
+              match(sample_names, rv$sample_info$sample_id)
+            ]
+          }
+          fallback_values <- stringr::str_remove_all(sample_names, "^....|..$")
+          group_values[is.na(group_values) | !nzchar(group_values)] <-
+            fallback_values[is.na(group_values) | !nzchar(group_values)]
+          group_values
+        },
         Species = dplyr::case_when(
           SampleType == "B73" ~ "Zea mays ssp. mays",
           TRUE ~ "Zea mays ssp. mexicana"
