@@ -23,6 +23,28 @@
   )
 }
 
+# Read a checkpoint written by the current format, while retaining a safe
+# migration path for older releases that used save() with an .rds suffix.
+.protvis_read_checkpoint_file <- function(path) {
+  result <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (!is.null(result)) return(result)
+
+  workspace <- new.env(parent = emptyenv())
+  loaded <- tryCatch(load(path, envir = workspace), error = function(e) NULL)
+  if (is.null(loaded) || length(loaded) == 0L) {
+    stop("The checkpoint is not a readable RDS or legacy workspace file.",
+         call. = FALSE)
+  }
+  values <- mget(loaded, envir = workspace, inherits = FALSE)
+  candidates <- values[vapply(values, function(x) inherits(x, "ProtVis_dataset"),
+                              logical(1))]
+  if (length(candidates) != 1L) {
+    stop("The legacy checkpoint does not contain exactly one ProtVis_dataset.",
+         call. = FALSE)
+  }
+  candidates[[1L]]
+}
+
 #' Resolve the output directory used by automatic dataset persistence.
 #'
 #' An explicitly supplied directory wins; otherwise the current R working
@@ -44,7 +66,7 @@ protvis_output_directory <- function(directory = NULL) {
 
 .protvis_checkpoint_metadata <- function(path) {
   info <- tryCatch({
-    object <- readRDS(path)
+    object <- .protvis_read_checkpoint_file(path)
     cp <- object$checkpoint_info %||% list()
     stage <- cp$stage %||% sub(
       "^protvis_checkpoint_([^_]+).*", "\\1", basename(path)
@@ -202,7 +224,7 @@ restore_protvis_checkpoint <- function(path_or_directory, stage = NULL,
   }
   if (!file.exists(target)) stop("Checkpoint file does not exist: ", target,
                                 call. = FALSE)
-  object <- tryCatch(readRDS(target), error = function(e) {
+  object <- tryCatch(.protvis_read_checkpoint_file(target), error = function(e) {
     stop("Unable to read checkpoint: ", conditionMessage(e), call. = FALSE)
   })
   validate_protvis_dataset(object)

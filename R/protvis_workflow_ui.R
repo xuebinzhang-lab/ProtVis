@@ -200,7 +200,8 @@ protvis_dataset_ui <- function(id) {
          file = file.path(directory, "Step1_project_init.rda"))
     save(sample_info, expression_matrix, expression_matrix_filtered,
          file = file.path(directory, "Step2_remove_unreliable_peptide.rda"))
-    save(dataset, file = file.path(directory, "ProtVis_dataset.rds"))
+    saveRDS(dataset, file = file.path(directory, "ProtVis_dataset.rds"),
+            compress = TRUE)
     invisible(TRUE)
   }, error = function(e) invisible(FALSE))
 }
