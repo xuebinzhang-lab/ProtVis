@@ -95,9 +95,9 @@
   data
 }
 
-# MaxQuant may encode missing raw abundances as exactly -8.  Normalize this
-# legacy sentinel only for MaxQuant objects; negative values from transformed
-# data belonging to other sources must remain unchanged.
+# MaxQuant raw exports encode not-observed abundances as zero, while some
+# legacy files use -8.  Normalize both representations only for MaxQuant
+# objects; values from other sources must remain unchanged.
 .protvis_normalise_dataset_missing_values <- function(expression_data,
                                                       source = NULL) {
   if (is.null(source) ||
@@ -108,7 +108,7 @@
   for (column in sample_cols) {
     values <- .protvis_safe_numeric(expression_data[, column])
     expression_data[[column]] <- ifelse(
-      !is.na(values) & values == -8, NA_real_, values
+      !is.na(values) & values %in% c(0, -8), NA_real_, values
     )
   }
   expression_data

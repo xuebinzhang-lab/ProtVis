@@ -212,7 +212,9 @@ data_imputation_server <- function(id, shared_state) {
         values <- suppressWarnings(base::as.numeric(
           base::as.character(df[[column]])
         ))
-        df[[column]][!is.na(values) & values == -8] <- NA_real_
+        # Raw MaxQuant exports use both 0 and -8 for not-observed values.
+        # Keep them as true NA until the user explicitly runs imputation.
+        df[[column]][!is.na(values) & values %in% c(0, -8)] <- NA_real_
       }
       base::rownames(df) <- if ("ID" %in% base::colnames(df)) {
         as.character(df$ID)

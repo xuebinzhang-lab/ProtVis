@@ -25,11 +25,11 @@ safe_numeric <- function(x) {
   suppressWarnings(as.numeric(gsub(",", "", as.character(x), fixed = TRUE)))
 }
 
-# MaxQuant exports sometimes use -8 as a missing-value sentinel.  It is not a
-# valid raw abundance and must not leak into the canonical object or the
-# "Original Data" view.  Restrict this conversion to MaxQuant so that valid
-# negative values in already transformed matrices from other sources remain
-# untouched.
+# MaxQuant exports encode not-observed reporter intensities as zero in the
+# bundled workbook and some exports use -8 as a sentinel.  Neither value is a
+# measured raw abundance.  Convert both to NA at the import boundary.  Keep
+# this source-specific so valid zeros/negative values from other sources are
+# not changed.
 normalise_proteomics_missing_values <- function(expression_matrix, source = NULL) {
   if (is.null(source) || !identical(tolower(as.character(source)), "maxquant")) {
     return(expression_matrix)
@@ -37,7 +37,7 @@ normalise_proteomics_missing_values <- function(expression_matrix, source = NULL
   sample_cols <- base::setdiff(base::names(expression_matrix), "ID")
   for (column in sample_cols) {
     values <- safe_numeric(expression_matrix[[column]])
-    expression_matrix[[column]][!is.na(values) & values == -8] <- NA_real_
+    expression_matrix[[column]][!is.na(values) & values %in% c(0, -8)] <- NA_real_
   }
   expression_matrix
 }
