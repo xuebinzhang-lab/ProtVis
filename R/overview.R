@@ -115,7 +115,7 @@ overview_ui <- function(id) {
               "Color and ellipse grouping",
               choices = c(
                 "Experimental group" = "group",
-                "Tissue" = "tissue2",
+                "Tissue" = "tissue",
                 "Species" = "species",
                 "Batch" = "batch",
                 "Condition" = "condition"
@@ -128,7 +128,7 @@ overview_ui <- function(id) {
               choices = c(
                 "Species" = "species",
                 "Experimental group" = "group",
-                "Tissue" = "tissue2",
+                "Tissue" = "tissue",
                 "Batch" = "batch",
                 "Condition" = "condition"
               ),
@@ -978,12 +978,12 @@ overview_server <- function(id, shared_state) {
         values
       }
 
-      selected_group <- as.character(input$dr_group_by %||% "group")
+      selected_group <- as.character(input$dr_group_by %||% "tissue")
       selected_shape <- as.character(input$dr_shape_by %||% "species")
       group_values <- metadata_values(selected_group)
       shape_values <- metadata_values(selected_shape)
-      if (identical(selected_group, "tissue2")) group_values <- normalise_tissue(group_values)
-      if (identical(selected_shape, "tissue2")) shape_values <- normalise_tissue(shape_values)
+      if (selected_group %in% c("tissue", "tissue2")) group_values <- normalise_tissue(group_values)
+      if (selected_shape %in% c("tissue", "tissue2")) shape_values <- normalise_tissue(shape_values)
       sample_type <- vapply(base::strsplit(sample_names, "_", fixed = TRUE),
                             function(value) value[[1L]], character(1))
       fallback_group <- ifelse(
@@ -1028,12 +1028,12 @@ overview_server <- function(id, shared_state) {
           ggplot2::stat_ellipse(
             data = ellipse_df,
             ggplot2::aes(x = V1, y = V2, fill = DRGroup),
-            geom = "polygon", level = 0.95, alpha = 0.25
+            geom = "polygon", level = 0.95, alpha = 0.25, type = "norm"
           ) +
           ggplot2::stat_ellipse(
             data = ellipse_df,
             ggplot2::aes(x = V1, y = V2, color = DRGroup),
-            geom = "path", level = 0.95, alpha = 1, linewidth = 0.5
+            geom = "path", level = 0.95, alpha = 1, linewidth = 0.5, type = "norm"
           )
       }
       plot +
