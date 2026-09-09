@@ -84,12 +84,26 @@ therefore does not require a manual export step.
 
 ## Installation
 
-### Install ProtVis from GitHub
+### Clean installation from GitHub
+
+Always install ProtVis into an R library. Do not use a Git checkout itself as
+an R library directory. For a first installation, use:
 
 ``` r
 options(repos = c(CRAN = "https://mirrors.tuna.tsinghua.edu.cn/CRAN/"))
 install.packages("pak")
-pak::pak("xuebinzhang-lab/ProtVis")
+pak::pak("xuebinzhang-lab/ProtVis@dev")
+```
+
+When updating an existing installation, especially after an interrupted copy
+or installation, start a fresh R session and run the repository's clean
+installer. It removes only the exact ProtVis package directory and its install
+lock before reinstalling:
+
+``` r
+source(
+  "https://raw.githubusercontent.com/xuebinzhang-lab/ProtVis/dev/install_ProtVis.R"
+)
 ```
 
 ### Optional WGCNA helper
