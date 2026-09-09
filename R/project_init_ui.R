@@ -96,16 +96,41 @@ project_init_ui <- function(id) {
 project_init_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    # Define available volumes for directory selection using your custom cross-platform function getVolumes_win()
-    volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes_win())
-    shinyFiles::shinyDirChoose(input, "prj_wd", roots = volumes, session = session)
+    # Pass shinyFiles only accessible, uniquely named roots. In particular,
+    # avoid localized WMIC/PowerShell output on Windows, which can leave the
+    # chooser modal open with empty directory and content panes.
+    volumes <- .protvis_directory_roots()
+    shinyFiles::shinyDirChoose(
+      input,
+      "prj_wd",
+      roots = volumes,
+      session = session,
+      defaultRoot = names(volumes)[[1L]]
+    )
     # Listen to directory selection and update shared_state$workdir
     shiny::observeEvent(input$prj_wd, {
       shiny::req(input$prj_wd)
-      selected_dir <- shinyFiles::parseDirPath(volumes, input$prj_wd)
-      shared_state$workdir <- selected_dir
-      shiny::showNotification(paste("Workdir set to:", selected_dir), type = "message")
-    })
+      tryCatch({
+        selected_dir <- shinyFiles::parseDirPath(volumes, input$prj_wd)
+        selected_dir <- as.character(selected_dir)[[1L]]
+        if (!nzchar(selected_dir) || !base::dir.exists(selected_dir)) {
+          stop("The selected directory is not accessible.", call. = FALSE)
+        }
+        shared_state$workdir <- base::normalizePath(
+          selected_dir, winslash = "/", mustWork = TRUE
+        )
+        shiny::showNotification(
+          paste("Working directory set to:", shared_state$workdir),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste("Unable to select working directory:", conditionMessage(e)),
+          type = "error",
+          duration = NULL
+        )
+      })
+    }, ignoreInit = TRUE)
     # Display selected working directory path
     output$raw_wd_path <- renderText({
       shiny::req(shared_state$workdir)
@@ -178,7 +203,7 @@ project_init_server <- function(id, shared_state) {
                   error_message, ignore.case = TRUE)) {
           error_message <- paste0(
             "The installed ProtVis package is stale or corrupt. Close every R ",
-            "session using ProtVis, reinstall ProtVis 0.3.3 or later, and start ",
+            "session using ProtVis, reinstall ProtVis 0.3.4 or later, and start ",
             "a new R session. Use the clean installer supplied by ProtVis so ",
             "the old lazy-load database is removed and the new installation ",
             "is verified. Original error: ", error_message

@@ -79,6 +79,26 @@ golem_add_external_resources <- function() {
         z-index: 3000;
       }
 
+      .modal {
+        z-index: 4000 !important;
+      }
+
+      .modal-backdrop {
+        z-index: 3990 !important;
+      }
+
+      .modal-content {
+        background: #ffffff;
+        border: 1px solid var(--pv-border);
+        border-radius: 16px;
+        box-shadow: 0 18px 48px rgba(31, 52, 71, 0.18);
+      }
+
+      .modal-header,
+      .modal-footer {
+        border-color: var(--pv-border);
+      }
+
       .dropdown-item {
         border-radius: 10px;
         color: var(--pv-text);

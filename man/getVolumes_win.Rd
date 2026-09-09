@@ -2,19 +2,17 @@
 % Please edit documentation in R/getVolumes_win.R
 \name{getVolumes_win}
 \alias{getVolumes_win}
-\title{Cross-Platform Guide: Checking and Repairing Disk Volumes}
+\title{Cross-platform roots for the working-directory chooser}
 \usage{
 getVolumes_win(exclude = NULL)
 }
 \arguments{
-\item{exclude}{A vector of names to exclude from the returned list.}
+\item{exclude}{A character vector of root labels to exclude.}
 }
 \value{
-A named vector of available volumes with optional exclusions.
+A named character vector containing accessible directories.
 }
 \description{
-This function retrieves available volume information based on the operating system
-the R session is currently running on. It supports MacOS, Linux, and Windows.
-Specifically for Windows, it addresses a bug in `shinyFiles::getVolumes` related
-to handling paths with Chinese characters, ensuring correct handling of such paths.
+Returns stable roots for \code{shinyFiles}. On Windows, drive roots are detected
+directly instead of parsing the localized output of WMIC or PowerShell.
 }
