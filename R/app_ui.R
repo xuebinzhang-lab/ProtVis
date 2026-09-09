@@ -740,7 +740,7 @@ protvis_homepage <- function() {
     shiny::div(
       class = "pv-workflow-step",
       style = paste0("--step: ", number),
-      shiny::b(sprintf("%02d", number)),
+      shiny::tags$b(sprintf("%02d", number)),
       shiny::h3(title),
       shiny::p(description)
     )
@@ -776,8 +776,10 @@ protvis_homepage <- function() {
         shiny::div(
           class = "pv-object-core",
           shiny::div(class = "pv-core-mark", bsicons::bs_icon("database")),
-          shiny::strong("ProtVis_dataset"),
-          shiny::small("One independent S4 object across the complete workflow")
+          shiny::tags$strong("ProtVis_dataset"),
+          shiny::tags$small(
+            "One independent S4 object across the complete workflow"
+          )
         ),
         shiny::div(class = "pv-object-node pv-node-right", "Analysis results"),
         shiny::div(class = "pv-object-node pv-node-right", "Functional annotation"),
@@ -786,10 +788,10 @@ protvis_homepage <- function() {
     ),
     shiny::div(
       class = "pv-metrics",
-      shiny::div(class = "pv-metric", shiny::strong("8"), shiny::span("supported input sources")),
-      shiny::div(class = "pv-metric", shiny::strong("7"), shiny::span("connected workflow stages")),
-      shiny::div(class = "pv-metric", shiny::strong("3"), shiny::span("annotation layers")),
-      shiny::div(class = "pv-metric", shiny::strong("S4"), shiny::span("independent data architecture"))
+      shiny::div(class = "pv-metric", shiny::tags$strong("8"), shiny::span("supported input sources")),
+      shiny::div(class = "pv-metric", shiny::tags$strong("7"), shiny::span("connected workflow stages")),
+      shiny::div(class = "pv-metric", shiny::tags$strong("3"), shiny::span("annotation layers")),
+      shiny::div(class = "pv-metric", shiny::tags$strong("S4"), shiny::span("independent data architecture"))
     ),
     shiny::tags$section(
       class = "pv-section",
@@ -849,17 +851,17 @@ protvis_homepage <- function() {
       ),
       shiny::div(
         class = "pv-schema",
-        shiny::div(class = "pv-schema-row", shiny::code("expression_data"), shiny::span("Quantitative protein abundance matrix across samples")),
-        shiny::div(class = "pv-schema-row", shiny::code("sample_info"), shiny::span("Experimental groups, tissue, species, and sample identifiers")),
-        shiny::div(class = "pv-schema-row", shiny::code("variable_info"), shiny::span("Protein identifiers and feature-level descriptors")),
-        shiny::div(class = "pv-schema-row", shiny::code("annotation"), shiny::span("eggNOG output plus GO and KEGG annotation tables")),
-        shiny::div(class = "pv-schema-row", shiny::code("analysis_results"), shiny::span("Outputs retained independently for each analytical stage")),
-        shiny::div(class = "pv-schema-row", shiny::code("process_info"), shiny::span("Parameters, execution time, history, and active stage"))
+        shiny::div(class = "pv-schema-row", shiny::tags$code("expression_data"), shiny::span("Quantitative protein abundance matrix across samples")),
+        shiny::div(class = "pv-schema-row", shiny::tags$code("sample_info"), shiny::span("Experimental groups, tissue, species, and sample identifiers")),
+        shiny::div(class = "pv-schema-row", shiny::tags$code("variable_info"), shiny::span("Protein identifiers and feature-level descriptors")),
+        shiny::div(class = "pv-schema-row", shiny::tags$code("annotation"), shiny::span("eggNOG output plus GO and KEGG annotation tables")),
+        shiny::div(class = "pv-schema-row", shiny::tags$code("analysis_results"), shiny::span("Outputs retained independently for each analytical stage")),
+        shiny::div(class = "pv-schema-row", shiny::tags$code("process_info"), shiny::span("Parameters, execution time, history, and active stage"))
       )
     ),
     shiny::div(
       class = "pv-source-band",
-      shiny::strong("Input ecosystem"),
+      shiny::tags$strong("Input ecosystem"),
       lapply(
         c("MaxQuant", "Proteome Discoverer", "DIA-NN", "Spectronaut", "FragPipe", "Skyline", "OpenMS", "Custom matrix"),
         function(source) shiny::span(source)
