@@ -636,46 +636,6 @@ golem_add_external_resources <- function() {
         font-weight: 700;
       }
 
-      .protvis-site-footer {
-        clear: both;
-        position: static;
-        width: 100%;
-        z-index: 1;
-        margin-top: 48px;
-        background: rgba(255, 255, 255, 0.96);
-        color: var(--pv-text);
-        padding: 16px 0 10px 0;
-        border-top: 1px solid var(--pv-border);
-        box-shadow: 0 -6px 20px rgba(31, 52, 71, 0.08);
-      }
-
-      .protvis-site-footer .footer-inner {
-        max-width: 1450px;
-        margin: 0 auto;
-        padding: 0 18px;
-      }
-
-      .protvis-site-footer .footer-title {
-        font-size: 0.98rem;
-        font-weight: 850;
-        margin-bottom: 5px;
-      }
-
-      .protvis-site-footer .footer-text {
-        font-size: 0.88rem;
-        line-height: 1.65;
-        color: var(--pv-muted);
-        margin-bottom: 0;
-      }
-
-      .protvis-site-footer .footer-small {
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid var(--pv-border);
-        font-size: 0.82rem;
-        color: var(--pv-muted);
-      }
-
       @media (max-width: 1180px) {
         .pv-home-hero { grid-template-columns: 1fr; padding: 50px; }
         .pv-object-map { max-width: 700px; }
@@ -1018,28 +978,6 @@ app_ui <- function(request) {
       ),
 
       help_ui()
-    ),
-
-    shiny::tags$footer(
-      class = "protvis-site-footer",
-      shiny::div(
-        class = "footer-inner",
-        shiny::div(
-          class = "footer-title", "ProtVis",
-          shiny::p(
-            class = "footer-text",
-            "Integrated proteomics processing, interpretation, and visualization."
-          )
-        ),
-        shiny::div(
-          class = "footer-title", "Developer",
-          shiny::p(
-            class = "footer-text",
-            "Fei Liang | Henan University | fyliangfei@163.com"
-          )
-        ),
-        shiny::div(class = "footer-small", "© 2026 ProtVis. All rights reserved.")
-      )
     )
   )
 }
