@@ -28,12 +28,47 @@ test_that("ProtVis_dataset has the standard schema", {
   expect_identical(object$feature_info, object$variable_info)
   expect_identical(object$sample_info_note$name, names(object$sample_info))
   expect_identical(object$variable_info_note$name, names(object$variable_info))
+  expect_identical(
+    names(object$annotation),
+    c("eggnog_output", "GO_annotation", "KEGG_annotation")
+  )
+  expect_true(all(vapply(object$annotation, is.data.frame, logical(1))))
+  expect_false(any(c("annotation_table", "ms2_data") %in%
+                   methods::slotNames(object)))
+  expect_false(any(c("annotation_table", "ms2_data") %in% names(object)))
   expect_true(all(c("analysis_results", "process_info", "metadata",
                     "other_files", "checkpoint_info") %in% names(object)))
 
   broken <- object
   methods::slot(broken, "sample_info") <- broken$sample_info[2:1, , drop = FALSE]
   expect_false(isTRUE(methods::validObject(broken, test = TRUE)))
+})
+
+test_that("annotation uses the fixed ProtVis schema", {
+  eggnog <- data.frame(protein_id = "P1", COG = "K", check.names = FALSE)
+  go <- data.frame(protein_id = "P1", GO = "GO:0008150")
+  kegg <- data.frame(protein_id = "P1", KEGG = "K00001")
+  object <- create_protvis_dataset(
+    data.frame(ID = "P1", S1 = 1, check.names = FALSE),
+    annotation = list(
+      eggnog_output = eggnog,
+      GO_annotation = go,
+      KEGG_annotation = kegg
+    )
+  )
+  expect_identical(object$annotation$eggnog_output, eggnog)
+  expect_identical(object$annotation$GO_annotation, go)
+  expect_identical(object$annotation$KEGG_annotation, kegg)
+  expect_true(validate_protvis_dataset(object))
+
+  object$annotation <- list(GO = go)
+  expect_identical(object$annotation$GO_annotation, go)
+  expect_equal(nrow(object$annotation$eggnog_output), 0L)
+  expect_true(validate_protvis_dataset(object))
+  expect_error(
+    object$annotation <- list(unrelated = go),
+    "may only contain"
+  )
 })
 
 test_that("all tabular source adapters produce a common object", {
@@ -232,6 +267,15 @@ test_that("checkpoint save, list, restore, and export are recoverable", {
   export_dir <- export_protvis_dataset(restored, tempfile("protvis_export_"))
   expect_true(file.exists(file.path(export_dir, "ProtVis_dataset.rds")))
   expect_true(file.exists(file.path(export_dir, "process_history.csv")))
+  expect_true(file.exists(file.path(
+    export_dir, "annotation", "eggnog_output.rds"
+  )))
+  expect_true(file.exists(file.path(
+    export_dir, "annotation", "GO_annotation.rds"
+  )))
+  expect_true(file.exists(file.path(
+    export_dir, "annotation", "KEGG_annotation.rds"
+  )))
 })
 
 test_that("stage files contain one exact ProtVis_dataset and round-trip state", {
@@ -300,7 +344,13 @@ test_that("legacy list objects migrate without losing workflow state", {
       ),
       analysis_results = list(old_result = 42),
       process_info = list(parameters = list(), time = list(), history = list()),
-      metadata = list(source = "legacy", project = "preserved")
+      metadata = list(source = "legacy", project = "preserved"),
+      annotation = list(
+        GO = data.frame(protein_id = "P1", GO = "GO:0008150"),
+        obsolete = data.frame(value = 1)
+      ),
+      annotation_table = data.frame(old_id = "P1"),
+      ms2_data = list(P1 = c(100, 200))
     ),
     class = c("ProtVis_dataset", "list")
   )
@@ -308,5 +358,18 @@ test_that("legacy list objects migrate without losing workflow state", {
   expect_false(inherits(migrated, "mass_dataset"))
   expect_identical(migrated$analysis_results$old_result, 42)
   expect_identical(migrated$metadata$project, "preserved")
+  expect_equal(migrated$annotation$GO_annotation$GO, "GO:0008150")
+  expect_identical(
+    migrated$analysis_results$legacy_removed_components$annotation_table$old_id,
+    "P1"
+  )
+  expect_identical(
+    migrated$analysis_results$legacy_removed_components$ms2_data$P1,
+    c(100, 200)
+  )
+  expect_equal(
+    migrated$analysis_results$legacy_removed_components$annotation_extra$obsolete$value,
+    1
+  )
   expect_true(validate_protvis_dataset(migrated))
 })

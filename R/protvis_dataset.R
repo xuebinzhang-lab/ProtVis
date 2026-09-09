@@ -5,6 +5,75 @@
   if (is.null(x) || length(x) == 0L) y else x
 }
 
+.protvis_annotation_names <- c(
+  "eggnog_output", "GO_annotation", "KEGG_annotation"
+)
+
+.protvis_empty_annotation <- function() {
+  stats::setNames(
+    rep(list(data.frame(stringsAsFactors = FALSE)),
+        length(.protvis_annotation_names)),
+    .protvis_annotation_names
+  )
+}
+
+.protvis_annotation_table <- function(value, name) {
+  if (is.null(value) || length(value) == 0L) {
+    return(data.frame(stringsAsFactors = FALSE))
+  }
+  if (is.matrix(value)) {
+    value <- as.data.frame(value, stringsAsFactors = FALSE,
+                           check.names = FALSE)
+  }
+  if (!is.data.frame(value)) {
+    stop("annotation$", name, " must be a data.frame.", call. = FALSE)
+  }
+  as.data.frame(value, stringsAsFactors = FALSE, check.names = FALSE)
+}
+
+.protvis_normalise_annotation <- function(annotation = NULL, strict = TRUE) {
+  result <- .protvis_empty_annotation()
+  if (is.null(annotation) || length(annotation) == 0L) return(result)
+  if (is.data.frame(annotation) || is.matrix(annotation)) {
+    result$eggnog_output <- .protvis_annotation_table(
+      annotation, "eggnog_output"
+    )
+    return(result)
+  }
+  if (!is.list(annotation)) {
+    stop("annotation must be a named list of annotation tables.",
+         call. = FALSE)
+  }
+  aliases <- list(
+    eggnog_output = c("eggnog_output", "eggnog", "eggNOG", "eggnog_annotation"),
+    GO_annotation = c("GO_annotation", "go_annotation", "GO", "go"),
+    KEGG_annotation = c("KEGG_annotation", "kegg_annotation", "KEGG", "kegg")
+  )
+  recognised <- unique(unlist(aliases, use.names = FALSE))
+  unknown <- setdiff(names(annotation) %||% character(), recognised)
+  if (isTRUE(strict) &&
+      (is.null(names(annotation)) || any(!nzchar(names(annotation))) ||
+       length(unknown) > 0L)) {
+    stop(
+      "annotation may only contain eggnog_output, GO_annotation, and ",
+      "KEGG_annotation.", call. = FALSE
+    )
+  }
+  for (name in .protvis_annotation_names) {
+    source_name <- aliases[[name]][aliases[[name]] %in% names(annotation)][1L]
+    if (!is.na(source_name)) {
+      result[[name]] <- .protvis_annotation_table(annotation[[source_name]], name)
+    }
+  }
+  result
+}
+
+.protvis_valid_annotation <- function(annotation) {
+  is.list(annotation) &&
+    identical(names(annotation), .protvis_annotation_names) &&
+    all(vapply(annotation, is.data.frame, logical(1)))
+}
+
 # ProtVis' native S4 container. It deliberately has no parent class: the
 # schema and validity rules belong to this proteomics application.
 methods::setClass(
@@ -15,9 +84,7 @@ methods::setClass(
     variable_info = "data.frame",
     sample_info_note = "data.frame",
     variable_info_note = "data.frame",
-    annotation_table = "data.frame",
-    ms2_data = "list",
-    annotation = "ANY",
+    annotation = "list",
     analysis_results = "list",
     process_info = "list",
     metadata = "list",
@@ -32,15 +99,13 @@ methods::setClass(
     variable_info = data.frame(),
     sample_info_note = data.frame(),
     variable_info_note = data.frame(),
-    annotation_table = data.frame(),
-    ms2_data = list(),
-    annotation = list(),
+    annotation = .protvis_empty_annotation(),
     analysis_results = list(),
     process_info = list(),
     metadata = list(),
     other_files = list(),
     checkpoint_info = list(),
-    version = "1.0.0",
+    version = "2.0.0",
     activated = "expression_data"
   )
 )
@@ -86,11 +151,20 @@ methods::setValidity("ProtVis_dataset", function(object) {
                  as.character(object@variable_info_note$name))) {
     errors <- c(errors, "variable_info_note must document variable_info in order.")
   }
+  if (!.protvis_valid_annotation(object@annotation)) {
+    errors <- c(
+      errors,
+      paste0(
+        "annotation must contain exactly three data.frames: ",
+        paste(.protvis_annotation_names, collapse = ", "), "."
+      )
+    )
+  }
   if (length(errors)) errors else TRUE
 })
 
 .protvis_dataset_fields <- c(
-  "expression_data", "ms2_data", "annotation_table", "sample_info",
+  "expression_data", "sample_info",
   "variable_info", "feature_info", "sample_info_note", "variable_info_note",
   "process_info", "other_files", "version",
   "activated", "annotation", "analysis_results", "metadata",
@@ -102,8 +176,6 @@ methods::setValidity("ProtVis_dataset", function(object) {
   slot_name <- switch(
     name,
     expression_data = "expression_data",
-    ms2_data = "ms2_data",
-    annotation_table = "annotation_table",
     sample_info = "sample_info",
     variable_info = "variable_info",
     feature_info = "variable_info",
@@ -135,8 +207,6 @@ methods::setValidity("ProtVis_dataset", function(object) {
   slot_name <- switch(
     name,
     expression_data = "expression_data",
-    ms2_data = "ms2_data",
-    annotation_table = "annotation_table",
     sample_info = "sample_info",
     variable_info = "variable_info",
     feature_info = "variable_info",
@@ -154,6 +224,9 @@ methods::setValidity("ProtVis_dataset", function(object) {
   )
   if (is.null(slot_name)) {
     stop("Unknown ProtVis_dataset field: ", name, call. = FALSE)
+  }
+  if (identical(slot_name, "annotation")) {
+    value <- .protvis_normalise_annotation(value)
   }
   methods::slot(x, slot_name) <- value
   x
@@ -681,10 +754,11 @@ protvis_dataset_name <- function(object) {
 #' @param sample_info Optional sample metadata.
 #' @param variable_info Optional protein metadata.
 #' @param variable_info_note, sample_info_note Optional documentation tables.
-#' @param annotation Optional annotation list or table.
+#' @param annotation A named list containing the data.frames `eggnog_output`,
+#'   `GO_annotation`, and `KEGG_annotation`. Missing components are created as
+#'   empty data.frames.
 #' @param metadata Optional project metadata list.
 #' @param other_files Optional list of imported-file metadata.
-#' @param ms2_data,annotation_table Optional supplemental identification data.
 #' @param activated Name of the active core data component.
 #' @return An independent S4 ProtVis_dataset.
 #' @export
@@ -695,8 +769,6 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
                                    annotation = list(),
                                    metadata = list(),
                                    other_files = list(),
-                                   ms2_data = list(),
-                                   annotation_table = data.frame(),
                                    activated = "expression_data") {
   sample_info_supplied <- !is.null(sample_info)
   expression_data <- .protvis_coerce_expression(expression_data)
@@ -739,15 +811,10 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     expression_data, source = object_metadata$source
   )
   if (!is.list(other_files)) stop("other_files must be a list.", call. = FALSE)
-  if (!is.list(ms2_data)) stop("ms2_data must be a list.", call. = FALSE)
-  annotation_table <- if (is.null(annotation_table)) {
-    data.frame()
-  } else {
-    .protvis_as_data_frame(annotation_table)
-  }
+  annotation <- .protvis_normalise_annotation(annotation)
   activated <- as.character(activated %||% "expression_data")[[1L]]
   if (!activated %in% c(
-    "expression_data", "sample_info", "variable_info", "annotation_table"
+    "expression_data", "sample_info", "variable_info", "annotation"
   )) activated <- "expression_data"
 
   object <- methods::new(
@@ -757,9 +824,7 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     variable_info = variable_info,
     sample_info_note = sample_info_note,
     variable_info_note = variable_info_note,
-    annotation_table = annotation_table,
-    ms2_data = ms2_data,
-    annotation = annotation %||% list(),
+    annotation = annotation,
     analysis_results = list(),
     process_info = list(
       parameters = list(), time = list(), history = list()
@@ -767,7 +832,7 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     metadata = object_metadata,
     other_files = other_files,
     checkpoint_info = list(),
-    version = "1.0.0",
+    version = "2.0.0",
     activated = activated
   )
   object <- .protvis_append_process(
@@ -787,6 +852,40 @@ ProtVis_dataset <- function(...) create_protvis_dataset(...)
 #' @export
 create_dataset <- function(...) create_protvis_dataset(...)
 
+.protvis_legacy_value <- function(object, name, default = NULL) {
+  if (isS4(object)) {
+    value <- attr(object, name, exact = TRUE)
+    if (!is.null(value)) return(value)
+  }
+  if (is.list(object) && name %in% names(object)) return(object[[name]])
+  default
+}
+
+.protvis_preserve_removed_components <- function(result, source) {
+  removed <- list()
+  annotation_table <- .protvis_legacy_value(source, "annotation_table")
+  ms2_data <- .protvis_legacy_value(source, "ms2_data")
+  old_annotation <- .protvis_legacy_value(source, "annotation", list())
+  if (!is.null(annotation_table) && length(annotation_table) > 0L) {
+    removed$annotation_table <- annotation_table
+  }
+  if (!is.null(ms2_data) && length(ms2_data) > 0L) {
+    removed$ms2_data <- ms2_data
+  }
+  if (is.list(old_annotation) && !is.data.frame(old_annotation)) {
+    aliases <- c(
+      .protvis_annotation_names, "eggnog", "eggNOG", "eggnog_annotation",
+      "go_annotation", "GO", "go", "kegg_annotation", "KEGG", "kegg"
+    )
+    extra <- old_annotation[setdiff(names(old_annotation), aliases)]
+    if (length(extra) > 0L) removed$annotation_extra <- extra
+  }
+  if (length(removed) > 0L) {
+    result$analysis_results$legacy_removed_components <- removed
+  }
+  result
+}
+
 #' Convert an existing or legacy dataset to ProtVis_dataset.
 #'
 #' Legacy list-based ProtVis objects and previously saved mass_dataset objects
@@ -795,37 +894,45 @@ create_dataset <- function(...) create_protvis_dataset(...)
 #' @return An independent S4 ProtVis_dataset.
 #' @export
 as_protvis_dataset <- function(object) {
-  # Migrate the short-lived implementation that inherited from mass_dataset
-  # and stored ProtVis history in a separate protvis_process_info slot.
-  if (isS4(object) && methods::is(object, "ProtVis_dataset") &&
-      "protvis_process_info" %in% names(attributes(object))) {
-    result <- create_protvis_dataset(
-      expression_data = methods::slot(object, "expression_data"),
-      sample_info = methods::slot(object, "sample_info"),
-      variable_info = methods::slot(object, "variable_info"),
-      sample_info_note = methods::slot(object, "sample_info_note"),
-      variable_info_note = methods::slot(object, "variable_info_note"),
-      annotation = methods::slot(object, "annotation"),
-      metadata = methods::slot(object, "metadata"),
-      other_files = methods::slot(object, "other_files"),
-      ms2_data = methods::slot(object, "ms2_data"),
-      annotation_table = methods::slot(object, "annotation_table"),
-      activated = methods::slot(object, "activated") %||% "expression_data"
+  if (isS4(object) && methods::is(object, "ProtVis_dataset")) {
+    old_annotation <- .protvis_legacy_value(object, "annotation", list())
+    removed_slots <- intersect(
+      c("annotation_table", "ms2_data", "protvis_process_info"),
+      names(attributes(object))
     )
-    result$analysis_results <- methods::slot(object, "analysis_results")
-    result$process_info <- attr(object, "protvis_process_info", exact = TRUE)
-    result$checkpoint_info <- methods::slot(object, "checkpoint_info")
+    if (.protvis_valid_annotation(old_annotation) &&
+        length(removed_slots) == 0L) {
+      validate_protvis_dataset(object)
+      return(object)
+    }
+    result <- create_protvis_dataset(
+      expression_data = .protvis_legacy_value(object, "expression_data"),
+      sample_info = .protvis_legacy_value(object, "sample_info"),
+      variable_info = .protvis_legacy_value(object, "variable_info"),
+      sample_info_note = .protvis_legacy_value(object, "sample_info_note"),
+      variable_info_note = .protvis_legacy_value(object, "variable_info_note"),
+      annotation = .protvis_normalise_annotation(old_annotation, strict = FALSE),
+      metadata = .protvis_legacy_value(object, "metadata", list()),
+      other_files = .protvis_legacy_value(object, "other_files", list()),
+      activated = .protvis_legacy_value(object, "activated", "expression_data")
+    )
+    result$analysis_results <- .protvis_legacy_value(
+      object, "analysis_results", list()
+    )
+    result$process_info <- .protvis_legacy_value(
+      object, "protvis_process_info",
+      .protvis_legacy_value(object, "process_info", list())
+    )
+    result$checkpoint_info <- .protvis_legacy_value(
+      object, "checkpoint_info", list()
+    )
+    result <- .protvis_preserve_removed_components(result, object)
     result <- .protvis_append_process(
-      result, "inherited_class_migration", status = "success",
+      result, "annotation_schema_migration", status = "success",
       parameters = list(target_class = "ProtVis_dataset")
     )
     validate_protvis_dataset(result)
     return(result)
-  }
-
-  if (isS4(object) && methods::is(object, "ProtVis_dataset")) {
-    validate_protvis_dataset(object)
-    return(object)
   }
 
   if (isS4(object) && inherits(object, "mass_dataset")) {
@@ -846,16 +953,16 @@ as_protvis_dataset <- function(object) {
       variable_info = variable_info,
       sample_info_note = methods::slot(object, "sample_info_note"),
       variable_info_note = methods::slot(object, "variable_info_note"),
-      annotation = state$annotation %||% list(),
+      annotation = .protvis_normalise_annotation(
+        state$annotation %||% list(), strict = FALSE
+      ),
       metadata = state$metadata %||% list(
         source = "tidyMass",
         object_name = "ProtVis_dataset__tidymass_import__v1",
         object_version = 1L
       ),
       other_files = other_files,
-      ms2_data = methods::slot(object, "ms2_data"),
-      annotation_table = methods::slot(object, "annotation_table"),
-      activated = methods::slot(object, "activated") %||% "expression_data"
+      activated = "expression_data"
     )
     result$analysis_results <- state$analysis_results %||% list()
     result$checkpoint_info <- state$checkpoint_info %||% list()
@@ -867,6 +974,7 @@ as_protvis_dataset <- function(object) {
         parameters = list(source_class = class(object)[[1L]])
       )
     }
+    result <- .protvis_preserve_removed_components(result, object)
     validate_protvis_dataset(result)
     return(result)
   }
@@ -883,18 +991,23 @@ as_protvis_dataset <- function(object) {
       variable_info = object[["variable_info"]],
       sample_info_note = object[["sample_info_note"]],
       variable_info_note = object[["variable_info_note"]],
-      annotation = object[["annotation"]] %||% list(),
+      annotation = .protvis_normalise_annotation(
+        object[["annotation"]] %||% list(), strict = FALSE
+      ),
       metadata = metadata,
       other_files = object[["other_files"]] %||% list(),
-      ms2_data = object[["ms2_data"]] %||% list(),
-      annotation_table = object[["annotation_table"]] %||% data.frame(),
-      activated = object[["activated"]] %||% "expression_data"
+      activated = if (identical(object[["activated"]], "annotation")) {
+        "annotation"
+      } else {
+        "expression_data"
+      }
     )
     result$analysis_results <- object[["analysis_results"]] %||% list()
     result$process_info <- object[["process_info"]] %||% list(
       parameters = list(), time = list(), history = list()
     )
     result$checkpoint_info <- object[["checkpoint_info"]] %||% list()
+    result <- .protvis_preserve_removed_components(result, object)
     result <- .protvis_append_process(
       result, "legacy_object_migration", status = "success",
       parameters = list(target_class = "ProtVis_dataset")
@@ -1029,6 +1142,13 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
                  rownames(expression_data))) {
     stop("variable_info identifiers and order must match expression_data rows.",
          call. = FALSE)
+  }
+  if (!.protvis_valid_annotation(object$annotation)) {
+    stop(
+      "annotation must contain exactly the data.frames eggnog_output, ",
+      "GO_annotation, and KEGG_annotation.",
+      call. = FALSE
+    )
   }
   if (!is.list(object$process_info) || !is.list(object$analysis_results) ||
       !is.list(object$metadata) || !is.list(object$other_files) ||

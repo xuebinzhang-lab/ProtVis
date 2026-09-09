@@ -178,7 +178,7 @@ project_init_server <- function(id, shared_state) {
                   error_message, ignore.case = TRUE)) {
           error_message <- paste0(
             "The installed ProtVis package is stale or corrupt. Close every R ",
-            "session using ProtVis, reinstall ProtVis 0.2.0 or later, and start ",
+            "session using ProtVis, reinstall ProtVis 0.3.0 or later, and start ",
             "a new R session. The current release no longer uses a lazy-load ",
             "database. Original error: ", error_message
           )

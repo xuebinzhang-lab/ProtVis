@@ -12,14 +12,16 @@
   ProtVis_dataset does not inherit from mass_dataset or require the
   massdataset package. Its validity method enforces exact alignment between
   expression columns and sample_info, and between expression rows and
-  variable_info. The feature_info field is an alias of variable_info.
+  variable_info. The feature_info field is an alias of variable_info. The
+  annotation slot has a fixed three-table schema: eggnog_output,
+  GO_annotation, and KEGG_annotation. There are no annotation_table or
+  ms2_data slots.
 }
 \usage{
 create_protvis_dataset(expression_data, sample_info = NULL,
   variable_info = NULL, variable_info_note = NULL,
   sample_info_note = NULL, annotation = list(), metadata = list(),
-  other_files = list(), ms2_data = list(),
-  annotation_table = data.frame(), activated = "expression_data")
+  other_files = list(), activated = "expression_data")
 
 ProtVis_dataset(...)
 
@@ -33,11 +35,12 @@ validate_protvis_dataset(object, strict = TRUE)
   \item{variable_info}{Optional protein metadata table.}
   \item{variable_info_note}{Optional variable metadata documentation.}
   \item{sample_info_note}{Optional sample metadata documentation.}
-  \item{annotation}{Optional annotation list or table.}
+  \item{annotation}{A named list containing the data.frames
+  \code{eggnog_output}, \code{GO_annotation}, and
+  \code{KEGG_annotation}. Missing components are created as empty
+  data.frames.}
   \item{metadata}{Optional project metadata list.}
   \item{other_files}{Optional imported-file provenance list.}
-  \item{ms2_data}{Optional supplemental MS2 data list.}
-  \item{annotation_table}{Optional supplemental annotation table.}
   \item{activated}{Name of the active core data component.}
   \item{object}{A ProtVis_dataset, mass_dataset, or legacy ProtVis object.}
   \item{strict}{Whether to reject malformed non-numeric expression columns.}

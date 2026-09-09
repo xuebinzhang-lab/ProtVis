@@ -399,6 +399,19 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
                    row.names = FALSE)
   utils::write.csv(dataset$variable_info, file.path(root, "variable_info.csv"),
                    row.names = FALSE)
+  annotation_dir <- file.path(root, "annotation")
+  dir.create(annotation_dir, showWarnings = FALSE)
+  for (name in names(dataset$annotation)) {
+    table <- dataset$annotation[[name]]
+    saveRDS(table, file.path(annotation_dir, paste0(name, ".rds")),
+            compress = TRUE)
+    if (ncol(table) > 0L) {
+      utils::write.csv(
+        table, file.path(annotation_dir, paste0(name, ".csv")),
+        row.names = FALSE
+      )
+    }
+  }
   utils::write.csv(protvis_history(dataset),
                    file.path(root, "process_history.csv"), row.names = FALSE)
   dir.create(file.path(root, "analysis_results"), showWarnings = FALSE)
