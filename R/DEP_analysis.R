@@ -1500,6 +1500,54 @@ DEP_analysis_server <- function(id, shared_state) {
         rv$dep_ready <- TRUE
         rv$dep_has_run <- TRUE
         shared_state$dep_results <- rv$dep_results
+        differential_analysis_path <- NULL
+
+        # Keep the DEP result in the user-selected working directory.  The
+        # downstream modules historically read `dep_results2` from an RDA;
+        # write that compatibility object here instead of creating a new
+        # timestamped ProtVis_dataset export directory for every run.
+        if (!base::is.null(shared_state$workdir) &&
+            base::dir.exists(shared_state$workdir)) {
+          differential_analysis_path <- base::file.path(
+            shared_state$workdir, "differential_analysis.rda"
+          )
+          dep_results2 <- rv$dep_results
+          compare_data2 <- rv$compare_data
+          ProtVis_dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+            shared_state$dataset
+          } else {
+            NULL
+          }
+          temporary <- tempfile(
+            pattern = ".differential_analysis_",
+            tmpdir = shared_state$workdir,
+            fileext = ".rda"
+          )
+          saved_file <- tryCatch({
+            save(
+              dep_results2, compare_data2, ProtVis_dataset,
+              file = temporary, compress = TRUE, version = 3
+            )
+            if (!base::file.rename(temporary, differential_analysis_path)) {
+              base::file.copy(
+                temporary, differential_analysis_path, overwrite = TRUE
+              )
+              base::unlink(temporary, force = TRUE)
+            }
+            base::file.exists(differential_analysis_path)
+          }, error = function(e) {
+            base::unlink(temporary, force = TRUE)
+            shiny::showNotification(
+              paste("DEP results could not be saved:", e$message),
+              type = "warning"
+            )
+            FALSE
+          })
+          if (!saved_file) {
+            shared_state$dep_results <- rv$dep_results
+          }
+        }
+
         # Persist the complete DEP result in the canonical ProtVis_dataset so
         # enrichment and other downstream modules can consume it directly.
         if (inherits(shared_state$dataset, "ProtVis_dataset")) {
@@ -1519,12 +1567,6 @@ DEP_analysis_server <- function(id, shared_state) {
               stage = "differential_analysis",
               parameters = dep_payload$parameters
             )
-            if (!base::is.null(shared_state$workdir) &&
-                base::dir.exists(shared_state$workdir)) {
-              dataset <- protvis_auto_export_dataset(
-                dataset, directory = shared_state$workdir
-              )
-            }
             .protvis_ui_sync_state(dataset, shared_state)
             TRUE
           }, error = function(e) {
@@ -1535,6 +1577,37 @@ DEP_analysis_server <- function(id, shared_state) {
             FALSE
           })
           if (!saved_dataset) shared_state$dep_results <- rv$dep_results
+        }
+
+        # The canonical dataset now contains the differential-analysis
+        # payload. Refresh the same file in place so it is persisted together
+        # with the compatibility objects (without creating another folder).
+        if (!base::is.null(differential_analysis_path) &&
+            inherits(shared_state$dataset, "ProtVis_dataset")) {
+          ProtVis_dataset <- shared_state$dataset
+          temporary <- tempfile(
+            pattern = ".differential_analysis_",
+            tmpdir = shared_state$workdir,
+            fileext = ".rda"
+          )
+          tryCatch({
+            save(
+              dep_results2, compare_data2, ProtVis_dataset,
+              file = temporary, compress = TRUE, version = 3
+            )
+            if (!base::file.rename(temporary, differential_analysis_path)) {
+              base::file.copy(
+                temporary, differential_analysis_path, overwrite = TRUE
+              )
+              base::unlink(temporary, force = TRUE)
+            }
+          }, error = function(e) {
+            base::unlink(temporary, force = TRUE)
+            shiny::showNotification(
+              paste("Updated ProtVis_dataset could not be saved:", e$message),
+              type = "warning"
+            )
+          })
         }
         shinyWidgets::updateProgressBar(
           session = session,

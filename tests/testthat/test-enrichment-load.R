@@ -11,6 +11,11 @@ test_that("enrichment loading does not require a legacy Step7 RDA", {
   expect_true(grepl("normalise_term2gene", ui_text, fixed = TRUE))
   expect_true(grepl("extract_genelist_ids", ui_text, fixed = TRUE))
   expect_true(grepl("No uploaded (or pasted) list", ui_text, fixed = TRUE))
+  expect_true(grepl("differential_analysis.rda", ui_text, fixed = TRUE))
+  dep_text <- paste(readLines(testthat::test_path("..", "..", "R", "DEP_analysis.R")),
+                    collapse = "\n")
+  expect_true(grepl("differential_analysis_path", dep_text, fixed = TRUE))
+  expect_true(grepl("dep_results2, compare_data2, ProtVis_dataset", dep_text, fixed = TRUE))
   server_text <- paste(readLines(testthat::test_path("..", "..", "R", "app_server.R")),
                        collapse = "\n")
   expect_true(grepl("dep_results = list()", server_text, fixed = TRUE))

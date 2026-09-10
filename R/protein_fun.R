@@ -178,8 +178,10 @@ protein_fun_server <- function(id, shared_state) {
     })
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
-      rda_path <- file.path(shared_state$workdir, "Step7_DEP_result.rda")
-      if (base::file.exists(rda_path)) {
+      rda_name <- c("differential_analysis.rda", "Step7_DEP_result.rda")
+      rda_name <- rda_name[base::file.exists(base::file.path(shared_state$workdir, rda_name))][1L]
+      if (!base::is.na(rda_name)) {
+        rda_path <- base::file.path(shared_state$workdir, rda_name)
         e <- base::new.env()
         load(rda_path, envir = e)
         if (base::exists("compare_data2", envir = e)) rv$compare_data <- e$compare_data2
@@ -187,14 +189,17 @@ protein_fun_server <- function(id, shared_state) {
           rv$dep_results <- e$dep_results2
         } else {
           rv$dep_results <- NULL
-          shiny::showNotification("Step7_DEP_result.rda does not exist. Expression matrix cannot be loaded.", type = "warning")
+          shiny::showNotification(
+            paste0(rda_name, " does not contain DEP results. Expression matrix cannot be loaded."),
+            type = "warning"
+          )
         }
         rv$load_success <- TRUE
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
         load_additional_data()
       } else {
         rv$load_success <- FALSE
-        shiny::showNotification("Step7_DEP_result.rda not found.", type = "error")
+        shiny::showNotification("differential_analysis.rda not found.", type = "error")
       }
     })
     load_additional_data <- function() {

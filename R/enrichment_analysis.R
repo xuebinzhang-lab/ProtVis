@@ -799,15 +799,18 @@ enrichment_analysis_server <- function(id, shared_state) {
         }
       }
 
-      # Legacy compatibility: load Step7 only when it actually exists.
+      # Load the result written in the current working directory.  Keep the
+      # old Step7 filename as a read-only migration fallback.
       if (base::is.null(dep_obj) && !base::is.null(shared_state$workdir)) {
-        rda_path <- base::file.path(shared_state$workdir, "Step7_DEP_result.rda")
-        if (base::file.exists(rda_path)) {
+        for (rda_name in c("differential_analysis.rda", "Step7_DEP_result.rda")) {
+          if (!base::is.null(dep_obj)) break
+          rda_path <- base::file.path(shared_state$workdir, rda_name)
+          if (!base::file.exists(rda_path)) next
           e <- base::new.env()
           loaded <- tryCatch({ base::load(rda_path, envir = e); TRUE }, error = function(e) FALSE)
           if (isTRUE(loaded) && base::exists("dep_results2", envir = e, inherits = FALSE)) {
             dep_obj <- normalize_dep_results(base::get("dep_results2", envir = e, inherits = FALSE))
-            source_label <- "Step7_DEP_result.rda"
+            source_label <- rda_name
           }
         }
       }
