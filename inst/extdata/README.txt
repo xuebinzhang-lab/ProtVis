@@ -2,8 +2,9 @@ The small DIA-NN, FragPipe, Skyline, OpenMS, Proteome Discoverer, and
 Spectronaut files in this directory are source-specific adapter views of the
 real `Maxquant_Export.xlsx` maize proteomics export bundled in this package.
 Each compact file retains exactly 5,000 valid protein groups (rows selected
-from the upstream export without duplication) and the same 30 B73/Y12 TMT
-measurements: three TMT batches and five replicates per batch for each group.
+from the upstream export without duplication) and two real B73/Y12 TMT
+measurements, one channel per group, so the examples stay small while still
+supporting a two-group DEP comparison.
 They are converted into source-specific table layouts so every adapter can be
 exercised without shipping raw mass-spectrometry files.  They are not
 simulated values and should not be interpreted as independent software
