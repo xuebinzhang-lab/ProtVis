@@ -1006,7 +1006,7 @@ app_ui <- function(request) {
           icon = bsicons::bs_icon("diagram-3"),
           co_enrichment_ui("co_enrichment")
         ),
-        bslib::nav_panel("Venn", icon = bsicons::bs_icon("diagram-venn"), venn_ui("venn"))
+        bslib::nav_panel("Venn", icon = bsicons::bs_icon("diagram-3-fill"), venn_ui("venn"))
       ),
 
       bslib::nav_menu(
