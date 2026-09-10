@@ -1,4 +1,5 @@
-The small DIA-NN, FragPipe, Skyline, and OpenMS files in this directory are
+The small DIA-NN, FragPipe, Skyline, OpenMS, Proteome Discoverer, and
+Spectronaut files in this directory are
 adapter views of a real Candida albicans quantitative proteomics experiment.
 The measurements and protein identifiers come from the `proteinGroups.txt`
 dataset distributed with TraianProt (GPL-3.0), with WT and WT_H2O2 runs kept
