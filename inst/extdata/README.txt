@@ -1,17 +1,23 @@
 The small DIA-NN, FragPipe, Skyline, and OpenMS files in this directory are
-subsets of a real Candida albicans quantitative proteomics experiment.  The
-measurements and protein identifiers come from the `proteinGroups.txt` test
+adapter views of a real Candida albicans quantitative proteomics experiment.
+The measurements and protein identifiers come from the `proteinGroups.txt`
 dataset distributed with TraianProt (GPL-3.0), with WT and WT_H2O2 runs kept
-as four biological replicates per condition.  The files are converted into
+as four biological replicates per condition.  They are converted into
 source-specific table layouts so each adapter can be exercised without
-shipping raw mass-spectrometry files.  They are not simulated values.
+shipping raw mass-spectrometry files.  They are not simulated values and
+should not be interpreted as four independent software searches.
+
+An accuracy audit removed fields that were not present in the upstream table:
+the DIA-NN q-values, Skyline peptide counts, OpenMS peptide counts, and
+invented gene descriptions are no longer included.  Only upstream protein
+identifiers and intensity measurements are retained.
 
 Upstream data and metadata:
 https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata
 
 The WT/WT_H2O2 sample mapping is retained by
-`.protvis_builtin_sample_info()` and includes the organism and accession
-fields used by DEP and enrichment analysis.
+`.protvis_builtin_sample_info()` and includes the organism, upstream file
+identifier, and source URL used by DEP and enrichment analysis.
 
 Use protvis_builtin_datasets() to list the files and references, and
 load_protvis_builtin_data(source = "DIA-NN") (or another listed source) to
