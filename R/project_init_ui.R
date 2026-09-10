@@ -240,6 +240,18 @@ project_init_server <- function(id, shared_state) {
           "ProtVis_dataset__project_init__", .protvis_object_label(data_source), "__v1"
         )
         dataset$metadata$object_version <- 1L
+        # Preserve a valid background uploaded before Project init.  Attach it
+        # after the initial project version is named, creating a traceable v2.
+        if (is.list(shared_state$pending_enrichment_background) &&
+            all(c("GO_background", "KEGG_background") %in%
+                names(shared_state$pending_enrichment_background))) {
+          dataset <- .protvis_add_enrichment_background(
+            dataset,
+            shared_state$pending_enrichment_background,
+            shared_state$pending_enrichment_background_name %||%
+              "enrichment_background.xlsx"
+          )
+        }
         dataset <- protvis_auto_export_dataset(dataset, directory = directory)
         shared_state$dataset <- dataset
         shared_state$expression_matrix <- protvis_expression_matrix(dataset)

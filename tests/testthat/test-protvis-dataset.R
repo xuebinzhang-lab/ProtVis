@@ -71,6 +71,25 @@ test_that("annotation uses the fixed ProtVis schema", {
   )
 })
 
+test_that("enrichment background workbook is retained in ProtVis_dataset", {
+  object <- create_protvis_dataset(
+    data.frame(ID = "P1", S1 = 1, check.names = FALSE)
+  )
+  background <- list(
+    GO_background = data.frame(TERM = "GO:0008150", GENE = "P1", NAME = "process"),
+    KEGG_background = data.frame(TERM = "map00010", GENE = "P1", NAME = "pathway")
+  )
+  stored <- .protvis_add_enrichment_background(
+    object, background, "background_v4.xlsx"
+  )
+  saved <- stored$other_files$enrichment_background
+  expect_identical(saved$file_name, "background_v4.xlsx")
+  expect_identical(names(saved$sheets), c("GO_background", "KEGG_background"))
+  expect_identical(saved$sheets$GO_background, background$GO_background)
+  expect_true(validate_protvis_dataset(stored))
+  expect_identical(stored$process_info$active_stage, "enrichment_background")
+})
+
 test_that("all tabular source adapters produce a common object", {
   pd <- data.frame(id = c("P1", "P2"), s1 = c(1, 2), s2 = c(3, 4))
   names(pd) <- c("Master Protein Accessions", "Abundance S1", "Abundance S2")

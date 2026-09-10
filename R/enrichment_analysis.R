@@ -488,7 +488,7 @@ enrichment_analysis_ui <- function(id) {
                   sidebar = bslib::sidebar(
                     width = 250,
                     position = "left",
-                    open = "closed",
+                    open = "open",
 
                     shiny::selectInput(
                       ns("go_plot_type"),
@@ -570,7 +570,7 @@ enrichment_analysis_ui <- function(id) {
                   sidebar = bslib::sidebar(
                     width = 250,
                     position = "left",
-                    open = "closed",
+                    open = "open",
 
                     shiny::selectInput(
                       ns("kegg_plot_type"),
@@ -644,6 +644,42 @@ enrichment_analysis_ui <- function(id) {
 
 
 utils::globalVariables(c("regulation", "V3", "Pathway_ID", "TERM", "GENE", "NAME"))
+
+# Store the complete, validated enrichment workbook in the project object.
+# The two sheets remain separate so a saved ProtVis_dataset can be reopened
+# and used for GO/KEGG analysis without re-uploading the workbook.
+.protvis_add_enrichment_background <- function(dataset, background, file_name) {
+  dataset <- as_protvis_dataset(dataset)
+  required <- c("GO_background", "KEGG_background")
+  if (!is.list(background) || !all(required %in% names(background)) ||
+      !all(vapply(background[required], is.data.frame, logical(1)))) {
+    stop("background must contain GO_background and KEGG_background data.frames.",
+         call. = FALSE)
+  }
+
+  dataset <- .protvis_new_analysis_dataset(
+    dataset,
+    "enrichment_background",
+    parameters = list(
+      file_name = as.character(file_name),
+      worksheets = required
+    )
+  )
+  dataset$other_files$enrichment_background <- list(
+    file_name = as.character(file_name),
+    uploaded_at = as.character(Sys.time()),
+    sheets = background[required]
+  )
+  dataset <- .protvis_append_process(
+    dataset,
+    "enrichment_background",
+    status = "success",
+    parameters = dataset$process_info$parameters$enrichment_background,
+    message = paste0("Stored enrichment background workbook: ", file_name)
+  )
+  validate_protvis_dataset(dataset)
+  dataset
+}
 
 
 #' Enrichment Analysis Module Server
@@ -981,7 +1017,37 @@ enrichment_analysis_server <- function(id, shared_state) {
         KEGG_background = KEGG_background
       )
 
-      rv$file_check_msg <- "✅ Background file valid."
+      # Preserve a complete copy of both validated worksheets in the active
+      # ProtVis_dataset.  If the workbook is selected before Project init, it
+      # is retained and attached as soon as the project object is created.
+      shared_state$pending_enrichment_background <- rv$background_data
+      shared_state$pending_enrichment_background_name <- input$enrichment_analysis_file$name
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        saved <- tryCatch({
+          dataset <- .protvis_add_enrichment_background(
+            shared_state$dataset,
+            rv$background_data,
+            input$enrichment_analysis_file$name
+          )
+          if (!base::is.null(shared_state$workdir) &&
+              base::dir.exists(shared_state$workdir)) {
+            dataset <- protvis_auto_export_dataset(
+              dataset, directory = shared_state$workdir
+            )
+          }
+          .protvis_ui_sync_state(dataset, shared_state)
+          TRUE
+        }, error = function(e) {
+          rv$file_check_msg <- paste("❌ Background valid but could not be saved:", e$message)
+          FALSE
+        })
+        if (!saved) return()
+        rv$file_check_msg <- "✅ Background file valid and saved to ProtVis_dataset."
+      } else {
+        rv$file_check_msg <- paste(
+          "✅ Background file valid. It will be added to ProtVis_dataset when Project init is completed."
+        )
+      }
     })
 
     output$file_check_result <- shiny::renderText({
