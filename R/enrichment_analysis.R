@@ -968,13 +968,26 @@ enrichment_analysis_server <- function(id, shared_state) {
         return(rv$pasted_genelist)
       }
 
-      # No uploaded (or pasted) list: use the selected DEP comparison.
-      if (!base::is.null(rv$compare_data) && base::is.data.frame(rv$compare_data)) {
-        if (base::all(c("regulation", "ID") %in% base::colnames(rv$compare_data))) {
-          genes <- rv$compare_data %>%
-            dplyr::filter(regulation != "Not significant") %>%
-            dplyr::pull(ID)
-          genes <- base::unique(trimws(base::as.character(genes)))
+      # No uploaded (or pasted) list: use the selected DEP comparison.  Read
+      # shared_state directly as well, so Analysis works even when the user
+      # has not opened the separate LOAD DATA panel in this module.
+      dep_data <- rv$compare_data
+      if ((base::is.null(dep_data) || !base::is.data.frame(dep_data)) &&
+          base::is.list(shared_state$dep_results) &&
+          base::length(shared_state$dep_results) > 0L) {
+        dep_data <- shared_state$dep_results[[1L]]
+      }
+      if (base::is.data.frame(dep_data) && base::nrow(dep_data) > 0L) {
+        id_candidates <- c("ID", "protein_id", "Protein", "Gene", "gene")
+        id_col <- id_candidates[id_candidates %in% base::colnames(dep_data)][1L]
+        if (!base::is.na(id_col)) {
+          keep <- rep(TRUE, base::nrow(dep_data))
+          if ("regulation" %in% base::colnames(dep_data)) {
+            keep <- dep_data$regulation != "Not significant"
+          } else if ("significant" %in% base::colnames(dep_data)) {
+            keep <- !is.na(dep_data$significant) & base::as.logical(dep_data$significant)
+          }
+          genes <- base::unique(trimws(base::as.character(dep_data[[id_col]][keep])))
           genes <- genes[!base::is.na(genes) & nzchar(genes)]
           if (base::length(genes) > 0) return(genes)
         }
