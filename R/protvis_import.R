@@ -85,7 +85,7 @@ protvis_builtin_datasets <- function() {
       "FragPipe-shaped combined protein report from a real Candida albicans experiment",
       "Skyline-shaped protein area report from a real Candida albicans experiment",
       "OpenMS-shaped protein quantification table from a real Candida albicans experiment",
-      "HUPO-PSI mzTab protein quantification export"
+      "HUPO-PSI mzTab-shaped export from a real Candida albicans experiment"
     ),
     reference = c(
       "https://www.maxquant.org/",
@@ -95,7 +95,7 @@ protvis_builtin_datasets <- function() {
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://www.psidev.info/mztab-specifications"
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata"
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
