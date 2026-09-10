@@ -260,7 +260,7 @@ stringdb_ppi_ui <- function(id) {
         shiny::column(
           width = 3,
 
-          shiny::details(
+          shiny::tags$details(
             class = "pv-sidebar-details",
             open = TRUE,
             shiny::tags$summary("1  Data Input"),
@@ -326,7 +326,7 @@ stringdb_ppi_ui <- function(id) {
             )
           ),
 
-          shiny::details(
+          shiny::tags$details(
             class = "pv-sidebar-details",
             open = FALSE,
             shiny::tags$summary("2  STRING Settings"),
@@ -376,7 +376,7 @@ stringdb_ppi_ui <- function(id) {
             )
           ),
 
-          shiny::details(
+          shiny::tags$details(
             class = "pv-sidebar-details",
             open = FALSE,
             shiny::tags$summary("3  Network Options"),
@@ -437,7 +437,7 @@ stringdb_ppi_ui <- function(id) {
             )
           ),
 
-          shiny::details(
+          shiny::tags$details(
             class = "pv-sidebar-details",
             open = FALSE,
             shiny::tags$summary("4  Color & Export"),
