@@ -1026,13 +1026,19 @@ DEP_analysis_server <- function(id, shared_state) {
               } else {
                 logical()
               }
-              heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
+              # Row scaling is undefined for constant proteins.  Do not
+              # discard the entire heatmap when a small demo/replicate set
+              # contains constant rows; retain the data and use raw values.
+              variable_count <- sum(variable_rows)
+              if (variable_count >= 2L) {
+                heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
+              }
 
-              if (base::nrow(heatmap_data) > 1L &&
+              if (base::nrow(heatmap_data) > 0L &&
                   base::ncol(heatmap_data) > 1L) {
                 pheatmap::pheatmap(
                   heatmap_data,
-                  scale = "row",
+                  scale = if (variable_count >= 2L) "row" else "none",
                   clustering_distance_rows = "euclidean",
                   clustering_distance_cols = "euclidean",
                   clustering_method = "complete",
