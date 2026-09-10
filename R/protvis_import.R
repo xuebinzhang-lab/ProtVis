@@ -80,21 +80,21 @@ protvis_builtin_datasets <- function() {
     description = c(
       "MaxQuant reporter-intensity protein export",
       "Proteome Discoverer protein result export",
-      "DIA-NN long-format protein-group report",
+      "DIA-NN-shaped export of a real Candida albicans WT/WT_H2O2 experiment",
       "Spectronaut long-format protein-group report",
-      "FragPipe combined protein report",
-      "Skyline protein report export",
-      "OpenMS protein quantification table",
+      "FragPipe-shaped combined protein report from a real Candida albicans experiment",
+      "Skyline-shaped protein area report from a real Candida albicans experiment",
+      "OpenMS-shaped protein quantification table from a real Candida albicans experiment",
       "HUPO-PSI mzTab protein quantification export"
     ),
     reference = c(
       "https://www.maxquant.org/",
       "https://docs.thermofisher.com/r/Proteome-Discoverer-3.1-User-Guide/en-US1325293963v1",
-      "https://github.com/vdemichev/DiaNN",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://biognosys.com/software/spectronaut/",
-      "https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html",
-      "https://skyline.ms/",
-      "https://openms.de/documentation/TOPP_ProteinQuantifier.html",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://www.psidev.info/mztab-specifications"
     ),
     stringsAsFactors = FALSE,
@@ -102,13 +102,16 @@ protvis_builtin_datasets <- function() {
   )
 }
 
-# Sample metadata shipped with the four compact fixtures.  Keeping this
-# alongside the manifest makes the examples immediately usable by DEP and
-# enrichment modules instead of falling back to "Unassigned" groups.
+# Sample metadata shipped with the four compact fixtures.  The fixtures are
+# derived from the real Candida albicans WT/WT_H2O2 experiment distributed in
+# the TraianProt repository (see the manifest references).  Keeping the
+# original run names and four biological replicates per condition makes the
+# examples immediately usable by DEP and enrichment modules.
 .protvis_builtin_sample_info <- function(source, file = NULL) {
   source <- .protvis_normalise_source(source)
-  samples <- c("S1_Control", "S2_Control", "S3_Treatment", "S4_Treatment")
-  group <- c("Control", "Control", "Treatment", "Treatment")
+  samples <- c("WT1", "WT2", "WT3", "WT4",
+               "WT_H2O2_1", "WT_H2O2_2", "WT_H2O2_3", "WT_H2O2_4")
+  group <- c(rep("WT", 4L), rep("WT_H2O2", 4L))
   data.frame(
     sample_id = samples,
     maxquant_id = samples,
@@ -116,11 +119,13 @@ protvis_builtin_datasets <- function() {
     group = group,
     class = group,
     condition = group,
-    replicate = c(1L, 2L, 1L, 2L),
-    batch = c("Batch1", "Batch1", "Batch1", "Batch1"),
-    tissue = rep("Whole sample", 4L),
-    tissue2 = rep("Whole sample", 4L),
-    source = rep(source, 4L),
+    replicate = c(1L, 2L, 3L, 4L, 1L, 2L, 3L, 4L),
+    batch = rep("Batch1", 8L),
+    tissue = rep("Candida albicans cell culture", 8L),
+    tissue2 = rep("Candida albicans cell culture", 8L),
+    organism = rep("Candida albicans", 8L),
+    accession = rep("TraianProt-inst-extdata-proteinGroups", 8L),
+    source = rep(source, 8L),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
