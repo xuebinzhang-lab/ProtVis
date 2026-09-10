@@ -1500,6 +1500,42 @@ DEP_analysis_server <- function(id, shared_state) {
         rv$dep_ready <- TRUE
         rv$dep_has_run <- TRUE
         shared_state$dep_results <- rv$dep_results
+        # Persist the complete DEP result in the canonical ProtVis_dataset so
+        # enrichment and other downstream modules can consume it directly.
+        if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+          dep_payload <- list(
+            status = "success",
+            comparisons = rv$dep_results,
+            parameters = list(
+              comparisons = base::names(rv$dep_results),
+              generated_at = as.character(Sys.time())
+            )
+          )
+          saved_dataset <- tryCatch({
+            dataset <- add_protvis_result(
+              shared_state$dataset,
+              name = "differential_analysis",
+              value = dep_payload,
+              stage = "differential_analysis",
+              parameters = dep_payload$parameters
+            )
+            if (!base::is.null(shared_state$workdir) &&
+                base::dir.exists(shared_state$workdir)) {
+              dataset <- protvis_auto_export_dataset(
+                dataset, directory = shared_state$workdir
+              )
+            }
+            .protvis_ui_sync_state(dataset, shared_state)
+            TRUE
+          }, error = function(e) {
+            shiny::showNotification(
+              paste("DEP completed, but the ProtVis_dataset could not be updated:", e$message),
+              type = "warning", duration = NULL
+            )
+            FALSE
+          })
+          if (!saved_dataset) shared_state$dep_results <- rv$dep_results
+        }
         shinyWidgets::updateProgressBar(
           session = session,
           id = "dep_progress",

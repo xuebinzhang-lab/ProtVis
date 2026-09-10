@@ -743,7 +743,11 @@ enrichment_analysis_server <- function(id, shared_state) {
       # ProtVis_dataset is the canonical source for saved analyses.
       if (base::is.null(dep_obj) && inherits(shared_state$dataset, "ProtVis_dataset")) {
         stored <- shared_state$dataset@analysis_results$differential_analysis
-        if (base::is.list(stored) && base::is.data.frame(stored$table)) {
+        if (base::is.list(stored) && base::is.list(stored$comparisons)) {
+          dep_obj <- normalize_dep_results(stored$comparisons)
+          if (!base::is.null(dep_obj)) source_label <- "ProtVis_dataset"
+        }
+        if (base::is.null(dep_obj) && base::is.list(stored) && base::is.data.frame(stored$table)) {
           tab <- stored$table
           id_col <- if ("protein_id" %in% names(tab)) "protein_id" else if ("ID" %in% names(tab)) "ID" else NULL
           if (!base::is.null(id_col)) {
