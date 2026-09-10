@@ -1509,7 +1509,7 @@ DEP_analysis_server <- function(id, shared_state) {
         if (!base::is.null(shared_state$workdir) &&
             base::dir.exists(shared_state$workdir)) {
           differential_analysis_path <- base::file.path(
-            shared_state$workdir, "Step7_differential_analysis.rda"
+            shared_state$workdir, "differential_analysis.rda"
           )
           dep_results2 <- rv$dep_results
           compare_data2 <- rv$compare_data

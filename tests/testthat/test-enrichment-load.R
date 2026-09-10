@@ -21,6 +21,7 @@ test_that("enrichment loading does not require a legacy Step7 RDA", {
   expect_true(grepl("genelist_preview", ui_text, fixed = TRUE))
   expect_true(grepl("go_background_preview", ui_text, fixed = TRUE))
   expect_true(grepl("kegg_background_preview", ui_text, fixed = TRUE))
+  expect_true(grepl("dplyr::select(TERM, GENE)", ui_text, fixed = TRUE))
   server_text <- paste(readLines(testthat::test_path("..", "..", "R", "app_server.R")),
                        collapse = "\n")
   expect_true(grepl("dep_results = list()", server_text, fixed = TRUE))

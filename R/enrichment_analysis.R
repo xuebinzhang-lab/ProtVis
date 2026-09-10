@@ -1250,7 +1250,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       rv$analysis_message <- NULL
 
       if ("go_analysis" %in% input$choices) {
-        t2g.go <- normalise_term2gene(rv$background_data$GO_background)
+        t2g.go <- rv$background_data$GO_background %>%
+          dplyr::select(TERM, GENE)
 
         t2n.go <- rv$background_data$GO_background %>%
           dplyr::select(TERM, NAME)
@@ -1262,8 +1263,7 @@ enrichment_analysis_server <- function(id, shared_state) {
             TERM2NAME = t2n.go,
             pvalueCutoff = 1,
             qvalueCutoff = 1,
-            minGSSize = 1,
-            maxGSSize = Inf
+            minGSSize = 1
           ),
           error = function(e) {
             rv$analysis_message <- paste0("GO analysis error: ", conditionMessage(e))
@@ -1275,7 +1275,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       if ("kegg_analysis" %in% input$choices) {
         filtered_bg <- selected_kegg_background()
 
-        t2g.kegg <- normalise_term2gene(filtered_bg)
+        t2g.kegg <- filtered_bg %>%
+          dplyr::select(TERM, GENE)
 
         t2n.kegg <- filtered_bg %>%
           dplyr::select(TERM, NAME)
@@ -1287,8 +1288,7 @@ enrichment_analysis_server <- function(id, shared_state) {
             TERM2NAME = t2n.kegg,
             pvalueCutoff = 1,
             qvalueCutoff = 1,
-            minGSSize = 1,
-            maxGSSize = Inf
+            minGSSize = 1
           ),
           error = function(e) {
             rv$analysis_message <- paste0("KEGG analysis error: ", conditionMessage(e))
