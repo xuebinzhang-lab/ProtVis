@@ -1034,6 +1034,29 @@ DEP_analysis_server <- function(id, shared_state) {
                 heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
               }
 
+              # Always label columns with the samples used in this contrast.
+              # Imported matrices can carry numeric/abundance values as
+              # column names, which makes the heatmap appear misleading.
+              sample_labels <- base::colnames(heatmap_data)
+              numeric_labels <- suppressWarnings(base::as.numeric(sample_labels))
+              if (base::is.null(sample_labels) ||
+                  base::length(sample_labels) != base::ncol(heatmap_data) ||
+                  base::any(!base::nzchar(sample_labels)) ||
+                  base::anyNA(sample_labels) ||
+                  base::all(base::is.finite(numeric_labels))) {
+                sample_labels <- base::colnames(exp_mat_local)[
+                  base::match(base::colnames(heatmap_data),
+                              base::colnames(exp_mat_local))
+                ]
+              }
+              if (base::is.null(sample_labels) ||
+                  base::length(sample_labels) != base::ncol(heatmap_data) ||
+                  base::any(!base::nzchar(sample_labels)) ||
+                  base::anyNA(sample_labels)) {
+                sample_labels <- req_cols[base::seq_len(base::ncol(heatmap_data))]
+              }
+              base::colnames(heatmap_data) <- base::make.unique(sample_labels)
+
               if (base::nrow(heatmap_data) > 0L &&
                   base::ncol(heatmap_data) > 0L) {
                 pheatmap::pheatmap(
@@ -1048,6 +1071,9 @@ DEP_analysis_server <- function(id, shared_state) {
                   clustering_distance_cols = "euclidean",
                   clustering_method = "complete",
                   show_rownames = FALSE,
+                  show_colnames = TRUE,
+                  treeheight_row = if (base::nrow(heatmap_data) >= 2L) 50 else 0,
+                  treeheight_col = if (base::ncol(heatmap_data) >= 2L) 50 else 0,
                   main = base::paste("Heatmap:", g1, "vs", g2)
                 )
               } else {
