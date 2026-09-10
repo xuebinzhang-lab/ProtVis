@@ -102,6 +102,30 @@ protvis_builtin_datasets <- function() {
   )
 }
 
+# Sample metadata shipped with the four compact fixtures.  Keeping this
+# alongside the manifest makes the examples immediately usable by DEP and
+# enrichment modules instead of falling back to "Unassigned" groups.
+.protvis_builtin_sample_info <- function(source, file = NULL) {
+  source <- .protvis_normalise_source(source)
+  samples <- c("S1_Control", "S2_Control", "S3_Treatment", "S4_Treatment")
+  group <- c("Control", "Control", "Treatment", "Treatment")
+  data.frame(
+    sample_id = samples,
+    maxquant_id = samples,
+    sample = samples,
+    group = group,
+    class = group,
+    condition = group,
+    replicate = c(1L, 2L, 1L, 2L),
+    batch = c("Batch1", "Batch1", "Batch1", "Batch1"),
+    tissue = rep("Whole sample", 4L),
+    tissue2 = rep("Whole sample", 4L),
+    source = rep(source, 4L),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 .protvis_builtin_fixture_path <- function(source, format = NULL, file = NULL) {
   source <- .protvis_normalise_source(source)
   manifest <- protvis_builtin_datasets()
@@ -579,6 +603,9 @@ load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
                              tolower(manifest_rows$format))]
   } else {
     manifest_rows$file[[1L]]
+  }
+  if (is.null(sample_info) && !identical(source, "MaxQuant")) {
+    sample_info <- .protvis_builtin_sample_info(source, file_name)
   }
   object <- import_protvis(path, source = source,
                  sample_info = sample_info,
