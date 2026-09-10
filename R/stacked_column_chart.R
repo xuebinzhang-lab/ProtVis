@@ -22,6 +22,7 @@ stacked_column_chart_ui <- function(id) {
     shinyjs::useShinyjs(),
 
     bslib::layout_sidebar(
+      class = "pv-stacked-column",
       sidebar = bslib::sidebar(
         width = 340,
 
@@ -60,6 +61,17 @@ stacked_column_chart_ui <- function(id) {
 
           bslib::accordion_panel(
             "Plot Settings",
+
+            shiny::selectInput(
+              ns("plot_type"),
+              "Chart type",
+              choices = c(
+                "Stacked columns" = "stack",
+                "Grouped columns" = "dodge",
+                "100% stacked columns" = "fill"
+              ),
+              selected = "stack"
+            ),
 
             shiny::checkboxInput(
               ns("flip_coords"),
@@ -165,7 +177,7 @@ stacked_column_chart_ui <- function(id) {
 
           bslib::card(
             full_screen = TRUE,
-            bslib::card_header("Stacked Column Chart"),
+            bslib::card_header("Column Chart"),
             bslib::card_body(
               shiny::uiOutput(ns("plot_ui"))
             )
@@ -181,7 +193,9 @@ stacked_column_chart_ui <- function(id) {
           )
         )
       )
-    )
+    ),
+
+    shiny::tags$style(shiny::HTML("\n      .pv-stacked-column .sidebar {\n        background: #f8fafc;\n        border-right: 1px solid #cbd5df;\n      }\n      .pv-stacked-column .card {\n        border: 1px solid #cbd5df;\n        border-radius: 6px;\n        box-shadow: none;\n      }\n      .pv-stacked-column .card-header {\n        color: #24445f;\n        font-weight: 700;\n        background: #f8fafc;\n      }\n      .pv-stacked-column .btn {\n        border-radius: 4px;\n        box-shadow: none;\n        text-transform: none;\n        letter-spacing: 0;\n      }\n      .pv-stacked-column .btn-success {\n        background: #24445f;\n        border-color: #24445f;\n      }\n      .pv-stacked-column .btn-success:hover,\n      .pv-stacked-column .btn-success:focus {\n        background: #19364f;\n        border-color: #19364f;\n      }\n      .pv-stacked-column .form-control,\n      .pv-stacked-column .selectize-input {\n        border-radius: 4px !important;\n      }\n    "))
   )
 }
 
@@ -387,7 +401,13 @@ stacked_column_chart_server <- function(id) {
         ggplot2::geom_bar(
           stat = "identity",
           color = border_color,
-          width = 0.72
+          width = 0.72,
+          position = switch(
+            input$plot_type,
+            dodge = "dodge",
+            fill = "fill",
+            "stack"
+          )
         ) +
         ggplot2::scale_fill_manual(
           values = color_values,
