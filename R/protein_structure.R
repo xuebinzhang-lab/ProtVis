@@ -348,12 +348,21 @@ protein_structure_server <- function(id) {
 
     shiny::observeEvent(input$run, {
       if (is.null(rv$active_file_path) || !nzchar(rv$active_file_path)) {
-        shiny::showNotification(
-          "Please upload a PDB file or choose the demo PDB first.",
-          type = "warning",
-          duration = 4
-        )
-        return(NULL)
+        # RUN is also a valid entry point for the bundled example. This keeps
+        # the plot area from remaining empty when the user skips file selection.
+        if (nzchar(demo_pdb_path) && file.exists(demo_pdb_path)) {
+          rv$use_demo <- TRUE
+          rv$active_file_path <- demo_pdb_path
+          rv$active_file_name <- "1hel.pdb"
+          rv$active_source <- "Demo file"
+        } else {
+          shiny::showNotification(
+            "Please upload a PDB file or choose the demo PDB first.",
+            type = "warning",
+            duration = 4
+          )
+          return(NULL)
+        }
       }
 
       rv$analysis_done <- FALSE
