@@ -689,12 +689,6 @@ DEP_analysis_server <- function(id, shared_state) {
                       bslib::accordion_panel(
                         title = "Download",
                         icon = bsicons::bs_icon("download"),
-                        shiny::selectInput(
-                          ns(base::paste0("heatmap_format_", i)),
-                          "Image format",
-                          choices = c("PNG" = "png", "PDF" = "pdf", "JPEG" = "jpeg"),
-                          selected = "png"
-                        ),
                         shiny::numericInput(
                           ns(base::paste0("heatmap_width_", i)),
                           "Plot width (inch)",
@@ -708,14 +702,6 @@ DEP_analysis_server <- function(id, shared_state) {
                           value = 6,
                           min = 4,
                           max = 20
-                        ),
-                        shiny::numericInput(
-                          ns(base::paste0("heatmap_dpi_", i)),
-                          "Resolution (DPI)",
-                          value = 300,
-                          min = 72,
-                          max = 1200,
-                          step = 1
                         ),
                         shiny::downloadButton(
                           ns(base::paste0("download_heatmap_", i)),
@@ -1051,6 +1037,10 @@ DEP_analysis_server <- function(id, shared_state) {
               input[[base::paste0("volcano_pval_", i_local)]],
               0.05
             )
+            # Explicitly touch both controls in the render expression so a
+            # Volcano threshold change invalidates this heatmap immediately.
+            logfc_thresh <- as.numeric(logfc_thresh)
+            pval_thresh <- as.numeric(pval_thresh)
             df <- df %>%
               dplyr::mutate(
                 regulation = dplyr::case_when(
@@ -1201,20 +1191,16 @@ DEP_analysis_server <- function(id, shared_state) {
 
           output[[base::paste0("download_heatmap_", i_local)]] <- shiny::downloadHandler(
             filename = function() {
-              base::paste0("Heatmap_", g1, "_vs_", g2, ".", coalesce_input(
-                input[[base::paste0("heatmap_format_", i_local)]], "png"
-              ))
+              base::paste0("Heatmap_", g1, "_vs_", g2, ".pdf")
             },
             content = function(file) {
-              format <- coalesce_input(
-                input[[base::paste0("heatmap_format_", i_local)]], "png"
-              )
               width <- coalesce_input(input[[base::paste0("heatmap_width_", i_local)]], 8)
               height <- coalesce_input(input[[base::paste0("heatmap_height_", i_local)]], 6)
-              dpi <- coalesce_input(input[[base::paste0("heatmap_dpi_", i_local)]], 300)
+              width <- as.numeric(width)
+              height <- as.numeric(height)
               show_colnames <- isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
-              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)
-              pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              logfc_thresh <- as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5))
+              pval_thresh <- as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05))
               df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]] %>%
                 dplyr::mutate(
                   regulation = dplyr::case_when(
@@ -1227,16 +1213,7 @@ DEP_analysis_server <- function(id, shared_state) {
                 dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
                 dplyr::pull(ID)
 
-              device <- switch(
-                format,
-                png = grDevices::png(file, width = width * dpi, height = height * dpi,
-                                     res = dpi, units = "px"),
-                jpeg = grDevices::jpeg(file, width = width * dpi, height = height * dpi,
-                                       res = dpi, units = "px"),
-                pdf = grDevices::pdf(file, width = width, height = height),
-                grDevices::png(file, width = width * dpi, height = height * dpi,
-                               res = dpi, units = "px")
-              )
+              grDevices::pdf(file, width = width, height = height, useDingbats = FALSE)
               on.exit(grDevices::dev.off(), add = TRUE)
 
               if (base::length(sig_proteins) == 0L) {
