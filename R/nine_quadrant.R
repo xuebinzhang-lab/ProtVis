@@ -51,6 +51,7 @@ nine_quadrant_ui <- function(id) {
 
         bslib::accordion_panel(
           "Data Input",
+          shiny::tags$small("A built-in 2,800-row example is used when no file is uploaded.", class = "text-muted"),
           shiny::fileInput(
             ns("file"),
             "Upload CSV/XLSX File",
@@ -123,12 +124,12 @@ nine_quadrant_ui <- function(id) {
     ),
 
     bslib::layout_columns(
-      col_widths = c(5, 7),
+      col_widths = c(4, 8),
 
       bslib::card(
         class = "pv-preview-card",
         full_screen = TRUE,
-        style = "min-height: 760px;",
+        style = "min-height: 820px;",
         bslib::card_header(
           shiny::div(
             style = "display:flex; justify-content:space-between; align-items:center;",
@@ -147,7 +148,7 @@ nine_quadrant_ui <- function(id) {
       bslib::card(
         class = "pv-preview-card",
         full_screen = TRUE,
-        style = "min-height: 760px;",
+        style = "min-height: 900px;",
         bslib::card_header(
           shiny::div(
             style = "display:flex; justify-content:space-between; align-items:center;",
@@ -159,7 +160,7 @@ nine_quadrant_ui <- function(id) {
           )
         ),
         bslib::card_body(
-          shiny::uiOutput(ns("plot_ui"), height = "700px"),
+          shiny::uiOutput(ns("plot_ui"), height = "820px"),
           shiny::tags$hr(style = "margin: 18px 0;"),
           shiny::uiOutput(ns("quadrant_tables_ui"))
         )
@@ -203,8 +204,16 @@ nine_quadrant_server <- function(id) {
     shinyjs::disable("download_pdf")
     lapply(quadrant_names, function(q) shinyjs::disable(paste0("download_", q)))
 
+    builtin_data <- local({
+      set.seed(20260910)
+      x <- rnorm(2800, 0, 2.2); y <- rnorm(2800, 0, 2.2)
+      data.frame(Omic1_ID = sprintf("Omic1_%04d", seq_along(x)),
+                 Log2FC_Omic1 = x,
+                 Omic2_ID = sprintf("Omic2_%04d", seq_along(y)),
+                 Log2FC_Omic2 = y, check.names = FALSE)
+    })
     data <- shiny::reactive({
-      shiny::req(input$file)
+      if (is.null(input$file)) return(builtin_data)
       ext <- tools::file_ext(input$file$name)
 
       if (ext == "csv") {
@@ -217,34 +226,20 @@ nine_quadrant_server <- function(id) {
     })
 
     output$data_info <- shiny::renderUI({
-      if (is.null(input$file)) {
-        shiny::tags$span(
-          style = paste(
-            "display:inline-block;",
-            "padding:4px 10px;",
-            "border-radius:999px;",
-            "background:#f3f4f6;",
-            "color:#6b7280;",
-            "font-size:12px;",
-            "font-weight:500;"
-          ),
-          "No file uploaded"
-        )
-      } else {
-        df <- data()
-        shiny::tags$span(
-          style = paste(
-            "display:inline-block;",
-            "padding:4px 10px;",
-            "border-radius:999px;",
-            "background:#eef2ff;",
-            "color:#374151;",
-            "font-size:12px;",
-            "font-weight:500;"
-          ),
-          paste0(nrow(df), " rows × ", ncol(df), " columns")
-        )
-      }
+      df <- data()
+      shiny::tags$span(
+        style = paste(
+          "display:inline-block;",
+          "padding:4px 10px;",
+          "border-radius:999px;",
+          "background:#eef2ff;",
+          "color:#374151;",
+          "font-size:12px;",
+          "font-weight:500;"
+        ),
+        paste0(nrow(df), " rows × ", ncol(df), " columns",
+               if (is.null(input$file)) " · built-in example" else "")
+      )
     })
 
     output$plot_status <- shiny::renderUI({
@@ -278,7 +273,6 @@ nine_quadrant_server <- function(id) {
     })
 
     output$col_select_ui <- shiny::renderUI({
-      shiny::req(input$file)
       df <- data()
       num_cols <- base::names(df)[base::sapply(df, is.numeric)]
 
@@ -314,43 +308,10 @@ nine_quadrant_server <- function(id) {
     })
 
     output$data_preview_ui <- shiny::renderUI({
-      if (is.null(input$file)) {
-        shiny::div(
-          style = paste(
-            "min-height: 680px;",
-            "display: flex;",
-            "align-items: center;",
-            "justify-content: center;",
-            "padding: 30px;"
-          ),
-          shiny::div(
-            style = paste(
-              "max-width: 520px;",
-              "width: 100%;",
-              "text-align: center;",
-              "padding: 32px 24px;",
-              "border: 1px solid #e5e7eb;",
-              "border-radius: 16px;",
-              "background: #f8fafc;",
-              "box-shadow: 0 2px 8px rgba(0,0,0,0.05);"
-            ),
-            shiny::tags$div(
-              style = "font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #1f2937;",
-              "Uploaded Data Preview"
-            ),
-            shiny::tags$div(
-              style = "font-size: 14px; line-height: 1.7; color: #4b5563;",
-              "Please upload a CSV or XLSX file to preview the dataset here."
-            )
-          )
-        )
-      } else {
-        DT::DTOutput(ns("data_preview"))
-      }
+      DT::DTOutput(ns("data_preview"))
     })
 
     output$data_preview <- DT::renderDT({
-      shiny::req(input$file)
       df <- data()
 
       DT::datatable(
@@ -361,14 +322,14 @@ nine_quadrant_server <- function(id) {
           pageLength = 10,
           lengthMenu = c(10, 25, 50, 100),
           scrollX = TRUE,
-          scrollY = "620px",
+          scrollY = "680px",
           autoWidth = TRUE
         )
       )
     })
 
     processed <- shiny::eventReactive(input$run_plot, {
-      shiny::req(input$file, input$col_x, input$col_y)
+      shiny::req(input$col_x, input$col_y)
 
       df <- data()
       fc <- input$fc_cutoff
@@ -482,40 +443,10 @@ nine_quadrant_server <- function(id) {
     }
 
     output$plot_ui <- shiny::renderUI({
-      if (is.null(input$file)) {
+      if (is.null(input$run_plot) || input$run_plot == 0) {
         shiny::div(
           style = paste(
-            "height: 680px;",
-            "display: flex;",
-            "align-items: center;",
-            "justify-content: center;",
-            "padding: 30px;"
-          ),
-          shiny::div(
-            style = paste(
-              "max-width: 560px;",
-              "width: 100%;",
-              "text-align: center;",
-              "padding: 36px 28px;",
-              "border: 1px solid #e5e7eb;",
-              "border-radius: 16px;",
-              "background: #f8fafc;",
-              "box-shadow: 0 2px 8px rgba(0,0,0,0.05);"
-            ),
-            shiny::tags$div(
-              style = "font-size: 22px; font-weight: 600; margin-bottom: 12px; color: #1f2937;",
-              "Nine-Quadrant Plot"
-            ),
-            shiny::tags$div(
-              style = "font-size: 15px; line-height: 1.7; color: #4b5563;",
-              "Please upload a CSV/XLSX file first."
-            )
-          )
-        )
-      } else if (is.null(input$run_plot) || input$run_plot == 0) {
-        shiny::div(
-          style = paste(
-            "height: 680px;",
+            "height: 820px;",
             "display: flex;",
             "align-items: center;",
             "justify-content: center;",
@@ -545,7 +476,7 @@ nine_quadrant_server <- function(id) {
           )
         )
       } else {
-        shiny::plotOutput(ns("plot"), height = "680px")
+        shiny::plotOutput(ns("plot"), height = "820px")
       }
     })
 
@@ -555,21 +486,6 @@ nine_quadrant_server <- function(id) {
     })
 
     output$quadrant_tables_ui <- shiny::renderUI({
-      if (is.null(input$file)) {
-        return(
-          shiny::div(
-            style = paste(
-              "padding: 18px 20px;",
-              "border: 1px solid #e5e7eb;",
-              "border-radius: 12px;",
-              "background: #f8fafc;",
-              "color: #4b5563;"
-            ),
-            "Please upload a file first to view quadrant tables."
-          )
-        )
-      }
-
       if (is.null(input$run_plot) || input$run_plot == 0) {
         return(
           shiny::div(
