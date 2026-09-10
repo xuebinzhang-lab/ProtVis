@@ -1,14 +1,14 @@
-test_that("built-in fixtures provide real WT and oxidative-stress metadata", {
+test_that("built-in fixtures provide real B73 and Y12 metadata", {
   for (source in c("DIA-NN", "FragPipe", "Skyline", "OpenMS")) {
     info <- .protvis_builtin_sample_info(source)
-    expect_equal(nrow(info), 8L)
+    expect_equal(nrow(info), 30L)
     expect_equal(info$maxquant_id,
-                 c("WT1", "WT2", "WT3", "WT4", "WT_H2O2_1", "WT_H2O2_2",
-                   "WT_H2O2_3", "WT_H2O2_4"))
-    expect_equal(info$group, c(rep("WT", 4), rep("WT_H2O2", 4)))
+                 c(paste0("B73_TMT", rep(1:3, each = 5), "_", rep(1:5, 3)),
+                   paste0("Y12_TMT", rep(1:3, each = 5), "_", rep(1:5, 3))))
+    expect_equal(info$group, c(rep("B73", 15), rep("Y12", 15)))
     expect_equal(info$condition, info$group)
-    expect_true(all(info$organism == "Candida albicans"))
-    expect_true(all(grepl("TraianProt/blob/main/inst/extdata/proteinGroups.txt",
+    expect_true(all(info$organism == "Zea mays"))
+    expect_true(all(grepl("ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
                           info$source_url, fixed = TRUE)))
   }
 })
