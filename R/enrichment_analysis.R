@@ -917,9 +917,23 @@ enrichment_analysis_server <- function(id, shared_state) {
       shiny::showNotification("Paste data applied successfully.", type = "message")
     })
 
+    extract_genelist_ids <- function(df) {
+      if (base::is.null(df) || !base::is.data.frame(df) || base::nrow(df) == 0L) {
+        return(character())
+      }
+      names_clean <- tolower(gsub("[^a-z0-9]", "", base::names(df)))
+      candidates <- c("id", "geneid", "proteinid", "gene", "protein")
+      index <- match(candidates, names_clean, nomatch = 0L)
+      index <- index[index > 0L][1L]
+      if (is.na(index) && base::ncol(df) == 1L) index <- 1L
+      if (is.na(index)) return(character())
+      genes <- trimws(base::as.character(df[[index]]))
+      genes <- unique(unlist(base::strsplit(genes, "[,;|]", perl = TRUE), use.names = FALSE))
+      genes[!is.na(genes) & nzchar(genes)]
+    }
+
     genelist <- shiny::reactive({
-      # An explicitly uploaded or pasted list must take precedence over the
-      # automatically loaded DEP comparison genes.
+      # An uploaded file takes precedence over the automatic DEP list.
       if (!base::is.null(input$genelist_file)) {
         ext <- base::tolower(tools::file_ext(input$genelist_file$name))
 
@@ -940,27 +954,25 @@ enrichment_analysis_server <- function(id, shared_state) {
           error = function(e) NULL
         )
 
-        if (!base::is.null(df) && "ID" %in% base::colnames(df)) {
-          genes <- base::unique(base::as.character(df$ID))
-          genes <- genes[!base::is.na(genes) & base::nzchar(genes)]
-
-          if (base::length(genes) > 0) {
-            return(genes)
-          }
-        }
+        genes <- extract_genelist_ids(df)
+        if (base::length(genes) > 0) return(genes)
       }
 
-      if (!base::is.null(rv$pasted_genelist) && base::length(rv$pasted_genelist) > 0) {
+      # Pasted IDs are used only while the manual/paste mode is active.
+      if (isFALSE(input$input_mode) &&
+          !base::is.null(rv$pasted_genelist) &&
+          base::length(rv$pasted_genelist) > 0) {
         return(rv$pasted_genelist)
       }
 
+      # No uploaded (or pasted) list: use the selected DEP comparison.
       if (!base::is.null(rv$compare_data) && base::is.data.frame(rv$compare_data)) {
         if (base::all(c("regulation", "ID") %in% base::colnames(rv$compare_data))) {
           genes <- rv$compare_data %>%
             dplyr::filter(regulation != "Not significant") %>%
             dplyr::pull(ID)
           genes <- base::unique(trimws(base::as.character(genes)))
-          genes <- genes[!base::is.na(genes) & base::nzchar(genes)]
+          genes <- genes[!base::is.na(genes) & nzchar(genes)]
           if (base::length(genes) > 0) return(genes)
         }
       }
