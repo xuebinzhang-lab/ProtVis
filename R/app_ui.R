@@ -46,12 +46,59 @@ golem_add_external_resources <- function() {
       }
 
       .navbar {
-        position: relative;
-        z-index: 2500;
+        position: sticky;
+        top: 0;
+        z-index: 5000 !important;
+        overflow: visible !important;
         background: rgba(255, 255, 255, 0.94) !important;
         border-bottom: 1px solid var(--pv-border);
         box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
         backdrop-filter: blur(12px);
+      }
+
+      /* Keep navigation menus above module cards and page content.  Bootstrap
+         creates nested stacking contexts for the navbar/collapse; raising
+         each layer prevents the open menu from being visually covered. */
+      .navbar .container,
+      .navbar .container-fluid,
+      .navbar .navbar-collapse,
+      .navbar .navbar-nav,
+      .navbar .nav-item,
+      .navbar .dropdown {
+        position: relative;
+        z-index: 5001;
+        overflow: visible !important;
+      }
+
+      .navbar .dropdown-menu {
+        position: absolute;
+        z-index: 6000 !important;
+        margin-top: 0.25rem;
+        isolation: isolate;
+      }
+
+      /* bslib's page navbar can create a clipping/stacking context around
+         the collapse container. Keep an open menu anchored below its item
+         and above the application body. */
+      .bslib-page-navbar,
+      .bslib-page-navbar > .navbar,
+      .bslib-page-navbar .navbar-collapse {
+        overflow: visible !important;
+        z-index: 5000 !important;
+      }
+
+      .bslib-page-navbar .dropdown-menu.show,
+      .navbar .dropdown-menu.show {
+        display: block !important;
+        top: 100% !important;
+        bottom: auto !important;
+        transform: none !important;
+        pointer-events: auto;
+      }
+
+      .bslib-page-navbar + * {
+        position: relative;
+        z-index: 1;
       }
 
       .navbar-brand,
@@ -924,15 +971,15 @@ app_ui <- function(request) {
       bslib::nav_menu(
         "Downstream analysis",
         icon = bsicons::bs_icon("bar-chart-line"),
-        bslib::nav_panel("Overview", overview_ui("overview")),
-        bslib::nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
+        bslib::nav_panel("Overview", icon = bsicons::bs_icon("clipboard-data"), overview_ui("overview")),
+        bslib::nav_panel("DEP analysis", icon = bsicons::bs_icon("graph-up-arrow"), DEP_analysis_ui("DEP_analysis")),
         bslib::nav_panel(
           "Enrichment analysis",
+          icon = bsicons::bs_icon("diagram-3"),
           enrichment_analysis_ui("enrichment_analysis")
         ),
-        bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
-        bslib::nav_panel("Pathview", pathview_ui("pathview"))
-        # bslib::nav_panel("Protein function", protein_fun_ui("protein_fun"))
+        bslib::nav_panel("GSEA analysis", icon = bsicons::bs_icon("activity"), gsea_ui("gsea")),
+        bslib::nav_panel("Pathview", icon = bsicons::bs_icon("signpost-2"), pathview_ui("pathview"))
       ),
 
       bslib::nav_menu(
@@ -940,28 +987,32 @@ app_ui <- function(request) {
         icon = bsicons::bs_icon("database-gear"),
         bslib::nav_panel(
           "Expression Profile",
+          icon = bsicons::bs_icon("bezier2"),
           Expression_profile_ui("Expression_profile")
         ),
         bslib::nav_panel(
           "WGCNA",
+          icon = bsicons::bs_icon("diagram-2"),
           wgcna_ui("wgcna")
         ),
         bslib::nav_panel(
           "Metaproteomics",
+          icon = bsicons::bs_icon("layers"),
           metaproteomics_ui("metaproteomics")
         ),
-        bslib::nav_panel("Nine Quadrant", nine_quadrant_ui("nine")),
+        bslib::nav_panel("Nine Quadrant", icon = bsicons::bs_icon("grid-3x3-gap"), nine_quadrant_ui("nine")),
         bslib::nav_panel(
           title = "Co-enrichment",
+          icon = bsicons::bs_icon("diagram-3"),
           co_enrichment_ui("co_enrichment")
         ),
-        bslib::nav_panel("Venn", venn_ui("venn"))
+        bslib::nav_panel("Venn", icon = bsicons::bs_icon("diagram-venn"), venn_ui("venn"))
       ),
 
       bslib::nav_menu(
         "PTM",
         icon = bsicons::bs_icon("layers"),
-        bslib::nav_panel("PTM", PTM_ui("PTM")),
+        bslib::nav_panel("PTM", icon = bsicons::bs_icon("layers-half"), PTM_ui("PTM")),
         bslib::nav_panel(
           "PD Strict Spectrum",
           icon = bsicons::bs_icon("activity"),
@@ -978,12 +1029,12 @@ app_ui <- function(request) {
       bslib::nav_menu(
         "Toolkits",
         icon = bsicons::bs_icon("tools"),
-        bslib::nav_panel("Protein Extract", protein_extract_ui("protein_extract")),
-        bslib::nav_panel("Background Make", background_make_ui("background_make")),
-        bslib::nav_panel("Protein Links", protein_links_ui("prot_links")),
-        bslib::nav_panel("Protein Structure", protein_structure_ui("protein_structure")),
-        bslib::nav_panel("Boxplot", boxplot_module_ui("box1")),
-        bslib::nav_panel("swissmodel", swissmodel_ui("swissmodel")),
+        bslib::nav_panel("Protein Extract", icon = bsicons::bs_icon("file-earmark-medical"), protein_extract_ui("protein_extract")),
+        bslib::nav_panel("Background Make", icon = bsicons::bs_icon("collection"), background_make_ui("background_make")),
+        bslib::nav_panel("Protein Links", icon = bsicons::bs_icon("link-45deg"), protein_links_ui("prot_links")),
+        bslib::nav_panel("Protein Structure", icon = bsicons::bs_icon("diagram-3"), protein_structure_ui("protein_structure")),
+        bslib::nav_panel("Boxplot", icon = bsicons::bs_icon("box"), boxplot_module_ui("box1")),
+        bslib::nav_panel("swissmodel", icon = bsicons::bs_icon("bezier"), swissmodel_ui("swissmodel")),
         bslib::nav_panel(
           "STRINGdb PPI",
           icon = bsicons::bs_icon("diagram-3"),
@@ -991,10 +1042,11 @@ app_ui <- function(request) {
         ),
         bslib::nav_panel(
           "Stacked Column Diagram",
+          icon = bsicons::bs_icon("bar-chart-steps"),
           stacked_column_chart_ui("stacked_column_chart")
         ),
-        bslib::nav_panel("Correlation chord", correlation_chord_ui("correlation_chord")),
-        bslib::nav_panel("DEG Analyse", DEG_ui("DEG"))
+        bslib::nav_panel("Correlation chord", icon = bsicons::bs_icon("circles"), correlation_chord_ui("correlation_chord")),
+        bslib::nav_panel("DEG Analyse", icon = bsicons::bs_icon("bar-chart-line"), DEG_ui("DEG"))
       ),
 
       help_ui()
