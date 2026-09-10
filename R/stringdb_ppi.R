@@ -68,6 +68,50 @@ stringdb_ppi_ui <- function(id) {
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.045);
       }
 
+      /* Keep the analysis controls compact while preserving a clear,
+         stepwise scientific workflow. */
+      .pv-sidebar-details {
+        margin-bottom: 10px;
+      }
+
+      .pv-sidebar-details > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 10px 14px;
+        border: 1px solid #D7E0EA;
+        border-radius: 6px;
+        background: #F5F8FB;
+        color: #102A43;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .pv-sidebar-details > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .pv-sidebar-details > summary::after {
+        content: "▸";
+        float: right;
+        color: #697586;
+        transition: transform 0.15s ease;
+      }
+
+      .pv-sidebar-details[open] > summary::after {
+        transform: rotate(90deg);
+      }
+
+      .pv-sidebar-details > .pv-sidebar-card {
+        margin-top: 6px;
+        margin-bottom: 0;
+        border-radius: 6px;
+        box-shadow: none;
+      }
+
+      .pv-sidebar-details > .pv-sidebar-card > h4 {
+        display: none;
+      }
+
       .pv-sidebar-card h4,
       .pv-main-card h4 {
         margin-top: 0;
@@ -216,7 +260,11 @@ stringdb_ppi_ui <- function(id) {
         shiny::column(
           width = 3,
 
-          shiny::div(
+          shiny::details(
+            class = "pv-sidebar-details",
+            open = TRUE,
+            shiny::tags$summary("1  Data Input"),
+            shiny::div(
             class = "pv-sidebar-card",
             shiny::h4(
               shiny::span(class = "pv-step", "1"),
@@ -275,9 +323,14 @@ stringdb_ppi_ui <- function(id) {
             ),
 
             shiny::uiOutput(ns("column_controls"))
+            )
           ),
 
-          shiny::div(
+          shiny::details(
+            class = "pv-sidebar-details",
+            open = FALSE,
+            shiny::tags$summary("2  STRING Settings"),
+            shiny::div(
             class = "pv-sidebar-card",
             shiny::h4(
               shiny::span(class = "pv-step", "2"),
@@ -320,9 +373,14 @@ stringdb_ppi_ui <- function(id) {
               value = "",
               placeholder = "Optional"
             )
+            )
           ),
 
-          shiny::div(
+          shiny::details(
+            class = "pv-sidebar-details",
+            open = FALSE,
+            shiny::tags$summary("3  Network Options"),
+            shiny::div(
             class = "pv-sidebar-card",
             shiny::h4(
               shiny::span(class = "pv-step", "3"),
@@ -376,9 +434,14 @@ stringdb_ppi_ui <- function(id) {
               max = 10,
               step = 0.5
             )
+            )
           ),
 
-          shiny::div(
+          shiny::details(
+            class = "pv-sidebar-details",
+            open = FALSE,
+            shiny::tags$summary("4  Color & Export"),
+            shiny::div(
             class = "pv-sidebar-card",
             shiny::h4(
               shiny::span(class = "pv-step", "4"),
@@ -459,6 +522,7 @@ stringdb_ppi_ui <- function(id) {
                 label = "Download Demo Data",
                 width = "100%"
               )
+            )
             )
           )
         ),
