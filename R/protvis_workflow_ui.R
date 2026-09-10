@@ -5,6 +5,15 @@
     .protvis-dataset-shell { padding: 1rem 0 2rem; }
     .protvis-dataset-shell .card { border: 1px solid #dbe8f3; }
     .protvis-dataset-shell .card-header { font-weight: 750; }
+    /* Give the parameter rail enough room for source names and controls. */
+    .protvis-dataset-layout > .sidebar { flex-basis: 430px !important; }
+    .protvis-dataset-provenance { margin: -.15rem 0 1rem; padding: .65rem .75rem;
+      border-left: 3px solid #1787c9; background: #f3f8fc;
+      color: #536b7d; font-size: .82rem; line-height: 1.45; }
+    .protvis-dataset-provenance a { overflow-wrap: anywhere; }
+    @media (max-width: 900px) {
+      .protvis-dataset-layout > .sidebar { flex-basis: auto !important; }
+    }
     .protvis-dataset-status { min-height: 2.4rem; padding: .65rem .8rem;
       border-radius: .7rem; background: #eef8ff; color: #1f4e6d;
       margin: .7rem 0; }
@@ -30,8 +39,9 @@ protvis_dataset_ui <- function(id) {
     shiny::div(
       class = "protvis-dataset-shell",
       bslib::layout_sidebar(
+        class = "protvis-dataset-layout",
         sidebar = bslib::sidebar(
-          width = 350,
+          width = 430,
           shiny::h4("ProtVis_dataset"),
           shiny::p(paste0(
             "A standardized, reproducible object for import, QC, analysis, ",
@@ -56,6 +66,7 @@ protvis_dataset_ui <- function(id) {
             ),
             selected = "Maxquant_Export.xlsx"
           ),
+          shiny::uiOutput(ns("builtin_provenance")),
           shiny::fileInput(
             ns("data_file"), "Upload source table",
             accept = c(".xlsx", ".xls", ".txt", ".tsv", ".csv", ".parquet",
@@ -256,6 +267,24 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
         }
       )
     }
+
+    output$builtin_provenance <- shiny::renderUI({
+      selected_file <- as.character(input$builtin_source %||% "")
+      selected_row <- builtin[builtin$file == selected_file, , drop = FALSE]
+      if (nrow(selected_row) != 1L) return(NULL)
+      shiny::div(
+        class = "protvis-dataset-provenance",
+        shiny::tags$strong("Data provenance: "),
+        shiny::tags$span(selected_row$description[[1L]]),
+        shiny::tags$br(),
+        shiny::tags$strong("Source: "),
+        shiny::tags$a(
+          href = selected_row$reference[[1L]],
+          target = "_blank", rel = "noopener noreferrer",
+          selected_row$reference[[1L]]
+        )
+      )
+    })
 
     shiny::observeEvent(input$load_builtin, {
       selected_file <- as.character(input$builtin_source %||%
