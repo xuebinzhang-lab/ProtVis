@@ -1265,7 +1265,10 @@ enrichment_analysis_server <- function(id, shared_state) {
             minGSSize = 1,
             maxGSSize = Inf
           ),
-          error = function(e) NULL
+          error = function(e) {
+            rv$analysis_message <- paste0("GO analysis error: ", conditionMessage(e))
+            NULL
+          }
         )
       }
 
@@ -1287,7 +1290,10 @@ enrichment_analysis_server <- function(id, shared_state) {
             minGSSize = 1,
             maxGSSize = Inf
           ),
-          error = function(e) NULL
+          error = function(e) {
+            rv$analysis_message <- paste0("KEGG analysis error: ", conditionMessage(e))
+            NULL
+          }
         )
       }
 
@@ -1321,8 +1327,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       go_df <- get_result_df(rv$go_res)
 
       if (base::is.null(go_df) || base::nrow(go_df) == 0) {
-        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
-        text(0, 0, rv$analysis_message %||% "No GO enrichment results.")
+        graphics::plot.new()
+        graphics::text(0.5, 0.5, rv$analysis_message %||% "No GO enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1354,8 +1360,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       kegg_df <- get_result_df(rv$kegg_res)
 
       if (base::is.null(kegg_df) || base::nrow(kegg_df) == 0) {
-        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
-        text(0, 0, rv$analysis_message %||% "No KEGG enrichment results.")
+        graphics::plot.new()
+        graphics::text(0.5, 0.5, rv$analysis_message %||% "No KEGG enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1382,6 +1388,11 @@ enrichment_analysis_server <- function(id, shared_state) {
         )
       }
     })
+
+    # Keep plots reactive when their tab/card is initially hidden; switching
+    # back to Visualization after clicking Analysis now shows the new plot.
+    shiny::outputOptions(output, "go_plot", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "kegg_plot", suspendWhenHidden = FALSE)
 
     output$go_res_table <- DT::renderDT({
       go_df <- get_result_df(rv$go_res)
