@@ -159,6 +159,21 @@ venn_server <- function(id) {
       )
     })
 
+    set_plot_state <- function(dat) {
+      rv$set_list <- dat$set_list
+      rv$upset_data <- dat$row_mat
+      rv$upset_table <- dat$bin_df
+      rv$colors <- sapply(seq_along(names(dat$set_list)), function(i) {
+        selected_color <- input[[paste0("color_", i)]]
+        if (is.null(selected_color) || identical(selected_color, "")) {
+          grDevices::hcl.colors(length(dat$set_list), "Set2")[i]
+        } else {
+          selected_color
+        }
+      })
+      rv$plot_mode <- get_plot_mode()
+    }
+
     refresh_color_selectors <- function() {
       dat <- parsed_data()
 
@@ -176,7 +191,8 @@ venn_server <- function(id) {
     shiny::observeEvent(input$load_example, {
       rv$example_df <- make_example_venn_data()
       refresh_color_selectors()
-      shiny::showNotification("Example Venn/UpSet data loaded. Click Run to draw the plot.", type = "message")
+      set_plot_state(parsed_data())
+      shiny::showNotification("Example Venn/UpSet data loaded and displayed.", type = "message")
     })
 
     shiny::observeEvent(input$file, {
@@ -202,19 +218,7 @@ venn_server <- function(id) {
 
     shiny::observeEvent(input$run, {
       dat <- parsed_data()
-
-      rv$set_list <- dat$set_list
-      rv$upset_data <- dat$row_mat
-      rv$upset_table <- dat$bin_df
-      rv$colors <- sapply(seq_along(names(dat$set_list)), function(i) {
-        selected_color <- input[[paste0("color_", i)]]
-        if (is.null(selected_color) || identical(selected_color, "")) {
-          grDevices::hcl.colors(length(dat$set_list), "Set2")[i]
-        } else {
-          selected_color
-        }
-      })
-      rv$plot_mode <- get_plot_mode()
+      set_plot_state(dat)
     })
 
     output$plot_notice <- shiny::renderUI({
@@ -237,7 +241,6 @@ venn_server <- function(id) {
     })
 
     output$venn_plot <- shiny::renderPlot({
-      shiny::req(input$run > 0)
       shiny::req(rv$set_list, rv$upset_data, rv$colors, rv$plot_mode)
 
       if (rv$plot_mode == "venn") {
@@ -270,11 +273,13 @@ venn_server <- function(id) {
     })
 
     output$processed_table <- DT::renderDT({
-      shiny::req(input$run > 0)
-      shiny::req(rv$upset_table)
+      table_data <- rv$upset_table
+      if (is.null(table_data)) {
+        table_data <- parsed_data()$bin_df
+      }
 
       DT::datatable(
-        rv$upset_table,
+        table_data,
         rownames = FALSE,
         extensions = "Buttons",
         options = list(
