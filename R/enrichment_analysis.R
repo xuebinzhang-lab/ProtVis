@@ -826,7 +826,7 @@ enrichment_analysis_server <- function(id, shared_state) {
       # Load the result written in the current working directory.  Keep the
       # old Step7 filename as a read-only migration fallback.
       if (base::is.null(dep_obj) && !base::is.null(shared_state$workdir)) {
-        for (rda_name in c("Step7_differential_analysis.rda", "differential_analysis.rda", "Step7_DEP_result.rda")) {
+        for (rda_name in c("differential_analysis.rda", "Step7_DEP_result.rda")) {
           if (!base::is.null(dep_obj)) break
           rda_path <- base::file.path(shared_state$workdir, rda_name)
           if (!base::file.exists(rda_path)) next
@@ -1250,8 +1250,7 @@ enrichment_analysis_server <- function(id, shared_state) {
       rv$analysis_message <- NULL
 
       if ("go_analysis" %in% input$choices) {
-        t2g.go <- rv$background_data$GO_background %>%
-          dplyr::select(TERM, GENE)
+        t2g.go <- normalise_term2gene(rv$background_data$GO_background)
 
         t2n.go <- rv$background_data$GO_background %>%
           dplyr::select(TERM, NAME)
@@ -1263,20 +1262,17 @@ enrichment_analysis_server <- function(id, shared_state) {
             TERM2NAME = t2n.go,
             pvalueCutoff = 1,
             qvalueCutoff = 1,
-            minGSSize = 1
+            minGSSize = 1,
+            maxGSSize = Inf
           ),
-          error = function(e) {
-            rv$analysis_message <- paste0("GO analysis error: ", conditionMessage(e))
-            NULL
-          }
+          error = function(e) NULL
         )
       }
 
       if ("kegg_analysis" %in% input$choices) {
         filtered_bg <- selected_kegg_background()
 
-        t2g.kegg <- filtered_bg %>%
-          dplyr::select(TERM, GENE)
+        t2g.kegg <- normalise_term2gene(filtered_bg)
 
         t2n.kegg <- filtered_bg %>%
           dplyr::select(TERM, NAME)
@@ -1288,12 +1284,10 @@ enrichment_analysis_server <- function(id, shared_state) {
             TERM2NAME = t2n.kegg,
             pvalueCutoff = 1,
             qvalueCutoff = 1,
-            minGSSize = 1
+            minGSSize = 1,
+            maxGSSize = Inf
           ),
-          error = function(e) {
-            rv$analysis_message <- paste0("KEGG analysis error: ", conditionMessage(e))
-            NULL
-          }
+          error = function(e) NULL
         )
       }
 
@@ -1327,8 +1321,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       go_df <- get_result_df(rv$go_res)
 
       if (base::is.null(go_df) || base::nrow(go_df) == 0) {
-        graphics::plot.new()
-        graphics::text(0.5, 0.5, rv$analysis_message %||% "No GO enrichment results.")
+        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
+        text(0, 0, rv$analysis_message %||% "No GO enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1360,8 +1354,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       kegg_df <- get_result_df(rv$kegg_res)
 
       if (base::is.null(kegg_df) || base::nrow(kegg_df) == 0) {
-        graphics::plot.new()
-        graphics::text(0.5, 0.5, rv$analysis_message %||% "No KEGG enrichment results.")
+        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
+        text(0, 0, rv$analysis_message %||% "No KEGG enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1388,11 +1382,6 @@ enrichment_analysis_server <- function(id, shared_state) {
         )
       }
     })
-
-    # Keep plots reactive when their tab/card is initially hidden; switching
-    # back to Visualization after clicking Analysis now shows the new plot.
-    shiny::outputOptions(output, "go_plot", suspendWhenHidden = FALSE)
-    shiny::outputOptions(output, "kegg_plot", suspendWhenHidden = FALSE)
 
     output$go_res_table <- DT::renderDT({
       go_df <- get_result_df(rv$go_res)

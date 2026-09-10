@@ -46,12 +46,33 @@ golem_add_external_resources <- function() {
       }
 
       .navbar {
-        position: relative;
-        z-index: 2500;
+        position: sticky;
+        top: 0;
+        z-index: 5000 !important;
         background: rgba(255, 255, 255, 0.94) !important;
         border-bottom: 1px solid var(--pv-border);
         box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
         backdrop-filter: blur(12px);
+      }
+
+      /* Keep navigation menus above module cards and page content.  Bootstrap
+         creates nested stacking contexts for the navbar/collapse; raising
+         each layer prevents the open menu from being visually covered. */
+      .navbar .container,
+      .navbar .container-fluid,
+      .navbar .navbar-collapse,
+      .navbar .navbar-nav,
+      .navbar .nav-item,
+      .navbar .dropdown {
+        position: relative;
+        z-index: 5001;
+      }
+
+      .navbar .dropdown-menu {
+        position: absolute;
+        z-index: 6000 !important;
+        margin-top: 0.25rem;
+        isolation: isolate;
       }
 
       .navbar-brand,
