@@ -1287,7 +1287,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   sample = base::seq_len(base::ncol(heatmap_data))
                 )
                 tile_data$value <- base::as.vector(heatmap_data)
-                ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+                singleton_plot <- ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
                   ggplot2::geom_tile(color = "white", size = 0.2) +
                   ggplot2::scale_x_continuous(
                     breaks = base::seq_len(base::ncol(heatmap_data)),
@@ -1299,6 +1299,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   ggplot2::labs(x = NULL, y = NULL, title = base::paste("Heatmap:", g1, "vs", g2), fill = "Value") +
                   ggplot2::theme_minimal(base_size = 11) +
                   ggplot2::theme(panel.grid = ggplot2::element_blank())
+                print(singleton_plot)
               }
             }
           )
