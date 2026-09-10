@@ -20,9 +20,9 @@ run_ProtVis <- function(
     ...
 ) {
 
-  # Set default shiny options (800MB limit)
+  # Set a generous default for large proteomics/background workbooks.
   # modifyList ensures that user-defined options are preserved
-  default_options <- list(shiny.maxRequestSize = 800 * 1024^2)
+  default_options <- list(shiny.maxRequestSize = 2 * 1024^3)
   combined_options <- utils::modifyList(default_options, options)
 
   golem::with_golem_options(

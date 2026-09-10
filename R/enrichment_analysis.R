@@ -348,7 +348,6 @@ plot_enrichment_dot <- function(enrich_df, top_n = 10, point_color = "#2c7bb6", 
 #' @importFrom colourpicker colourInput
 #' @name enrichment_analysis_ui
 #' @export
-options(shiny.maxRequestSize = 100*1024^2)
 enrichment_analysis_ui <- function(id) {
   ns <- shiny::NS(id)
 
@@ -373,6 +372,10 @@ enrichment_analysis_ui <- function(id) {
             "Upload Enrichment Analysis File (.xlsx)",
             accept = c(".xlsx"),
             buttonLabel = "Browse..."
+          ),
+          shiny::tags$small(
+            "Maximum upload size: 2 GB (configured globally for ProtVis).",
+            class = "text-muted"
           ),
           shiny::actionButton(
             ns("check_file"),
