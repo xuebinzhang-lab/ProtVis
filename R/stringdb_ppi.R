@@ -91,7 +91,7 @@ stringdb_ppi_ui <- function(id) {
       }
 
       .pv-sidebar-details > summary::after {
-        content: "▸";
+        content: '▸';
         float: right;
         color: #697586;
         transition: transform 0.15s ease;
