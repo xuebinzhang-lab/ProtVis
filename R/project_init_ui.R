@@ -12,7 +12,8 @@
 project_init_ui <- function(id) {
   ns <- NS(id)
   bslib::page_sidebar(
-    sidebar = list(
+    sidebar = bslib::sidebar(
+      width = 430,
       tags$h4("Setup", class = "text-primary"),
       shinyFiles::shinyDirButton(
         id = ns("prj_wd"),
@@ -44,6 +45,7 @@ project_init_ui <- function(id) {
         ),
         selected = protvis_builtin_datasets()$file[[1L]]
       ),
+      shiny::uiOutput(ns("builtin_provenance")),
       shiny::actionButton(
         ns("load_builtin"), "Load selected built-in example",
         class = "btn btn-outline-primary w-100"
@@ -135,6 +137,30 @@ project_init_server <- function(id, shared_state) {
     output$raw_wd_path <- renderText({
       shiny::req(shared_state$workdir)
       base::paste("Working directory:", shared_state$workdir)
+    })
+    # Show the provenance URL immediately for the selected built-in example;
+    # this is intentionally rendered in Project init as well as the canonical
+    # ProtVis_dataset page because most users choose examples here first.
+    output$builtin_provenance <- shiny::renderUI({
+      manifest <- protvis_builtin_datasets()
+      selected <- as.character(input$builtin_dataset %||% manifest$file[[1L]])
+      row <- manifest[manifest$file == selected, , drop = FALSE]
+      if (nrow(row) != 1L) return(NULL)
+      shiny::tags$div(
+        style = paste(
+          "margin: -0.15rem 0 0.9rem; padding: 0.65rem 0.75rem;",
+          "border-left: 3px solid #1787c9; background: #f3f8fc;",
+          "color: #536b7d; font-size: 0.82rem; line-height: 1.45;"
+        ),
+        shiny::tags$strong("Real data source: "),
+        shiny::tags$span(row$description[[1L]]),
+        shiny::tags$br(),
+        shiny::tags$a(
+          href = row$reference[[1L]],
+          target = "_blank", rel = "noopener noreferrer",
+          row$reference[[1L]]
+        )
+      )
     })
     # Upload and read sample info, then store it in shared_state
     shiny::observeEvent(input$SampleInfo, {
