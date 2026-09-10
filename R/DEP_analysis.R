@@ -1035,10 +1035,15 @@ DEP_analysis_server <- function(id, shared_state) {
               }
 
               if (base::nrow(heatmap_data) > 0L &&
-                  base::ncol(heatmap_data) > 1L) {
+                  base::ncol(heatmap_data) > 0L) {
                 pheatmap::pheatmap(
                   heatmap_data,
                   scale = if (variable_count >= 2L) "row" else "none",
+                  # hclust requires at least two objects. Disable only the
+                  # unavailable dimension so one-protein/one-sample results
+                  # still render instead of throwing an uncaught error.
+                  cluster_rows = base::nrow(heatmap_data) >= 2L,
+                  cluster_cols = base::ncol(heatmap_data) >= 2L,
                   clustering_distance_rows = "euclidean",
                   clustering_distance_cols = "euclidean",
                   clustering_method = "complete",
