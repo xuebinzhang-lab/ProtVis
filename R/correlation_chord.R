@@ -40,6 +40,14 @@ correlation_chord_ui <- function(id) {
               accept = c(".csv", ".tsv", ".txt")
             ),
 
+            shiny::actionButton(
+              ns("load_example"),
+              "Use Example Data",
+              icon = bsicons::bs_icon("database"),
+              class = "btn-outline-primary",
+              width = "100%"
+            ),
+
             shiny::div(
               style = "display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;",
               shiny::actionButton(
@@ -319,6 +327,23 @@ correlation_chord_server <- function(id) {
       edge_df = NULL
     )
 
+    make_example_data <- function() {
+      set.seed(20260910)
+      latent_a <- rnorm(48)
+      latent_b <- rnorm(48)
+      data.frame(
+        Root_length = 0.85 * latent_a + rnorm(48, sd = 0.45),
+        Shoot_length = 0.78 * latent_a + rnorm(48, sd = 0.50),
+        Fresh_weight = 0.65 * latent_a + 0.30 * latent_b + rnorm(48, sd = 0.55),
+        Dry_weight = 0.58 * latent_a + 0.35 * latent_b + rnorm(48, sd = 0.55),
+        Proline = -0.72 * latent_a + 0.45 * latent_b + rnorm(48, sd = 0.50),
+        Sodium = -0.62 * latent_a + 0.75 * latent_b + rnorm(48, sd = 0.50),
+        Potassium = 0.25 * latent_a - 0.70 * latent_b + rnorm(48, sd = 0.55),
+        Chlorophyll = 0.70 * latent_a + rnorm(48, sd = 0.50),
+        check.names = FALSE
+      )
+    }
+
     read_input_data <- function(path, filename) {
       ext <- tolower(tools::file_ext(filename))
       if (ext == "csv") {
@@ -348,6 +373,17 @@ correlation_chord_server <- function(id) {
       rv$cor_mat <- NULL
       rv$edge_df <- NULL
     })
+
+    shiny::observeEvent(input$load_example, {
+      rv$data <- make_example_data()
+      rv$cor_mat <- NULL
+      rv$edge_df <- NULL
+      shiny::showNotification(
+        "Example correlation data loaded. Select variables and click Run.",
+        type = "message",
+        duration = 3
+      )
+    }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$clear_all, {
       rv$data <- NULL
