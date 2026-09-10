@@ -12,4 +12,7 @@ test_that("enrichment loading does not require a legacy Step7 RDA", {
   run_text <- paste(readLines(testthat::test_path("..", "..", "R", "run_app.R")),
                     collapse = "\n")
   expect_true(grepl("shiny.maxRequestSize = 2 * 1024^3", run_text, fixed = TRUE))
+  load_text <- paste(readLines(testthat::test_path("..", "..", "R", "zzz.R")),
+                     collapse = "\n")
+  expect_true(grepl("options(shiny.maxRequestSize", load_text, fixed = TRUE))
 })
