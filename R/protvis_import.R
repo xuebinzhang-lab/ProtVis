@@ -104,17 +104,13 @@ protvis_builtin_datasets <- function() {
 
 # Sample metadata shipped with the bundled source fixtures.  The compact
 # tables retain 5,000 protein groups from the real MaxQuant B73/Y12 export
-# bundled with ProtVis.  The same measurements are represented in each
-# source-specific layout so the examples remain directly comparable.
+# bundled with ProtVis.  Compact adapters expose one channel per group so
+# examples remain small while preserving a two-group DEP comparison.
 .protvis_builtin_sample_info <- function(source, file = NULL) {
   source <- .protvis_normalise_source(source)
-  samples <- unlist(lapply(c("B73", "Y12"), function(tissue) {
-    unlist(lapply(1:3, function(tmt) paste0(
-      tissue, "_TMT", tmt, "_", 1:5
-    )), use.names = FALSE)
-  }), use.names = FALSE)
-  group <- rep(c("B73", "Y12"), each = 15L)
-  tmt <- rep(rep(paste0("TMT", 1:3), each = 5L), 2L)
+  samples <- c("B73_TMT1_1", "Y12_TMT1_1")
+  group <- c("B73", "Y12")
+  tmt <- c("TMT1", "TMT1")
   data.frame(
     sample_id = samples,
     maxquant_id = samples,
@@ -122,17 +118,17 @@ protvis_builtin_datasets <- function() {
     group = group,
     class = group,
     condition = group,
-    replicate = rep(1:15, 2L),
+    replicate = c(1L, 1L),
     batch = tmt,
-    tissue = rep("maize tissue (B73/Y12)", 30L),
-    tissue2 = rep("maize tissue (B73/Y12)", 30L),
-    organism = rep("Zea mays", 30L),
-    accession = rep("ProtVis-inst-extdata-Maxquant_Export.xlsx", 30L),
+    tissue = rep("maize tissue (B73/Y12)", 2L),
+    tissue2 = rep("maize tissue (B73/Y12)", 2L),
+    organism = rep("Zea mays", 2L),
+    accession = rep("ProtVis-inst-extdata-Maxquant_Export.xlsx", 2L),
     source_url = rep(
       "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      30L
+      2L
     ),
-    source = rep(source, 30L),
+    source = rep(source, 2L),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
