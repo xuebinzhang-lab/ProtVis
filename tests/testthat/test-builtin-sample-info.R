@@ -8,5 +8,7 @@ test_that("built-in fixtures provide real WT and oxidative-stress metadata", {
     expect_equal(info$group, c(rep("WT", 4), rep("WT_H2O2", 4)))
     expect_equal(info$condition, info$group)
     expect_true(all(info$organism == "Candida albicans"))
+    expect_true(all(grepl("TraianProt/blob/main/inst/extdata/proteinGroups.txt",
+                          info$source_url, fixed = TRUE)))
   }
 })
