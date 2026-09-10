@@ -46,59 +46,12 @@ golem_add_external_resources <- function() {
       }
 
       .navbar {
-        position: sticky;
-        top: 0;
-        z-index: 5000 !important;
-        overflow: visible !important;
+        position: relative;
+        z-index: 2500;
         background: rgba(255, 255, 255, 0.94) !important;
         border-bottom: 1px solid var(--pv-border);
         box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
         backdrop-filter: blur(12px);
-      }
-
-      /* Keep navigation menus above module cards and page content.  Bootstrap
-         creates nested stacking contexts for the navbar/collapse; raising
-         each layer prevents the open menu from being visually covered. */
-      .navbar .container,
-      .navbar .container-fluid,
-      .navbar .navbar-collapse,
-      .navbar .navbar-nav,
-      .navbar .nav-item,
-      .navbar .dropdown {
-        position: relative;
-        z-index: 5001;
-        overflow: visible !important;
-      }
-
-      .navbar .dropdown-menu {
-        position: absolute;
-        z-index: 6000 !important;
-        margin-top: 0.25rem;
-        isolation: isolate;
-      }
-
-      /* bslib's page navbar can create a clipping/stacking context around
-         the collapse container. Keep an open menu anchored below its item
-         and above the application body. */
-      .bslib-page-navbar,
-      .bslib-page-navbar > .navbar,
-      .bslib-page-navbar .navbar-collapse {
-        overflow: visible !important;
-        z-index: 5000 !important;
-      }
-
-      .bslib-page-navbar .dropdown-menu.show,
-      .navbar .dropdown-menu.show {
-        display: block !important;
-        top: 100% !important;
-        bottom: auto !important;
-        transform: none !important;
-        pointer-events: auto;
-      }
-
-      .bslib-page-navbar + * {
-        position: relative;
-        z-index: 1;
       }
 
       .navbar-brand,
@@ -979,6 +932,7 @@ app_ui <- function(request) {
         ),
         bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
         bslib::nav_panel("Pathview", pathview_ui("pathview"))
+        # bslib::nav_panel("Protein function", protein_fun_ui("protein_fun"))
       ),
 
       bslib::nav_menu(

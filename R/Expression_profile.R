@@ -18,7 +18,7 @@ Expression_profile_ui <- function(id) {
       icon = bsicons::bs_icon("upload"),
       shiny::fileInput(
         inputId = ns("file"),
-        label = "Expression matrix",
+        label = "Expression matrix (optional; built-in example is used when empty)",
         multiple = FALSE,
         accept = ".csv"
       )
@@ -141,9 +141,22 @@ utils::globalVariables(c("Cluster_Count", "variable",
 Expression_profile_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    builtin_expression_profile <- local({
+      set.seed(20260910)
+      values <- matrix(rnorm(105 * 8), nrow = 105, ncol = 8)
+      values[1:35, 4:8] <- values[1:35, 4:8] + 1.2
+      values[36:70, 1:4] <- values[36:70, 1:4] + 1.0
+      values[71:105, c(2, 5, 7)] <- values[71:105, c(2, 5, 7)] - 1.1
+      colnames(values) <- c("TA", "TB", "TC", "TD", "A", "B", "C", "D")
+      rownames(values) <- sprintf("m%03d", seq_len(nrow(values)))
+      function() as.data.frame(values, check.names = FALSE)
+    })
     data <- shiny::reactive({
-      shiny::req(input$file)
-      utils::read.csv(input$file$datapath, row.names = 1)
+      if (!is.null(input$file)) {
+        return(utils::read.csv(input$file$datapath, row.names = 1,
+                               check.names = FALSE))
+      }
+      builtin_expression_profile()
     })
     shiny::observeEvent(input$run_btn_Kmeans, {
       shiny::req(input$dropdown == "Kmeans")

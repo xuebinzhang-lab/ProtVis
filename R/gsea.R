@@ -7,6 +7,7 @@
 gsea_ui <- function(id) {
   ns <- NS(id)
   bslib::page_sidebar(
+    title = "GSEA Analysis",
     sidebar = bslib::sidebar(
       shiny::fileInput(ns("expr_file"), "Upload Expression Matrix", accept = ".txt"),
       shiny::fileInput(ns("group_file"), "Upload Group Info", accept = ".txt"),
