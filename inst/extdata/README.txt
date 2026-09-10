@@ -1,8 +1,17 @@
-The small files in this directory are reproducible built-in fixtures for the
-ProtVis_dataset import adapters. They contain a few proteins and samples so
-they are suitable for examples and automated tests without making the package
-large. They are shaped like exports documented by the corresponding vendors
-or community standards; they are not raw mass-spectrometry files.
+The small DIA-NN, FragPipe, Skyline, and OpenMS files in this directory are
+subsets of a real Candida albicans quantitative proteomics experiment.  The
+measurements and protein identifiers come from the `proteinGroups.txt` test
+dataset distributed with TraianProt (GPL-3.0), with WT and WT_H2O2 runs kept
+as four biological replicates per condition.  The files are converted into
+source-specific table layouts so each adapter can be exercised without
+shipping raw mass-spectrometry files.  They are not simulated values.
+
+Upstream data and metadata:
+https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata
+
+The WT/WT_H2O2 sample mapping is retained by
+`.protvis_builtin_sample_info()` and includes the organism and accession
+fields used by DEP and enrichment analysis.
 
 Use protvis_builtin_datasets() to list the files and references, and
 load_protvis_builtin_data(source = "DIA-NN") (or another listed source) to
