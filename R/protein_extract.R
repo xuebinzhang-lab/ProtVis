@@ -17,6 +17,7 @@ protein_extract_ui <- function(id) {
     shinyjs::useShinyjs(),
 
     bslib::layout_sidebar(
+      class = "pv-protein-extract",
       sidebar = bslib::sidebar(
         width = 340,
         open = TRUE,
@@ -144,21 +145,21 @@ protein_extract_ui <- function(id) {
             title = "Total FASTA Entries",
             value = shiny::textOutput(ns("stat_total_fasta"), inline = TRUE),
             showcase = bsicons::bs_icon("database"),
-            theme = "primary"
+            theme = "light"
           ),
 
           bslib::value_box(
             title = "Queried IDs",
             value = shiny::textOutput(ns("stat_total_query"), inline = TRUE),
             showcase = bsicons::bs_icon("list-check"),
-            theme = "info"
+            theme = "light"
           ),
 
           bslib::value_box(
             title = "Matched IDs",
             value = shiny::textOutput(ns("stat_total_matched"), inline = TRUE),
             showcase = bsicons::bs_icon("check-circle"),
-            theme = "success"
+            theme = "light"
           )
         ),
 
@@ -211,7 +212,9 @@ protein_extract_ui <- function(id) {
           )
         )
       )
-    )
+    ),
+
+    shiny::tags$style(shiny::HTML("\n      .pv-protein-extract {\n        --pv-science-navy: #24445f;\n        --pv-science-border: #cbd5df;\n        --pv-science-muted: #64748b;\n      }\n      .pv-protein-extract .sidebar {\n        background: #f8fafc;\n        border-right: 1px solid var(--pv-science-border);\n      }\n      .pv-protein-extract .card,\n      .pv-protein-extract .bslib-value-box,\n      .pv-protein-extract .value-box {\n        border: 1px solid var(--pv-science-border);\n        border-radius: 6px;\n        box-shadow: none;\n      }\n      .pv-protein-extract .bslib-value-box,\n      .pv-protein-extract .value-box {\n        background: #ffffff !important;\n        color: var(--pv-science-navy) !important;\n      }\n      .pv-protein-extract .bslib-value-box .value-box-title,\n      .pv-protein-extract .value-box .value-box-title {\n        color: var(--pv-science-muted) !important;\n        font-size: 0.82rem;\n        font-weight: 600;\n      }\n      .pv-protein-extract .bslib-value-box .value-box-value,\n      .pv-protein-extract .value-box .value-box-value {\n        color: var(--pv-science-navy) !important;\n        font-weight: 700;\n      }\n      .pv-protein-extract .btn {\n        border-radius: 4px;\n        text-transform: none;\n        letter-spacing: 0;\n        box-shadow: none;\n      }\n      .pv-protein-extract .btn-primary {\n        background: var(--pv-science-navy);\n        border-color: var(--pv-science-navy);\n      }\n      .pv-protein-extract .btn-primary:hover,\n      .pv-protein-extract .btn-primary:focus {\n        background: #19364f;\n        border-color: #19364f;\n      }\n      .pv-protein-extract .btn-light {\n        background: #ffffff;\n        color: var(--pv-science-navy);\n        border: 1px solid var(--pv-science-border);\n      }\n      .pv-protein-extract .nav-tabs .nav-link {\n        color: var(--pv-science-muted);\n        border-radius: 4px 4px 0 0;\n      }\n      .pv-protein-extract .nav-tabs .nav-link.active {\n        color: var(--pv-science-navy);\n        font-weight: 600;\n      }\n    "))
   )
 }
 
