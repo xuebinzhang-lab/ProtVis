@@ -669,9 +669,64 @@ DEP_analysis_server <- function(id, shared_state) {
               class = "pv-dep-card",
               height = "560px",
               bslib::card_header(base::paste("Heatmap -", tab_name)),
-              bslib::card_body(shiny::plotOutput(
-                ns(base::paste0("heatmap_", i)), height = "420px"
-              ))
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("heatmap_sidebar_", i)),
+                    position = "left",
+                    open = "open",
+                    width = 250,
+                    bslib::accordion(
+                      bslib::accordion_panel(
+                        title = "Parameter",
+                        icon = shiny::icon("sliders"),
+                        shiny::checkboxInput(
+                          ns(base::paste0("heatmap_show_colnames_", i)),
+                          "Show sample names",
+                          value = TRUE
+                        )
+                      ),
+                      bslib::accordion_panel(
+                        title = "Download",
+                        icon = bsicons::bs_icon("download"),
+                        shiny::selectInput(
+                          ns(base::paste0("heatmap_format_", i)),
+                          "Image format",
+                          choices = c("PNG" = "png", "PDF" = "pdf", "JPEG" = "jpeg"),
+                          selected = "png"
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("heatmap_width_", i)),
+                          "Plot width (inch)",
+                          value = 8,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("heatmap_height_", i)),
+                          "Plot height (inch)",
+                          value = 6,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("heatmap_dpi_", i)),
+                          "Resolution (DPI)",
+                          value = 300,
+                          min = 72,
+                          max = 1200,
+                          step = 1
+                        ),
+                        shiny::downloadButton(
+                          ns(base::paste0("download_heatmap_", i)),
+                          "Download Heatmap"
+                        )
+                      )
+                    )
+                  ),
+                  shiny::plotOutput(ns(base::paste0("heatmap_", i)), height = "420px")
+                )
+              )
             ),
 
             bslib::card(
@@ -1080,7 +1135,7 @@ DEP_analysis_server <- function(id, shared_state) {
                     clustering_distance_cols = "euclidean",
                     clustering_method = "complete",
                     show_rownames = FALSE,
-                    show_colnames = TRUE,
+                    show_colnames = isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]]),
                     main = base::paste("Heatmap:", g1, "vs", g2)
                   )
                 } else {
@@ -1097,7 +1152,9 @@ DEP_analysis_server <- function(id, shared_state) {
                   ggplot2::geom_tile(color = "white", size = 0.2) +
                     ggplot2::scale_x_continuous(
                       breaks = base::seq_len(base::ncol(heatmap_data)),
-                      labels = base::colnames(heatmap_data),
+                      labels = if (isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])) {
+                        base::colnames(heatmap_data)
+                      } else NULL,
                       expand = c(0, 0)
                     ) +
                     ggplot2::scale_y_continuous(
@@ -1141,6 +1198,110 @@ DEP_analysis_server <- function(id, shared_state) {
                 ggplot2::theme_void()
             }
           })
+
+          output[[base::paste0("download_heatmap_", i_local)]] <- shiny::downloadHandler(
+            filename = function() {
+              base::paste0("Heatmap_", g1, "_vs_", g2, ".", coalesce_input(
+                input[[base::paste0("heatmap_format_", i_local)]], "png"
+              ))
+            },
+            content = function(file) {
+              format <- coalesce_input(
+                input[[base::paste0("heatmap_format_", i_local)]], "png"
+              )
+              width <- coalesce_input(input[[base::paste0("heatmap_width_", i_local)]], 8)
+              height <- coalesce_input(input[[base::paste0("heatmap_height_", i_local)]], 6)
+              dpi <- coalesce_input(input[[base::paste0("heatmap_dpi_", i_local)]], 300)
+              show_colnames <- isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)
+              pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]] %>%
+                dplyr::mutate(
+                  regulation = dplyr::case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+              sig_proteins <- df %>%
+                dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                dplyr::pull(ID)
+
+              device <- switch(
+                format,
+                png = grDevices::png(file, width = width * dpi, height = height * dpi,
+                                     res = dpi, units = "px"),
+                jpeg = grDevices::jpeg(file, width = width * dpi, height = height * dpi,
+                                       res = dpi, units = "px"),
+                pdf = grDevices::pdf(file, width = width, height = height),
+                grDevices::png(file, width = width * dpi, height = height * dpi,
+                               res = dpi, units = "px")
+              )
+              on.exit(grDevices::dev.off(), add = TRUE)
+
+              if (base::length(sig_proteins) == 0L) {
+                graphics::plot.new()
+                graphics::text(0.5, 0.5, "No significant proteins")
+                return(invisible(NULL))
+              }
+              heatmap_data <- exp_mat_local[
+                base::rownames(exp_mat_local) %in% sig_proteins, , drop = FALSE
+              ]
+              heatmap_data <- base::as.matrix(base::as.data.frame(
+                base::lapply(heatmap_data, function(x) {
+                  suppressWarnings(base::as.numeric(base::as.character(x)))
+                }), stringsAsFactors = FALSE, check.names = FALSE
+              ))
+              storage.mode(heatmap_data) <- "numeric"
+              heatmap_data <- heatmap_data[apply(heatmap_data, 1, function(x) any(is.finite(x))), , drop = FALSE]
+              for (row_index in seq_len(base::nrow(heatmap_data))) {
+                missing <- !is.finite(heatmap_data[row_index, ])
+                if (any(missing)) {
+                  observed <- heatmap_data[row_index, !missing]
+                  heatmap_data[row_index, missing] <- stats::median(observed)
+                }
+              }
+              variable_rows <- if (base::nrow(heatmap_data) > 0L) {
+                apply(heatmap_data, 1, function(x) all(is.finite(x) && length(unique(x)) > 1L))
+              } else logical()
+              variable_count <- sum(variable_rows)
+              if (variable_count >= 2L) {
+                heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
+              }
+              if (base::nrow(heatmap_data) == 0L || base::ncol(heatmap_data) == 0L) {
+                graphics::plot.new()
+                graphics::text(0.5, 0.5, "No finite values for heatmap")
+                return(invisible(NULL))
+              }
+              base::colnames(heatmap_data) <- base::make.unique(as.character(req_cols))
+              if (base::nrow(heatmap_data) >= 2L && base::ncol(heatmap_data) >= 2L) {
+                pheatmap::pheatmap(
+                  heatmap_data, scale = if (variable_count >= 2L) "row" else "none",
+                  cluster_rows = TRUE, cluster_cols = TRUE,
+                  show_rownames = FALSE, show_colnames = show_colnames,
+                  main = base::paste("Heatmap:", g1, "vs", g2)
+                )
+              } else {
+                tile_data <- base::expand.grid(
+                  protein = base::seq_len(base::nrow(heatmap_data)),
+                  sample = base::seq_len(base::ncol(heatmap_data))
+                )
+                tile_data$value <- base::as.vector(heatmap_data)
+                ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+                  ggplot2::geom_tile(color = "white", size = 0.2) +
+                  ggplot2::scale_x_continuous(
+                    breaks = base::seq_len(base::ncol(heatmap_data)),
+                    labels = if (show_colnames) base::colnames(heatmap_data) else NULL,
+                    expand = c(0, 0)
+                  ) +
+                  ggplot2::scale_y_continuous(expand = c(0, 0)) +
+                  ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+                  ggplot2::labs(x = NULL, y = NULL, title = base::paste("Heatmap:", g1, "vs", g2), fill = "Value") +
+                  ggplot2::theme_minimal(base_size = 11) +
+                  ggplot2::theme(panel.grid = ggplot2::element_blank())
+              }
+            }
+          )
 
           output[[base::paste0("bar_dep_", i_local)]] <- shiny::renderPlot({
             df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
