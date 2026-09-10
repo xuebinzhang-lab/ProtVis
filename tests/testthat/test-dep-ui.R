@@ -20,5 +20,6 @@ test_that("DEP heatmap guards clustering for singleton dimensions", {
   expect_true(grepl("Heatmap_", ui_text, fixed = TRUE))
   expect_true(grepl("grDevices::pdf", ui_text, fixed = TRUE))
   expect_true(grepl("print(singleton_plot)", ui_text, fixed = TRUE))
-  expect_true(grepl("grDevices::png", ui_text, fixed = TRUE))
+  expect_true(grepl("make_dep_heatmap <-", ui_text, fixed = TRUE))
+  expect_true(grepl("ggplot2::ggsave", ui_text, fixed = TRUE))
 })

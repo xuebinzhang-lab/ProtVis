@@ -1281,6 +1281,108 @@ DEP_analysis_server <- function(id, shared_state) {
             }
           )
 
+          # Use one ggplot object for both the on-screen heatmap and PDF
+          # export. This avoids device-specific pheatmap download failures.
+          make_dep_heatmap <- function(df, logfc_thresh, pval_thresh, show_colnames = TRUE) {
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+            sig_proteins <- df %>%
+              dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+              dplyr::pull(ID)
+            if (base::length(sig_proteins) == 0L) {
+              return(ggplot2::ggplot() + ggplot2::annotate(
+                "text", x = 0.5, y = 0.5, label = "No significant proteins", size = 6
+              ) + ggplot2::theme_void())
+            }
+            mat <- exp_mat_local[base::rownames(exp_mat_local) %in% sig_proteins, , drop = FALSE]
+            mat <- base::as.matrix(base::as.data.frame(
+              base::lapply(mat, function(x) suppressWarnings(base::as.numeric(base::as.character(x)))),
+              stringsAsFactors = FALSE, check.names = FALSE
+            ))
+            storage.mode(mat) <- "numeric"
+            keep <- apply(mat, 1, function(x) any(is.finite(x)))
+            mat <- mat[keep, , drop = FALSE]
+            if (base::nrow(mat) == 0L || base::ncol(mat) == 0L) {
+              return(ggplot2::ggplot() + ggplot2::annotate(
+                "text", x = 0.5, y = 0.5, label = "No finite values for heatmap", size = 6
+              ) + ggplot2::theme_void())
+            }
+            for (j in base::seq_len(base::nrow(mat))) {
+              missing <- !is.finite(mat[j, ])
+              if (any(missing)) {
+                observed <- mat[j, !missing]
+                mat[j, missing] <- if (base::length(observed)) stats::median(observed) else 0
+              }
+            }
+            sample_labels <- base::colnames(exp_mat_local)
+            if (base::is.null(sample_labels) || base::length(sample_labels) != base::ncol(mat) ||
+                base::anyNA(sample_labels) || base::any(!base::nzchar(sample_labels))) {
+              sample_labels <- req_cols[base::seq_len(base::ncol(mat))]
+            }
+            base::colnames(mat) <- base::make.unique(as.character(sample_labels))
+            if (base::nrow(mat) >= 2L) mat <- mat[stats::hclust(stats::dist(mat))$order, , drop = FALSE]
+            if (base::ncol(mat) >= 2L) mat <- mat[, stats::hclust(stats::dist(base::t(mat)))$order, drop = FALSE]
+            tile_data <- base::expand.grid(
+              protein = base::seq_len(base::nrow(mat)),
+              sample = base::seq_len(base::ncol(mat))
+            )
+            tile_data$value <- base::as.vector(mat)
+            ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+              ggplot2::geom_tile(color = "white", size = 0.2) +
+              ggplot2::scale_x_continuous(
+                breaks = base::seq_len(base::ncol(mat)),
+                labels = if (isTRUE(show_colnames)) base::colnames(mat) else NULL,
+                expand = c(0, 0)
+              ) +
+              ggplot2::scale_y_continuous(breaks = NULL, expand = c(0, 0)) +
+              ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+              ggplot2::labs(x = NULL, y = NULL, title = base::paste("Heatmap:", g1, "vs", g2), fill = "Value") +
+              ggplot2::theme_minimal(base_size = 11) +
+              ggplot2::theme(
+                panel.grid = ggplot2::element_blank(),
+                axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+              )
+          }
+
+          # Override the legacy renderer/download handler with the shared
+          # ggplot implementation above.
+          output[[base::paste0("heatmap_", i_local)]] <- shiny::renderPlot({
+            df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+            shiny::req(df)
+            plot <- make_dep_heatmap(
+              df,
+              as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)),
+              as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)),
+              isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+            )
+            print(plot)
+          }, res = 96)
+
+          output[[base::paste0("download_heatmap_", i_local)]] <- shiny::downloadHandler(
+            filename = function() base::paste0("Heatmap_", g1, "_vs_", g2, ".pdf"),
+            content = function(file) {
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+              shiny::req(df)
+              plot <- make_dep_heatmap(
+                df,
+                as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)),
+                as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)),
+                isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+              )
+              ggplot2::ggsave(file, plot = plot,
+                              device = grDevices::pdf,
+                              width = as.numeric(coalesce_input(input[[base::paste0("heatmap_width_", i_local)]], 8)),
+                              height = as.numeric(coalesce_input(input[[base::paste0("heatmap_height_", i_local)]], 6)),
+                              units = "in", limitsize = FALSE)
+            }
+          )
+
           output[[base::paste0("bar_dep_", i_local)]] <- shiny::renderPlot({
             df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
             shiny::req(df)
