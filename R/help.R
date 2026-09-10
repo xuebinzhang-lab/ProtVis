@@ -16,55 +16,56 @@ help_ui <- function() {
     "Help",
     icon = bsicons::bs_icon("question-circle"),
     shiny::div(
-      class = "protvis-page",
+      class = "protvis-page pv-help-page",
+      shiny::tags$style(shiny::HTML("\n        .pv-help-page { max-width: 1500px; margin: 0 auto; }\n        .pv-help-page .pv-help-hero { padding: 28px 32px; border: 1px solid #d7e3ef; border-radius: 10px; background: #f8fbfe; }\n        .pv-help-page .pv-help-hero h2 { margin: 6px 0 8px; color: #18324a; font-weight: 700; }\n        .pv-help-page .pv-help-hero p { max-width: 850px; margin: 0; color: #52616b; line-height: 1.6; }\n        .pv-help-page .pv-help-step { height: 100%; border: 1px solid #d7e3ef; border-radius: 8px; background: #fff; }\n        .pv-help-page .pv-help-step .card-header { color: #18324a; font-weight: 700; background: #f8fbfe; border-bottom: 1px solid #d7e3ef; }\n        .pv-help-page .pv-help-step .card-body { color: #405568; line-height: 1.6; }\n        .pv-help-page .pv-help-step ul { margin: 0; padding-left: 1.2rem; }\n        .pv-help-page .pv-help-step li + li { margin-top: 7px; }\n        .pv-help-page .pv-help-index { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; margin-right: 8px; border: 1px solid #a9c5dd; border-radius: 50%; color: #1f5a85; font-size: 13px; }\n        .pv-help-page .pv-help-note { padding: 14px 16px; border-left: 3px solid #4e86ad; background: #f8fbfe; color: #52616b; }\n        .pv-help-page .pv-help-faq .accordion-button { color: #18324a; font-weight: 600; }\n      ")),
       shiny::div(
-        class = "pv-data-input-header",
+        class = "pv-help-hero",
         shiny::div(
-          shiny::span("Help center", class = "pv-section-eyebrow"),
+          shiny::span("Documentation", class = "pv-section-eyebrow"),
           shiny::tags$h2("ProtVis workflow guide", class = "pv-page-title"),
           shiny::tags$p(
-            "Follow the recommended workflow, learn each module purpose, and use the built-in examples where available to quickly verify plots and tables.",
+            "A concise guide to preparing proteomics data, running reproducible analyses, and exporting figures and tables for downstream interpretation.",
             class = "pv-page-subtitle"
+          ),
+          shiny::div(
+            class = "pv-help-note",
+            shiny::strong("Recommended start: "),
+            "Project init → Data input → Pre-processing"
           )
-        ),
-        shiny::div(
-          class = "pv-source-pill",
-          shiny::span("Recommended start", class = "pv-source-label"),
-          shiny::strong("Project init → Data input")
         )
       ),
       bslib::layout_columns(
         col_widths = c(4, 4, 4),
         bslib::card(
-          class = "pv-preview-card",
-          bslib::card_header("1. Prepare data"),
+          class = "pv-help-step",
+          bslib::card_header(shiny::span(shiny::span("1", class = "pv-help-index"), "Prepare data")),
           bslib::card_body(
             shiny::tags$ul(
               shiny::tags$li("Create a project and confirm the working directory."),
               shiny::tags$li("Import MaxQuant, Proteome Discoverer, Skyline, Mascot, OpenMS, or custom matrices."),
-              shiny::tags$li("Use example data buttons in supported modules to test the workflow.")
+              shiny::tags$li("Use built-in examples to verify the interface before loading a full dataset.")
             )
           )
         ),
         bslib::card(
-          class = "pv-preview-card",
-          bslib::card_header("2. Process and analyze"),
+          class = "pv-help-step",
+          bslib::card_header(shiny::span(shiny::span("2", class = "pv-help-index"), "Process and analyze")),
           bslib::card_body(
             shiny::tags$ul(
               shiny::tags$li("Run filtering, transformation, imputation, and normalization in order."),
-              shiny::tags$li("Inspect every preview table before moving downstream."),
-              shiny::tags$li("Use DEP, enrichment, GSEA, and pathway views for interpretation.")
+              shiny::tags$li("Inspect preview tables and preserve intermediate ProtVis_dataset objects."),
+              shiny::tags$li("Use DEP, enrichment, GSEA, and pathway analyses for interpretation.")
             )
           )
         ),
         bslib::card(
-          class = "pv-preview-card",
-          bslib::card_header("3. Visualize and export"),
+          class = "pv-help-step",
+          bslib::card_header(shiny::span(shiny::span("3", class = "pv-help-index"), "Visualize and export")),
           bslib::card_body(
             shiny::tags$ul(
               shiny::tags$li("Explore expression profiles, multi-omics, PTM, protein structure, and toolkit plots."),
-              shiny::tags$li("Download publication-ready figures and processed tables."),
-              shiny::tags$li(shiny::strong("Contact: "), "Fei Liang")
+              shiny::tags$li("Adjust plot parameters before exporting publication-ready figures and tables."),
+              shiny::tags$li(shiny::strong("Contact: "), "Fei Liang (fyliangfei@163.com)")
             )
           )
         )
@@ -90,6 +91,15 @@ help_ui <- function() {
             rownames = FALSE,
             options = list(dom = "t", paging = FALSE)
           )
+        )
+      ),
+      bslib::accordion(
+        class = "pv-help-faq",
+        bslib::accordion_panel(
+          "Common questions",
+          shiny::tags$p(shiny::strong("Where should I start? "), "Use Project init to define the output directory, then load or select a built-in example in Data input."),
+          shiny::tags$p(shiny::strong("Can I work without uploading a file? "), "Yes. Modules with a Use Example Data button provide deterministic example data for testing."),
+          shiny::tags$p(shiny::strong("How are results preserved? "), "Each analysis writes its result into the current ProtVis_dataset and can be exported with the associated tables or figures.")
         )
       )
     )
