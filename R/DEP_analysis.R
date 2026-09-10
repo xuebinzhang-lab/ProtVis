@@ -1499,6 +1499,7 @@ DEP_analysis_server <- function(id, shared_state) {
       if (valid_result_n > 0) {
         rv$dep_ready <- TRUE
         rv$dep_has_run <- TRUE
+        shared_state$dep_results <- rv$dep_results
         shinyWidgets::updateProgressBar(
           session = session,
           id = "dep_progress",

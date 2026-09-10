@@ -726,75 +726,65 @@ enrichment_analysis_server <- function(id, shared_state) {
       NULL
     }
 
+    normalize_dep_results <- function(dep_obj) {
+      if (base::is.null(dep_obj) || !base::is.list(dep_obj) ||
+          base::length(dep_obj) == 0L) {
+        return(NULL)
+      }
+      dep_obj <- dep_obj[!vapply(dep_obj, is.null, logical(1))]
+      if (base::length(dep_obj) == 0L) return(NULL)
+      dep_obj
+    }
+
     shiny::observeEvent(input$load_data, {
-      shiny::req(shared_state$workdir)
+      dep_obj <- normalize_dep_results(shared_state$dep_results)
+      source_label <- "current DEP results"
 
-      rda_path <- base::file.path(shared_state$workdir, "Step7_DEP_result.rda")
-
-      if (!base::file.exists(rda_path)) {
-        rv$dep_results <- base::list()
-        rv$compare_data <- NULL
-        rv$load_success <- FALSE
-
-        shiny::showNotification(
-          "Step7_DEP_result.rda not found.",
-          type = "error"
-        )
-        return()
+      # ProtVis_dataset is the canonical source for saved analyses.
+      if (base::is.null(dep_obj) && inherits(shared_state$dataset, "ProtVis_dataset")) {
+        stored <- shared_state$dataset@analysis_results$differential_analysis
+        if (base::is.list(stored) && base::is.data.frame(stored$table)) {
+          tab <- stored$table
+          id_col <- if ("protein_id" %in% names(tab)) "protein_id" else if ("ID" %in% names(tab)) "ID" else NULL
+          if (!base::is.null(id_col)) {
+            logfc_col <- if ("log2FC" %in% names(tab)) "log2FC" else if ("logFC" %in% names(tab)) "logFC" else NULL
+            p_col <- if ("p_value" %in% names(tab)) "p_value" else if ("P.Value" %in% names(tab)) "P.Value" else NULL
+            if (!base::is.null(logfc_col) && !base::is.null(p_col)) {
+              tab$ID <- base::as.character(tab[[id_col]])
+              tab$logFC <- base::as.numeric(tab[[logfc_col]])
+              tab$P.Value <- base::as.numeric(tab[[p_col]])
+              significant <- if ("significant" %in% names(tab)) {
+                !is.na(tab$significant) & base::as.logical(tab$significant)
+              } else {
+                rep(TRUE, base::nrow(tab))
+              }
+              tab$regulation <- ifelse(
+                significant & tab$logFC > 0, "Upregulated",
+                ifelse(significant & tab$logFC < 0, "Downregulated", "Not significant")
+              )
+              comparison <- base::paste(stored$group1 %||% "Group1", "vs", stored$group2 %||% "Group2")
+              dep_obj <- base::list()
+              dep_obj[[comparison]] <- tab
+              source_label <- "ProtVis_dataset"
+            }
+          }
+        }
       }
 
-      e <- base::new.env()
-
-      load_ok <- tryCatch(
-        {
-          base::load(rda_path, envir = e)
-          TRUE
-        },
-        error = function(e) FALSE
-      )
-
-      if (!base::isTRUE(load_ok)) {
-        rv$dep_results <- base::list()
-        rv$compare_data <- NULL
-        rv$load_success <- FALSE
-
-        shiny::showNotification(
-          "Failed to load Step7_DEP_result.rda.",
-          type = "error"
-        )
-        return()
+      # Legacy compatibility: load Step7 only when it actually exists.
+      if (base::is.null(dep_obj) && !base::is.null(shared_state$workdir)) {
+        rda_path <- base::file.path(shared_state$workdir, "Step7_DEP_result.rda")
+        if (base::file.exists(rda_path)) {
+          e <- base::new.env()
+          loaded <- tryCatch({ base::load(rda_path, envir = e); TRUE }, error = function(e) FALSE)
+          if (isTRUE(loaded) && base::exists("dep_results2", envir = e, inherits = FALSE)) {
+            dep_obj <- normalize_dep_results(base::get("dep_results2", envir = e, inherits = FALSE))
+            source_label <- "Step7_DEP_result.rda"
+          }
+        }
       }
 
-      if (base::exists("dep_results2", envir = e, inherits = FALSE)) {
-        dep_obj <- tryCatch(
-          base::get("dep_results2", envir = e, inherits = FALSE),
-          error = function(e) NULL
-        )
-
-        if (base::is.null(dep_obj)) {
-          rv$dep_results <- base::list()
-          rv$compare_data <- NULL
-          rv$load_success <- FALSE
-
-          shiny::showNotification(
-            "dep_results2 could not be retrieved from Step7_DEP_result.rda.",
-            type = "warning"
-          )
-          return()
-        }
-
-        if (!base::is.list(dep_obj)) {
-          rv$dep_results <- base::list()
-          rv$compare_data <- NULL
-          rv$load_success <- FALSE
-
-          shiny::showNotification(
-            "dep_results2 is not a valid list object.",
-            type = "warning"
-          )
-          return()
-        }
-
+      if (!base::is.null(dep_obj)) {
         rv$dep_results <- dep_obj
         rv$load_success <- TRUE
 
@@ -806,14 +796,14 @@ enrichment_analysis_server <- function(id, shared_state) {
           rv$compare_data <- NULL
         }
 
-        shiny::showNotification("Data loaded successfully.", type = "message")
+        shiny::showNotification(base::paste("Data loaded successfully from", source_label, "."), type = "message")
       } else {
         rv$dep_results <- base::list()
         rv$compare_data <- NULL
         rv$load_success <- FALSE
 
         shiny::showNotification(
-          "Step7_DEP_result.rda does not contain dep_results2.",
+          "No DEP results are available. Run DEP analysis first or load a ProtVis_dataset containing differential analysis results.",
           type = "warning"
         )
       }

@@ -16,7 +16,10 @@ app_server <- function(input, output, session) {
     data_source = NULL,
     dataset = NULL,
     dataset_history = list(),
-    dataset_name = NULL
+    dataset_name = NULL,
+    # Keep the current DEP results available to downstream modules without
+    # requiring a legacy Step7_DEP_result.rda file on disk.
+    dep_results = list()
   )
   project_init_server("project_init", shared_state = shared_state)
   data_input_server(
