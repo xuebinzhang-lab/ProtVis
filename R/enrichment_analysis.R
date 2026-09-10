@@ -476,6 +476,30 @@ enrichment_analysis_ui <- function(id) {
 
       bslib::layout_column_wrap(
         width = 1 / 2,
+        bslib::card(
+          bslib::card_header("Enrichment Analysis File"),
+          bslib::card_body(
+            shiny::tags$small(
+              "Preview of the validated GO/KEGG background tables (first 100 rows per sheet).",
+              class = "text-muted"
+            ),
+            DT::DTOutput(ns("background_preview"))
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Genelist (ID column required)"),
+          bslib::card_body(
+            shiny::tags$small(
+              "Uploaded gene/protein IDs are shown here; otherwise the DEP gene list is shown.",
+              class = "text-muted"
+            ),
+            DT::DTOutput(ns("genelist_preview"))
+          )
+        )
+      ),
+
+      bslib::layout_column_wrap(
+        width = 1 / 2,
         height = 600,
 
         bslib::card(
@@ -846,6 +870,42 @@ enrichment_analysis_server <- function(id, shared_state) {
       } else {
         shiny::span("❌ Data not loaded", style = "color: red;")
       }
+    })
+
+    output$background_preview <- DT::renderDT({
+      background <- rv$background_data
+      if (base::is.null(background)) {
+        return(DT::datatable(
+          base::data.frame(Message = "Upload and check an Enrichment Analysis File first."),
+          options = base::list(dom = "t"), rownames = FALSE
+        ))
+      }
+      pieces <- base::lapply(names(background), function(sheet) {
+        table <- base::as.data.frame(background[[sheet]], stringsAsFactors = FALSE)
+        table <- utils::head(table, 100L)
+        table$Sheet <- sheet
+        table[, c("Sheet", setdiff(names(table), "Sheet")), drop = FALSE]
+      })
+      DT::datatable(
+        do.call(rbind, pieces),
+        options = base::list(pageLength = 10, scrollX = TRUE),
+        rownames = FALSE
+      )
+    })
+
+    output$genelist_preview <- DT::renderDT({
+      ids <- tryCatch(genelist(), error = function(e) character())
+      if (base::length(ids) == 0L) {
+        return(DT::datatable(
+          base::data.frame(Message = "No valid IDs available."),
+          options = base::list(dom = "t"), rownames = FALSE
+        ))
+      }
+      DT::datatable(
+        base::data.frame(ID = ids, stringsAsFactors = FALSE),
+        options = base::list(pageLength = 10, scrollX = TRUE),
+        rownames = FALSE
+      )
     })
 
     output$compare_select_ui <- shiny::renderUI({
