@@ -597,7 +597,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   sidebar = bslib::sidebar(
                     id = ns(base::paste0("volcano_sidebar_", i)),
                     position = "left",
-                    open = FALSE,
+                    open = "open",
                     width = 250,
                     bslib::accordion(
                       bslib::accordion_panel(
@@ -683,7 +683,7 @@ DEP_analysis_server <- function(id, shared_state) {
                   sidebar = bslib::sidebar(
                     id = ns(base::paste0("bar_sidebar_", i)),
                     position = "left",
-                    open = FALSE,
+                    open = "open",
                     width = 250,
                     bslib::accordion(
                       bslib::accordion_panel(
