@@ -826,7 +826,7 @@ enrichment_analysis_server <- function(id, shared_state) {
       # Load the result written in the current working directory.  Keep the
       # old Step7 filename as a read-only migration fallback.
       if (base::is.null(dep_obj) && !base::is.null(shared_state$workdir)) {
-        for (rda_name in c("differential_analysis.rda", "Step7_DEP_result.rda")) {
+        for (rda_name in c("Step7_differential_analysis.rda", "differential_analysis.rda", "Step7_DEP_result.rda")) {
           if (!base::is.null(dep_obj)) break
           rda_path <- base::file.path(shared_state$workdir, rda_name)
           if (!base::file.exists(rda_path)) next

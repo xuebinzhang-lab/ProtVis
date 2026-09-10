@@ -178,7 +178,7 @@ protein_fun_server <- function(id, shared_state) {
     })
     shiny::observeEvent(input$load_data, {
       shiny::req(shared_state$workdir)
-      rda_name <- c("differential_analysis.rda", "Step7_DEP_result.rda")
+      rda_name <- c("Step7_differential_analysis.rda", "differential_analysis.rda", "Step7_DEP_result.rda")
       rda_name <- rda_name[base::file.exists(base::file.path(shared_state$workdir, rda_name))][1L]
       if (!base::is.na(rda_name)) {
         rda_path <- base::file.path(shared_state$workdir, rda_name)
@@ -199,7 +199,7 @@ protein_fun_server <- function(id, shared_state) {
         load_additional_data()
       } else {
         rv$load_success <- FALSE
-        shiny::showNotification("differential_analysis.rda not found.", type = "error")
+        shiny::showNotification("Step7_differential_analysis.rda not found.", type = "error")
       }
     })
     load_additional_data <- function() {
