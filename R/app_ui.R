@@ -49,6 +49,7 @@ golem_add_external_resources <- function() {
         position: sticky;
         top: 0;
         z-index: 5000 !important;
+        overflow: visible !important;
         background: rgba(255, 255, 255, 0.94) !important;
         border-bottom: 1px solid var(--pv-border);
         box-shadow: 0 8px 24px rgba(31, 52, 71, 0.07);
@@ -66,6 +67,7 @@ golem_add_external_resources <- function() {
       .navbar .dropdown {
         position: relative;
         z-index: 5001;
+        overflow: visible !important;
       }
 
       .navbar .dropdown-menu {
@@ -73,6 +75,30 @@ golem_add_external_resources <- function() {
         z-index: 6000 !important;
         margin-top: 0.25rem;
         isolation: isolate;
+      }
+
+      /* bslib's page navbar can create a clipping/stacking context around
+         the collapse container. Keep an open menu anchored below its item
+         and above the application body. */
+      .bslib-page-navbar,
+      .bslib-page-navbar > .navbar,
+      .bslib-page-navbar .navbar-collapse {
+        overflow: visible !important;
+        z-index: 5000 !important;
+      }
+
+      .bslib-page-navbar .dropdown-menu.show,
+      .navbar .dropdown-menu.show {
+        display: block !important;
+        top: 100% !important;
+        bottom: auto !important;
+        transform: none !important;
+        pointer-events: auto;
+      }
+
+      .bslib-page-navbar + * {
+        position: relative;
+        z-index: 1;
       }
 
       .navbar-brand,
