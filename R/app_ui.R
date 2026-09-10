@@ -1045,7 +1045,7 @@ app_ui <- function(request) {
           icon = bsicons::bs_icon("bar-chart-steps"),
           stacked_column_chart_ui("stacked_column_chart")
         ),
-        bslib::nav_panel("Correlation chord", icon = bsicons::bs_icon("circles"), correlation_chord_ui("correlation_chord")),
+        bslib::nav_panel("Correlation chord", icon = bsicons::bs_icon("circle"), correlation_chord_ui("correlation_chord")),
         bslib::nav_panel("DEG Analyse", icon = bsicons::bs_icon("bar-chart-line"), DEG_ui("DEG"))
       ),
 
