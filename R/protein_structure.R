@@ -193,11 +193,6 @@ protein_structure_server <- function(id) {
     # created in the UI function and is not otherwise available here.
     ns <- session$ns
 
-    if (!base::exists("elements") || !base::exists("atom.index")) {
-      utils::data(elements, package = "bio3d", envir = environment())
-      utils::data(atom.index, package = "bio3d", envir = environment())
-    }
-
     rv <- shiny::reactiveValues(
       pdb = NULL,
       modes = NULL,
