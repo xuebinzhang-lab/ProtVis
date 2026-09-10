@@ -1,12 +1,13 @@
 The small DIA-NN, FragPipe, Skyline, OpenMS, Proteome Discoverer, and
-Spectronaut files in this directory are
-adapter views of a real Candida albicans quantitative proteomics experiment.
-The measurements and protein identifiers come from the `proteinGroups.txt`
-dataset distributed with TraianProt (GPL-3.0), with WT and WT_H2O2 runs kept
-as four biological replicates per condition.  They are converted into
-source-specific table layouts so each adapter can be exercised without
-shipping raw mass-spectrometry files.  They are not simulated values and
-should not be interpreted as four independent software searches.
+Spectronaut files in this directory are source-specific adapter views of the
+real `Maxquant_Export.xlsx` maize proteomics export bundled in this package.
+Each compact file retains exactly 5,000 valid protein groups (rows selected
+from the upstream export without duplication) and the same 30 B73/Y12 TMT
+measurements: three TMT batches and five replicates per batch for each group.
+They are converted into source-specific table layouts so every adapter can be
+exercised without shipping raw mass-spectrometry files.  They are not
+simulated values and should not be interpreted as independent software
+searches.
 
 An accuracy audit removed fields that were not present in the upstream table:
 the DIA-NN q-values, Skyline peptide counts, OpenMS peptide counts, and
@@ -14,11 +15,13 @@ invented gene descriptions are no longer included.  Only upstream protein
 identifiers and intensity measurements are retained.
 
 Upstream data and metadata:
-https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata
+https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx
 
-The WT/WT_H2O2 sample mapping is retained by
+The B73/Y12 sample mapping is retained by
 `.protvis_builtin_sample_info()` and includes the organism, upstream file
-identifier, and source URL used by DEP and enrichment analysis.
+identifier, TMT batch, replicate, and source URL used by DEP and enrichment
+analysis.  The full MaxQuant workbook remains available for users who need
+all source rows; the compact adapters are intended for fast examples.
 
 Use protvis_builtin_datasets() to list the files and references, and
 load_protvis_builtin_data(source = "DIA-NN") (or another listed source) to
