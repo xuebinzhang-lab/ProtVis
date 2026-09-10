@@ -483,7 +483,7 @@ enrichment_analysis_ui <- function(id) {
               "Preview of the validated GO/KEGG background tables (first 100 rows per sheet).",
               class = "text-muted"
             ),
-            DT::DTOutput(ns("background_preview"))
+            shiny::uiOutput(ns("background_preview_ui"))
           )
         ),
         bslib::card(
@@ -870,6 +870,27 @@ enrichment_analysis_server <- function(id, shared_state) {
       } else {
         shiny::span("❌ Data not loaded", style = "color: red;")
       }
+    })
+
+    output$background_preview_ui <- shiny::renderUI({
+      if (base::is.null(rv$background_data)) {
+        return(shiny::tags$p("Upload and check an Enrichment Analysis File first.", class = "text-muted"))
+      }
+      shiny::tabsetPanel(
+        id = ns("background_tabs"),
+        shiny::tabPanel("GO_background", DT::DTOutput(ns("go_background_preview"))),
+        shiny::tabPanel("KEGG_background", DT::DTOutput(ns("kegg_background_preview")))
+      )
+    })
+
+    output$go_background_preview <- DT::renderDT({
+      table <- utils::head(base::as.data.frame(rv$background_data$GO_background), 100L)
+      DT::datatable(table, options = base::list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
+    })
+
+    output$kegg_background_preview <- DT::renderDT({
+      table <- utils::head(base::as.data.frame(rv$background_data$KEGG_background), 100L)
+      DT::datatable(table, options = base::list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
     })
 
     output$background_preview <- DT::renderDT({
