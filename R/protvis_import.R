@@ -80,12 +80,12 @@ protvis_builtin_datasets <- function() {
     description = c(
       "MaxQuant reporter-intensity protein export",
       "Proteome Discoverer protein result export",
-      "DIA-NN-shaped export of a real Candida albicans WT/WT_H2O2 experiment",
+      "DIA-NN adapter view of a real Candida albicans WT/WT_H2O2 experiment",
       "Spectronaut long-format protein-group report",
-      "FragPipe-shaped combined protein report from a real Candida albicans experiment",
-      "Skyline-shaped protein area report from a real Candida albicans experiment",
-      "OpenMS-shaped protein quantification table from a real Candida albicans experiment",
-      "HUPO-PSI mzTab-shaped export from a real Candida albicans experiment"
+      "FragPipe adapter view of a real Candida albicans WT/WT_H2O2 experiment",
+      "Skyline adapter view of a real Candida albicans WT/WT_H2O2 experiment",
+      "OpenMS adapter view of a real Candida albicans WT/WT_H2O2 experiment",
+      "HUPO-PSI mzTab adapter view of a real Candida albicans WT/WT_H2O2 experiment"
     ),
     reference = c(
       "https://www.maxquant.org/",
@@ -124,7 +124,11 @@ protvis_builtin_datasets <- function() {
     tissue = rep("Candida albicans cell culture", 8L),
     tissue2 = rep("Candida albicans cell culture", 8L),
     organism = rep("Candida albicans", 8L),
-    accession = rep("TraianProt-inst-extdata-proteinGroups", 8L),
+    accession = rep("TraianProt-inst-extdata-proteinGroups.txt", 8L),
+    source_url = rep(
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/blob/main/inst/extdata/proteinGroups.txt",
+      8L
+    ),
     source = rep(source, 8L),
     stringsAsFactors = FALSE,
     check.names = FALSE
