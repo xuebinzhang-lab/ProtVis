@@ -79,9 +79,9 @@ protvis_builtin_datasets <- function() {
     format = c("xlsx", "txt", "tsv", "tsv", "tsv", "csv", "tsv", "mzTab"),
     description = c(
       "MaxQuant reporter-intensity protein export",
-      "Proteome Discoverer protein result export",
+      "Proteome Discoverer adapter view of a real Candida albicans WT/WT_H2O2 experiment",
       "DIA-NN adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "Spectronaut long-format protein-group report",
+      "Spectronaut adapter view of a real Candida albicans WT/WT_H2O2 experiment",
       "FragPipe adapter view of a real Candida albicans WT/WT_H2O2 experiment",
       "Skyline adapter view of a real Candida albicans WT/WT_H2O2 experiment",
       "OpenMS adapter view of a real Candida albicans WT/WT_H2O2 experiment",
@@ -89,9 +89,9 @@ protvis_builtin_datasets <- function() {
     ),
     reference = c(
       "https://www.maxquant.org/",
-      "https://docs.thermofisher.com/r/Proteome-Discoverer-3.1-User-Guide/en-US1325293963v1",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://biognosys.com/software/spectronaut/",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
+      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
       "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
