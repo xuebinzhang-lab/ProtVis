@@ -78,40 +78,43 @@ protvis_builtin_datasets <- function() {
     ),
     format = c("xlsx", "txt", "tsv", "tsv", "tsv", "csv", "tsv", "mzTab"),
     description = c(
-      "MaxQuant reporter-intensity protein export",
-      "Proteome Discoverer adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "DIA-NN adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "Spectronaut adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "FragPipe adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "Skyline adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "OpenMS adapter view of a real Candida albicans WT/WT_H2O2 experiment",
-      "HUPO-PSI mzTab adapter view of a real Candida albicans WT/WT_H2O2 experiment"
+      "MaxQuant reporter-intensity protein export (12,689 source rows)",
+      "Proteome Discoverer adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "DIA-NN adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "Spectronaut adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "FragPipe adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "Skyline adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "OpenMS adapter view of 5,000 real Zea mays B73/Y12 protein groups",
+      "HUPO-PSI mzTab adapter view of 5,000 real Zea mays B73/Y12 protein groups"
     ),
     reference = c(
-      "https://www.maxquant.org/",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata",
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/tree/main/inst/extdata"
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx"
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
 
-# Sample metadata shipped with the four compact fixtures.  The fixtures are
-# derived from the real Candida albicans WT/WT_H2O2 experiment distributed in
-# the TraianProt repository (see the manifest references).  Keeping the
-# original run names and four biological replicates per condition makes the
-# examples immediately usable by DEP and enrichment modules.
+# Sample metadata shipped with the bundled source fixtures.  The compact
+# tables retain 5,000 protein groups from the real MaxQuant B73/Y12 export
+# bundled with ProtVis.  The same measurements are represented in each
+# source-specific layout so the examples remain directly comparable.
 .protvis_builtin_sample_info <- function(source, file = NULL) {
   source <- .protvis_normalise_source(source)
-  samples <- c("WT1", "WT2", "WT3", "WT4",
-               "WT_H2O2_1", "WT_H2O2_2", "WT_H2O2_3", "WT_H2O2_4")
-  group <- c(rep("WT", 4L), rep("WT_H2O2", 4L))
+  samples <- unlist(lapply(c("B73", "Y12"), function(tissue) {
+    unlist(lapply(1:3, function(tmt) paste0(
+      tissue, "_TMT", tmt, "_", 1:5
+    )), use.names = FALSE)
+  }), use.names = FALSE)
+  group <- rep(c("B73", "Y12"), each = 15L)
+  tmt <- rep(rep(paste0("TMT", 1:3), each = 5L), 2L)
   data.frame(
     sample_id = samples,
     maxquant_id = samples,
@@ -119,17 +122,17 @@ protvis_builtin_datasets <- function() {
     group = group,
     class = group,
     condition = group,
-    replicate = c(1L, 2L, 3L, 4L, 1L, 2L, 3L, 4L),
-    batch = rep("Batch1", 8L),
-    tissue = rep("Candida albicans cell culture", 8L),
-    tissue2 = rep("Candida albicans cell culture", 8L),
-    organism = rep("Candida albicans", 8L),
-    accession = rep("TraianProt-inst-extdata-proteinGroups.txt", 8L),
+    replicate = rep(1:15, 2L),
+    batch = tmt,
+    tissue = rep("maize tissue (B73/Y12)", 30L),
+    tissue2 = rep("maize tissue (B73/Y12)", 30L),
+    organism = rep("Zea mays", 30L),
+    accession = rep("ProtVis-inst-extdata-Maxquant_Export.xlsx", 30L),
     source_url = rep(
-      "https://github.com/SamueldelaCamaraFuentes/TraianProt/blob/main/inst/extdata/proteinGroups.txt",
-      8L
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      30L
     ),
-    source = rep(source, 8L),
+    source = rep(source, 30L),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
