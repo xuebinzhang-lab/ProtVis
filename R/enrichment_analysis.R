@@ -461,7 +461,8 @@ enrichment_analysis_ui <- function(id) {
             shiny::actionButton(
               ns("run_enrichment_analysis"),
               "Analysis"
-            )
+            ),
+            shiny::textOutput(ns("analysis_message"))
           )
         )
       ),
@@ -709,6 +710,7 @@ enrichment_analysis_server <- function(id, shared_state) {
       background_data = NULL,
       go_res = NULL,
       kegg_res = NULL,
+      analysis_message = NULL,
       pasted_genelist = NULL
     )
 
@@ -737,6 +739,25 @@ enrichment_analysis_server <- function(id, shared_state) {
       dep_obj <- dep_obj[!vapply(dep_obj, is.null, logical(1))]
       if (base::length(dep_obj) == 0L) return(NULL)
       dep_obj
+    }
+
+    normalise_term2gene <- function(background) {
+      background <- base::as.data.frame(background, stringsAsFactors = FALSE)
+      if (!base::all(c("TERM", "GENE") %in% base::names(background))) {
+        return(base::data.frame(TERM = character(), GENE = character()))
+      }
+      pieces <- base::lapply(base::seq_len(base::nrow(background)), function(i) {
+        genes <- unlist(base::strsplit(base::as.character(background$GENE[[i]]),
+                                       "[,;|]", perl = TRUE), use.names = FALSE)
+        genes <- trimws(genes)
+        genes <- genes[!is.na(genes) & nzchar(genes)]
+        if (!length(genes)) return(NULL)
+        base::data.frame(TERM = as.character(background$TERM[[i]]),
+                         GENE = genes, stringsAsFactors = FALSE)
+      })
+      pieces <- pieces[!vapply(pieces, is.null, logical(1))]
+      if (!length(pieces)) return(base::data.frame(TERM = character(), GENE = character()))
+      unique(do.call(rbind, pieces))
     }
 
     shiny::observeEvent(input$load_data, {
@@ -897,21 +918,8 @@ enrichment_analysis_server <- function(id, shared_state) {
     })
 
     genelist <- shiny::reactive({
-      if (!base::is.null(rv$compare_data) && base::is.data.frame(rv$compare_data)) {
-        if (base::all(c("regulation", "ID") %in% base::colnames(rv$compare_data))) {
-          genes <- rv$compare_data %>%
-            dplyr::filter(regulation != "Not significant") %>%
-            dplyr::pull(ID)
-
-          genes <- base::unique(base::as.character(genes))
-          genes <- genes[!base::is.na(genes) & base::nzchar(genes)]
-
-          if (base::length(genes) > 0) {
-            return(genes)
-          }
-        }
-      }
-
+      # An explicitly uploaded or pasted list must take precedence over the
+      # automatically loaded DEP comparison genes.
       if (!base::is.null(input$genelist_file)) {
         ext <- base::tolower(tools::file_ext(input$genelist_file$name))
 
@@ -944,6 +952,17 @@ enrichment_analysis_server <- function(id, shared_state) {
 
       if (!base::is.null(rv$pasted_genelist) && base::length(rv$pasted_genelist) > 0) {
         return(rv$pasted_genelist)
+      }
+
+      if (!base::is.null(rv$compare_data) && base::is.data.frame(rv$compare_data)) {
+        if (base::all(c("regulation", "ID") %in% base::colnames(rv$compare_data))) {
+          genes <- rv$compare_data %>%
+            dplyr::filter(regulation != "Not significant") %>%
+            dplyr::pull(ID)
+          genes <- base::unique(trimws(base::as.character(genes)))
+          genes <- genes[!base::is.na(genes) & base::nzchar(genes)]
+          if (base::length(genes) > 0) return(genes)
+        }
       }
 
       NULL
@@ -1104,7 +1123,10 @@ enrichment_analysis_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_enrichment_analysis, {
-      if (base::is.null(genelist()) || base::length(genelist()) == 0) {
+      genes <- unique(trimws(unlist(base::strsplit(base::as.character(genelist()),
+                                                   "[,;|]", perl = TRUE), use.names = FALSE)))
+      genes <- genes[!is.na(genes) & nzchar(genes)]
+      if (base::length(genes) == 0) {
         shiny::showNotification("No valid genelist found.", type = "error")
         return()
       }
@@ -1116,21 +1138,23 @@ enrichment_analysis_server <- function(id, shared_state) {
 
       rv$go_res <- NULL
       rv$kegg_res <- NULL
+      rv$analysis_message <- NULL
 
       if ("go_analysis" %in% input$choices) {
-        t2g.go <- rv$background_data$GO_background %>%
-          dplyr::select(TERM, GENE)
+        t2g.go <- normalise_term2gene(rv$background_data$GO_background)
 
         t2n.go <- rv$background_data$GO_background %>%
           dplyr::select(TERM, NAME)
 
         rv$go_res <- tryCatch(
           clusterProfiler::enricher(
-            gene = genelist(),
+            gene = genes,
             TERM2GENE = t2g.go,
             TERM2NAME = t2n.go,
             pvalueCutoff = 1,
-            qvalueCutoff = 1
+            qvalueCutoff = 1,
+            minGSSize = 1,
+            maxGSSize = Inf
           ),
           error = function(e) NULL
         )
@@ -1139,31 +1163,57 @@ enrichment_analysis_server <- function(id, shared_state) {
       if ("kegg_analysis" %in% input$choices) {
         filtered_bg <- selected_kegg_background()
 
-        t2g.kegg <- filtered_bg %>%
-          dplyr::select(TERM, GENE)
+        t2g.kegg <- normalise_term2gene(filtered_bg)
 
         t2n.kegg <- filtered_bg %>%
           dplyr::select(TERM, NAME)
 
         rv$kegg_res <- tryCatch(
           clusterProfiler::enricher(
-            gene = genelist(),
+            gene = genes,
             TERM2GENE = t2g.kegg,
             TERM2NAME = t2n.kegg,
             pvalueCutoff = 1,
-            qvalueCutoff = 1
+            qvalueCutoff = 1,
+            minGSSize = 1,
+            maxGSSize = Inf
           ),
           error = function(e) NULL
+        )
+      }
+
+      available <- c(
+        GO = base::nrow(get_result_df(rv$go_res) %||% data.frame()),
+        KEGG = base::nrow(get_result_df(rv$kegg_res) %||% data.frame())
+      )
+      if (!base::any(available > 0L)) {
+        rv$analysis_message <- paste0(
+          "No enriched terms were found. Checked genes: ", base::length(genes),
+          ". Verify that the ID column uses the same identifiers as the background workbook."
+        )
+      } else {
+        rv$analysis_message <- paste0(
+          "Enrichment completed: ",
+          if (available[["GO"]] > 0L) paste0("GO ", available[["GO"]], " terms") else "GO 0 terms",
+          "; ",
+          if (available[["KEGG"]] > 0L) paste0("KEGG ", available[["KEGG"]], " pathways") else "KEGG 0 pathways",
+          "."
         )
       }
 
       shiny::showNotification("Enrichment analysis completed.", type = "message")
     })
 
+    output$analysis_message <- shiny::renderText({
+      rv$analysis_message %||% ""
+    })
+
     output$go_plot <- shiny::renderPlot({
       go_df <- get_result_df(rv$go_res)
 
       if (base::is.null(go_df) || base::nrow(go_df) == 0) {
+        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
+        text(0, 0, rv$analysis_message %||% "No GO enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1195,6 +1245,8 @@ enrichment_analysis_server <- function(id, shared_state) {
       kegg_df <- get_result_df(rv$kegg_res)
 
       if (base::is.null(kegg_df) || base::nrow(kegg_df) == 0) {
+        plot(0, 0, type = "n", axes = FALSE, xlab = "", ylab = "")
+        text(0, 0, rv$analysis_message %||% "No KEGG enrichment results.")
         return(invisible(NULL))
       }
 
@@ -1226,7 +1278,10 @@ enrichment_analysis_server <- function(id, shared_state) {
       go_df <- get_result_df(rv$go_res)
 
       if (base::is.null(go_df) || base::nrow(go_df) == 0) {
-        return(NULL)
+        return(DT::datatable(
+          base::data.frame(Message = rv$analysis_message %||% "No GO enrichment results."),
+          options = base::list(dom = "t"), rownames = FALSE
+        ))
       }
 
       DT::datatable(
@@ -1239,7 +1294,10 @@ enrichment_analysis_server <- function(id, shared_state) {
       kegg_df <- get_result_df(rv$kegg_res)
 
       if (base::is.null(kegg_df) || base::nrow(kegg_df) == 0) {
-        return(NULL)
+        return(DT::datatable(
+          base::data.frame(Message = rv$analysis_message %||% "No KEGG enrichment results."),
+          options = base::list(dom = "t"), rownames = FALSE
+        ))
       }
 
       DT::datatable(
