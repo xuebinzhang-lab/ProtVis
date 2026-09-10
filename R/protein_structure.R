@@ -12,7 +12,9 @@
 protein_structure_ui <- function(id) {
   ns <- shiny::NS(id)
 
-  bslib::layout_sidebar(
+  shiny::tagList(
+    shinyjs::useShinyjs(),
+    bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 320,
         open = TRUE,
@@ -169,6 +171,7 @@ protein_structure_ui <- function(id) {
         )
       )
     )
+  )
 }
 
 #' Protein Structure Analysis Server Module
@@ -258,8 +261,12 @@ protein_structure_server <- function(id) {
       rv$active_file_name <- "1hel.pdb"
       rv$active_source <- "Demo file"
 
+      # Selecting the bundled demo should produce a visible result immediately;
+      # trigger the same validated analysis path used by the Run button.
+      shinyjs::click(ns("run"))
+
       shiny::showNotification(
-        "Demo PDB selected. Click Run to start analysis.",
+        "Demo PDB selected. Analysis started.",
         type = "message",
         duration = 3
       )
