@@ -969,6 +969,19 @@ app_ui <- function(request) {
       ),
 
       bslib::nav_menu(
+        "Downstream analysis",
+        icon = bsicons::bs_icon("bar-chart-line"),
+        bslib::nav_panel("Overview", overview_ui("overview")),
+        bslib::nav_panel("DEP analysis", DEP_analysis_ui("DEP_analysis")),
+        bslib::nav_panel(
+          "Enrichment analysis",
+          enrichment_analysis_ui("enrichment_analysis")
+        ),
+        bslib::nav_panel("GSEA analysis", gsea_ui("gsea")),
+        bslib::nav_panel("Pathview", pathview_ui("pathview"))
+      ),
+
+      bslib::nav_menu(
         "Multi-omics",
         icon = bsicons::bs_icon("database-gear"),
         bslib::nav_panel(
