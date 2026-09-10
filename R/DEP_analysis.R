@@ -1037,45 +1037,67 @@ DEP_analysis_server <- function(id, shared_state) {
               # Always label columns with the samples used in this contrast.
               # Imported matrices can carry numeric/abundance values as
               # column names, which makes the heatmap appear misleading.
-              sample_labels <- base::colnames(heatmap_data)
-              numeric_labels <- suppressWarnings(base::as.numeric(sample_labels))
+              sample_labels <- base::colnames(exp_mat_local)
               if (base::is.null(sample_labels) ||
                   base::length(sample_labels) != base::ncol(heatmap_data) ||
-                  base::any(!base::nzchar(sample_labels)) ||
                   base::anyNA(sample_labels) ||
-                  base::all(base::is.finite(numeric_labels))) {
-                sample_labels <- base::colnames(exp_mat_local)[
-                  base::match(base::colnames(heatmap_data),
-                              base::colnames(exp_mat_local))
-                ]
-              }
-              if (base::is.null(sample_labels) ||
-                  base::length(sample_labels) != base::ncol(heatmap_data) ||
-                  base::any(!base::nzchar(sample_labels)) ||
-                  base::anyNA(sample_labels)) {
+                  base::any(!base::nzchar(sample_labels))) {
                 sample_labels <- req_cols[base::seq_len(base::ncol(heatmap_data))]
               }
-              base::colnames(heatmap_data) <- base::make.unique(sample_labels)
+              base::colnames(heatmap_data) <- base::make.unique(as.character(sample_labels))
 
               if (base::nrow(heatmap_data) > 0L &&
                   base::ncol(heatmap_data) > 0L) {
-                pheatmap::pheatmap(
-                  heatmap_data,
-                  scale = if (variable_count >= 2L) "row" else "none",
-                  # hclust requires at least two objects. Disable only the
-                  # unavailable dimension so one-protein/one-sample results
-                  # still render instead of throwing an uncaught error.
-                  cluster_rows = base::nrow(heatmap_data) >= 2L,
-                  cluster_cols = base::ncol(heatmap_data) >= 2L,
-                  clustering_distance_rows = "euclidean",
-                  clustering_distance_cols = "euclidean",
-                  clustering_method = "complete",
-                  show_rownames = FALSE,
-                  show_colnames = TRUE,
-                  treeheight_row = if (base::nrow(heatmap_data) >= 2L) 50 else 0,
-                  treeheight_col = if (base::ncol(heatmap_data) >= 2L) 50 else 0,
-                  main = base::paste("Heatmap:", g1, "vs", g2)
-                )
+                can_cluster_rows <- base::nrow(heatmap_data) >= 2L
+                can_cluster_cols <- base::ncol(heatmap_data) >= 2L
+                if (can_cluster_rows && can_cluster_cols) {
+                  pheatmap::pheatmap(
+                    heatmap_data,
+                    scale = if (variable_count >= 2L) "row" else "none",
+                    cluster_rows = TRUE,
+                    cluster_cols = TRUE,
+                    clustering_distance_rows = "euclidean",
+                    clustering_distance_cols = "euclidean",
+                    clustering_method = "complete",
+                    show_rownames = FALSE,
+                    show_colnames = TRUE,
+                    main = base::paste("Heatmap:", g1, "vs", g2)
+                  )
+                } else {
+                  # pheatmap delegates to hclust, which rejects a singleton
+                  # dimension. Draw those small matrices directly instead of
+                  # returning a blank plot or an uncaught clustering error.
+                  tile_data <- base::expand.grid(
+                    protein = base::seq_len(base::nrow(heatmap_data)),
+                    sample = base::seq_len(base::ncol(heatmap_data))
+                  )
+                  tile_data$value <- base::as.vector(heatmap_data)
+                  tile_data$sample_label <- base::colnames(heatmap_data)[tile_data$sample]
+                  ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+                  ggplot2::geom_tile(color = "white", size = 0.2) +
+                    ggplot2::scale_x_continuous(
+                      breaks = base::seq_len(base::ncol(heatmap_data)),
+                      labels = base::colnames(heatmap_data),
+                      expand = c(0, 0)
+                    ) +
+                    ggplot2::scale_y_continuous(
+                      breaks = base::seq_len(base::nrow(heatmap_data)),
+                      labels = NULL,
+                      expand = c(0, 0)
+                    ) +
+                    ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+                    ggplot2::labs(
+                      x = NULL, y = NULL,
+                      title = base::paste("Heatmap:", g1, "vs", g2),
+                      fill = "Value"
+                    ) +
+                    ggplot2::theme_minimal(base_size = 11) +
+                    ggplot2::theme(
+                      panel.grid = ggplot2::element_blank(),
+                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+                      axis.text.y = ggplot2::element_blank()
+                    )
+                }
               } else {
                 ggplot2::ggplot() +
                   ggplot2::annotate(

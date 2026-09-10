@@ -11,5 +11,6 @@ test_that("DEP heatmap guards clustering for singleton dimensions", {
   expect_true(grepl("cluster_rows = base::nrow\\(heatmap_data\\) >= 2L", ui_text))
   expect_true(grepl("cluster_cols = base::ncol\\(heatmap_data\\) >= 2L", ui_text))
   expect_true(grepl("show_colnames = TRUE", ui_text, fixed = TRUE))
-  expect_true(grepl("treeheight_row = if", ui_text, fixed = TRUE))
+  expect_true(grepl("can_cluster_rows <-", ui_text, fixed = TRUE))
+  expect_true(grepl("geom_tile", ui_text, fixed = TRUE))
 })
