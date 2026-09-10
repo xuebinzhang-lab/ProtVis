@@ -188,6 +188,10 @@ protein_structure_ui <- function(id) {
 #' @export
 protein_structure_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
+    # Reuse the module namespace when triggering namespaced inputs from
+    # server-side observers (for example, the Use Demo button).  `ns()` is
+    # created in the UI function and is not otherwise available here.
+    ns <- session$ns
 
     if (!base::exists("elements") || !base::exists("atom.index")) {
       utils::data(elements, package = "bio3d", envir = environment())
