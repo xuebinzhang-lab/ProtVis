@@ -985,6 +985,26 @@ DEP_analysis_server <- function(id, shared_state) {
             df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
             shiny::req(df)
 
+            # Recalculate significance from the current Volcano plot
+            # controls. This keeps the heatmap synchronized with threshold
+            # changes without requiring DEP to be rerun.
+            logfc_thresh <- coalesce_input(
+              input[[base::paste0("volcano_logfc_", i_local)]],
+              0.5
+            )
+            pval_thresh <- coalesce_input(
+              input[[base::paste0("volcano_pval_", i_local)]],
+              0.05
+            )
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+
             sig_proteins <- df %>%
               dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
               dplyr::pull(ID)

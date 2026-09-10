@@ -13,4 +13,7 @@ test_that("DEP heatmap guards clustering for singleton dimensions", {
   expect_true(grepl("show_colnames = TRUE", ui_text, fixed = TRUE))
   expect_true(grepl("can_cluster_rows <-", ui_text, fixed = TRUE))
   expect_true(grepl("geom_tile", ui_text, fixed = TRUE))
+  expect_true(grepl("current Volcano plot", ui_text, fixed = TRUE))
+  expect_true(grepl("volcano_logfc_", ui_text, fixed = TRUE))
+  expect_true(grepl("volcano_pval_", ui_text, fixed = TRUE))
 })
