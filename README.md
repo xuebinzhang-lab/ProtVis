@@ -28,6 +28,7 @@ The application is designed for researchers who need publication-ready visual su
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
 -   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
+-   **Optional RAW/mzML registration and Sage search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
 
 ------------------------------------------------------------------------
 
@@ -52,7 +53,7 @@ Parser-backed imports are converted into a common ProtVis expression matrix and 
 The ProtVis_dataset tab also loads bundled examples for every supported source
 without requiring an upload. `protvis_builtin_datasets()` lists the files,
 formats, descriptions, and official documentation links. The fixtures are
-deliberately small (four proteins and four samples) and include:
+deliberately compact (5,000 protein groups for the source adapters) and include:
 
 - MaxQuant `Maxquant_Export.xlsx`
 - Proteome Discoverer `ProteomeDiscoverer_proteins.txt`
@@ -67,6 +68,26 @@ Each fixture is parsed into `ProtVis_dataset` and can continue through the
 same QC, transformation, imputation, normalization, dimensionality reduction,
 differential analysis, enrichment, network, checkpoint, and export functions.
 The full MaxQuant workbook remains available for a larger reproducible example.
+
+### RAW/mzML and Sage database-search preparation
+
+Project init contains an optional, collapsed **RAW/mzML input** panel. Select
+the directory containing converted mzML files, load the built-in PXD065315
+sample information, and click **Check mzML files**. The check verifies that
+each listed sample has exactly one existing file with a `.mzML` extension and
+reports missing, duplicate, or invalid entries in the Raw/mzML Files tab.
+The built-in table uses `B73_C1.mzML`–`B73_C3.mzML` and
+`EA2024_C1.mzML`–`EA2024_C3.mzML`.
+
+For database searching, upload a matching protein FASTA file (for example,
+`UP000007305_4577.fasta` for *Zea mays*). On Windows, ProtVis can use the
+bundled Sage executable at `inst/extdata/sage/windows/sage.exe`; on Linux or
+macOS, install Sage separately and place `sage` on `PATH`. The helper
+`protvis_sage_executable()` locates the executable. RAW, mzML, and FASTA bytes
+are not copied into `ProtVis_dataset`; only paths, filenames, checks, Sage
+parameters, and results are recorded for reproducibility.
+
+The PXD065315 metadata source is the [PRIDE project page](https://www.ebi.ac.uk/pride/archive/projects/PXD065315).
 Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
 `run_protvis_pipeline()`, `save_protvis_checkpoint()`, and
 `export_protvis_dataset()`.
