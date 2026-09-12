@@ -762,8 +762,16 @@ golem_add_external_resources <- function() {
           var link = document.querySelector('[data-value=\"data_input\"]');
           if (!source || !link) return;
           var visible = source.value === 'MaxQuant';
-          var item = link.closest('.nav-item') || link.parentElement;
-          if (item) item.style.display = visible ? '' : 'none';
+          var item = link.closest('li.nav-item') ||
+            link.closest('.nav-item') || link.parentElement;
+          link.style.display = visible ? '' : 'none';
+          link.hidden = !visible;
+          link.setAttribute('aria-hidden', visible ? 'false' : 'true');
+          if (item) {
+            item.style.display = visible ? '' : 'none';
+            item.hidden = !visible;
+            item.setAttribute('aria-hidden', visible ? 'false' : 'true');
+          }
           if (!visible && link.classList.contains('active')) {
             var project = document.querySelector('[data-value=\"project_init\"]');
             if (project) project.click();
@@ -793,6 +801,9 @@ golem_add_external_resources <- function() {
             if (event.name === 'project_init-data_source') {
               window.setTimeout(updatePreprocessingNavigation, 0);
             }
+          });
+          $(document).on('change', '#project_init-data_source', function () {
+            window.setTimeout(updatePreprocessingNavigation, 0);
           });
         }
         window.setTimeout(updatePreprocessingNavigation, 1000);
