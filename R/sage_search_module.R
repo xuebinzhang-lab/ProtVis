@@ -200,29 +200,30 @@
 }
 
 .protvis_sage_paths <- function(fasta, mzml_directory, output_directory) {
-  fasta <- path.expand(as.character(fasta %||% ""))
-  mzml_directory <- path.expand(as.character(mzml_directory %||% ""))
-  output_directory <- path.expand(as.character(output_directory %||% ""))
-  if (!nzchar(fasta) || !file.exists(fasta)) {
-    stop("A readable protein FASTA file is required.", call. = FALSE)
-  }
-  if (!nzchar(mzml_directory) || !dir.exists(mzml_directory)) {
-    stop("A readable mzML input directory is required.", call. = FALSE)
+  fasta <- .protvis_sage_path(fasta, "FASTA", must_work = TRUE)
+  mzml_directory <- .protvis_sage_path(mzml_directory, "mzML directory",
+                                       must_work = TRUE)
+  if (!dir.exists(mzml_directory)) {
+    stop("mzML directory path is not a directory: ", mzml_directory,
+         call. = FALSE)
   }
   mzml <- list.files(mzml_directory, pattern = "[.]mzML$", full.names = TRUE,
                      ignore.case = TRUE)
   if (!length(mzml)) stop("No .mzML files were found in the input directory.",
                           call. = FALSE)
-  if (!nzchar(output_directory)) stop("A Sage output directory is required.",
-                                     call. = FALSE)
+  output_directory <- .protvis_sage_path(output_directory,
+                                         "Sage output directory",
+                                         must_work = FALSE)
   if (!dir.exists(output_directory) &&
       !dir.create(output_directory, recursive = TRUE, showWarnings = FALSE)) {
     stop("Unable to create the Sage output directory.", call. = FALSE)
   }
   list(
-    fasta = normalizePath(fasta, winslash = "/", mustWork = TRUE),
-    mzml = normalizePath(mzml, winslash = "/", mustWork = TRUE),
-    output = normalizePath(output_directory, winslash = "/", mustWork = TRUE)
+    fasta = fasta,
+    mzml = vapply(mzml, .protvis_sage_path, character(1), label = "mzML",
+                  must_work = TRUE),
+    output = .protvis_sage_path(output_directory, "Sage output directory",
+                                must_work = TRUE)
   )
 }
 
@@ -232,11 +233,17 @@ protvis_sage_build_config <- function(fasta, mzml_paths, output_directory,
                                        parameters = list()) {
   defaults <- .protvis_sage_default_parameters()
   parameters <- utils::modifyList(defaults, parameters %||% list())
-  fasta <- normalizePath(as.character(fasta), winslash = "/", mustWork = TRUE)
-  mzml_paths <- normalizePath(as.character(mzml_paths), winslash = "/",
-                              mustWork = TRUE)
-  output_directory <- normalizePath(output_directory, winslash = "/",
-                                    mustWork = FALSE)
+  fasta <- .protvis_sage_path(fasta, "FASTA", must_work = TRUE)
+  if (is.null(mzml_paths) || length(mzml_paths) < 1L ||
+      any(is.na(mzml_paths)) || any(!nzchar(trimws(as.character(mzml_paths))))) {
+    stop("mzML paths are invalid. Select at least one readable mzML file.",
+         call. = FALSE)
+  }
+  mzml_paths <- vapply(as.character(mzml_paths), .protvis_sage_path,
+                       character(1), label = "mzML", must_work = TRUE)
+  output_directory <- .protvis_sage_path(output_directory,
+                                         "Sage output directory",
+                                         must_work = FALSE)
   if (!length(mzml_paths)) stop("At least one mzML path is required.", call. = FALSE)
   enzyme <- if (identical(parameters$enzyme, "Trypsin")) {
     list(missed_cleavages = as.integer(parameters$missed_cleavages),
@@ -290,10 +297,20 @@ protvis_read_sage_table <- function(path) {
 run_sage_search <- function(fasta, mzml_paths, output_directory,
                             parameters = list(), sage_path = NULL) {
   if (!length(mzml_paths)) stop("At least one mzML file is required.", call. = FALSE)
-  if (any(!file.exists(mzml_paths))) stop("One or more mzML files do not exist.",
-                                          call. = FALSE)
-  dir.create(output_directory, recursive = TRUE, showWarnings = FALSE)
-  output_directory <- normalizePath(output_directory, winslash = "/", mustWork = TRUE)
+  fasta <- .protvis_sage_path(fasta, "FASTA", must_work = TRUE)
+  mzml_paths <- vapply(as.character(mzml_paths), .protvis_sage_path,
+                       character(1), label = "mzML", must_work = TRUE)
+  output_directory <- .protvis_sage_path(output_directory,
+                                         "Sage output directory",
+                                         must_work = FALSE)
+  if (!dir.create(output_directory, recursive = TRUE, showWarnings = FALSE) &&
+      !dir.exists(output_directory)) {
+    stop("Unable to create Sage output directory: ", output_directory,
+         call. = FALSE)
+  }
+  output_directory <- .protvis_sage_path(output_directory,
+                                         "Sage output directory",
+                                         must_work = TRUE)
   sage <- protvis_sage_executable(sage_path)
   if (is.null(sage) || !file.exists(sage)) {
     stop("Sage executable was not found. Use the bundled Windows executable or install Sage on PATH.",
