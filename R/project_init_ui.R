@@ -187,6 +187,7 @@ project_init_ui <- function(id) {
       )
     ),
     shiny::actionButton(ns("run_button"), "Project init"),
+    shiny::uiOutput(ns("project_init_status")),
     bslib::card(
       bslib::card_header("Preview Sample Info and Expression Matrix"),
       bslib::card_body(
@@ -227,6 +228,23 @@ project_init_ui <- function(id) {
 project_init_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    init_status <- shiny::reactiveVal(NULL)
+
+    output$project_init_status <- shiny::renderUI({
+      status <- init_status()
+      if (is.null(status)) return(NULL)
+      colors <- c(success = "#198754", error = "#dc3545", running = "#0d6efd")
+      symbols <- c(success = "✓", error = "✕", running = "…")
+      state <- status$state %||% "running"
+      shiny::tags$div(
+        style = paste(
+          "margin: 12px 0 16px; padding: 10px 14px;",
+          "border-left: 5px solid", colors[[state]], ";",
+          "color:", colors[[state]], "; font-size: 1.05rem; font-weight: 700;"
+        ),
+        paste(symbols[[state]], status$text)
+      )
+    })
     # Pass shinyFiles only accessible, uniquely named roots. In particular,
     # avoid localized WMIC/PowerShell output on Windows, which can leave the
     # chooser modal open with empty directory and content panes.
@@ -521,6 +539,7 @@ project_init_server <- function(id, shared_state) {
     # On clicking init, validate the current inputs and create one canonical
     # ProtVis_dataset for the project. Later analyses create new versions only.
     shiny::observeEvent(input$run_button, {
+      init_status(list(state = "running", text = "PROJECT INIT in progress..."))
       tryCatch({
         directory <- protvis_output_directory(shared_state$workdir %||% getwd())
         expression_missing <- is.null(shared_state$expression_matrix) ||
@@ -573,14 +592,10 @@ project_init_server <- function(id, shared_state) {
             .protvis_save_stage_dataset(
               dataset, file.path(directory, "Step1_project_init.rda")
             )
-            shiny::showNotification(
-              paste(
-                "Project Init completed:",
-                "ProtVis_dataset created from the Sage LFQ protein matrix.",
-                "You can continue with downstream analysis."
-              ),
-              type = "message", duration = 10
-            )
+            init_status(list(
+              state = "success",
+              text = "PROJECT INIT completed — Sage ProtVis_dataset is ready."
+            ))
             return(invisible(NULL))
           }
           mzml_paths <- if (isTRUE(shared_state$raw_check$valid) &&
@@ -603,14 +618,10 @@ project_init_server <- function(id, shared_state) {
           .protvis_save_stage_dataset(
             dataset, file.path(directory, "Step1_project_init.rda")
           )
-          shiny::showNotification(
-            paste(
-              "Project Init completed:",
-              "sample-only ProtVis_dataset saved.",
-              "Next, open Sage Search, confirm the FASTA and mzML paths, and run Sage Search."
-            ),
-            type = "message", duration = 12
-          )
+          init_status(list(
+            state = "success",
+            text = "PROJECT INIT completed — sample-only ProtVis_dataset is ready."
+          ))
           return(invisible(NULL))
         }
         shiny::req(shared_state$sample_info, shared_state$expression_matrix,
@@ -688,16 +699,19 @@ project_init_server <- function(id, shared_state) {
         shared_state$dataset_history <- c(history, list(dataset))
         save_path <- file.path(directory, "Step1_project_init.rda")
         .protvis_save_stage_dataset(dataset, save_path)
-        shiny::showNotification(
-          paste(
-            "Project Init completed:", protvis_dataset_name(dataset),
-            "ProtVis_dataset saved. You can continue with Pre-processing or downstream analysis."
-          ),
-          type = "message", duration = 10
-        )
+        init_status(list(
+          state = "success",
+          text = paste(
+            "PROJECT INIT completed —", protvis_dataset_name(dataset),
+            "is ready for downstream analysis."
+          )
+        ))
         message("✅ Step1_project_init.rda saved to: ", save_path)
       }, error = function(e) {
-        shiny::showNotification(paste("❌ Save failed:", e$message), type = "error")
+        init_status(list(
+          state = "error",
+          text = paste("PROJECT INIT failed —", conditionMessage(e))
+        ))
       })
     })
     # Preview sample info table
