@@ -46,3 +46,20 @@ test_that("Sage can persist a sample-only staging ProtVis_dataset", {
   expect_equal(dataset$sample_info$sample_id, "sample_1")
   expect_identical(ProtVis::validate_protvis_dataset(dataset), TRUE)
 })
+
+test_that("Sage staging can start with sample information only", {
+  directory <- tempfile("protvis-sage-sample-only-")
+  dir.create(directory)
+  info <- data.frame(
+    sample_id = c("sample_1", "sample_2"),
+    group = c("A", "B"),
+    stringsAsFactors = FALSE
+  )
+  dataset <- ProtVis:::.protvis_create_sage_staging_dataset(
+    info, fasta = "", mzml_paths = character(),
+    output_directory = file.path(directory, "Sage_search")
+  )
+  expect_equal(dataset$sample_info$sample_id, info$sample_id)
+  expect_equal(nrow(dataset$expression_data), 0L)
+  expect_identical(dataset$metadata$workflow_stage, "Sage_staging")
+})

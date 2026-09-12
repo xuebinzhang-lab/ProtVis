@@ -119,21 +119,43 @@
 
 .protvis_create_sage_staging_dataset <- function(sample_info, fasta,
                                                  mzml_paths, output_directory) {
-  mzml_paths <- normalizePath(as.character(mzml_paths), winslash = "/",
-                              mustWork = TRUE)
-  sample_names <- basename(mzml_paths)
+  sample_info <- as.data.frame(sample_info %||% data.frame(),
+                               stringsAsFactors = FALSE, check.names = FALSE)
+  if (!nrow(sample_info)) {
+    stop("Sage staging requires sample information.", call. = FALSE)
+  }
+  mzml_paths <- as.character(mzml_paths %||% character())
+  mzml_paths <- mzml_paths[nzchar(mzml_paths) & !is.na(mzml_paths)]
+  if (length(mzml_paths)) {
+    mzml_paths <- normalizePath(mzml_paths, winslash = "/", mustWork = TRUE)
+    sample_names <- basename(mzml_paths)
+  } else {
+    sample_col <- names(sample_info)[tolower(names(sample_info)) == "sample_id"][1L]
+    if (is.na(sample_col) || !nzchar(sample_col)) sample_col <- names(sample_info)[[1L]]
+    sample_names <- as.character(sample_info[[sample_col]])
+  }
+  if (length(sample_names) < 1L || anyNA(sample_names) ||
+      any(!nzchar(sample_names)) || anyDuplicated(sample_names)) {
+    stop("Sage staging requires unique sample identifiers.", call. = FALSE)
+  }
   placeholder <- matrix(NA_real_, nrow = 1L, ncol = length(sample_names),
                         dimnames = list("__SAGE_PENDING__", sample_names))
+  metadata <- list(
+    source = "Sage database search",
+    workflow_stage = "Sage_staging",
+    output_directory = output_directory
+  )
+  fasta <- as.character(fasta %||% "")
+  if (nzchar(fasta)) {
+    metadata$raw_fasta <- list(name = basename(fasta), path = fasta)
+  }
+  if (length(mzml_paths)) {
+    metadata$raw_directory <- dirname(mzml_paths[[1L]])
+    metadata$raw_mzml_paths <- mzml_paths
+  }
   dataset <- create_protvis_dataset(
     placeholder, sample_info = sample_info,
-    metadata = list(
-      source = "Sage database search",
-      workflow_stage = "Sage_staging",
-      raw_fasta = list(name = basename(fasta), path = fasta),
-      raw_directory = dirname(mzml_paths[[1L]]),
-      raw_mzml_paths = mzml_paths,
-      output_directory = output_directory
-    )
+    metadata = metadata
   )
   dataset$expression_data <- data.frame(row.names = character())
   dataset$variable_info <- .protvis_normalise_variable_info(NULL, character())

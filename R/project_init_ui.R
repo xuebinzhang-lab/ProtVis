@@ -587,10 +587,6 @@ project_init_server <- function(id, shared_state) {
                        ignore.case = TRUE)
           } else character()
           fasta <- shared_state$raw_fasta$path %||% ""
-          if (!length(mzml_paths) || !nzchar(fasta) || !file.exists(fasta)) {
-            stop("For Sage staging, register a readable FASTA and at least one mzML file.",
-                 call. = FALSE)
-          }
           shared_state$workdir <- directory
           dataset <- .protvis_create_sage_staging_dataset(
             shared_state$raw_sample_info %||% shared_state$sample_info,
