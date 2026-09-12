@@ -183,7 +183,7 @@ project_init_ui <- function(id) {
           "DIA-NN", "Spectronaut", "FragPipe", "Skyline", "Mascot", "OpenMS",
           "User-defined matrix"
         ),
-        selected = "MaxQuant"
+        selected = "Raw"
       )
     ),
     shiny::actionButton(ns("run_button"), "Project init"),
