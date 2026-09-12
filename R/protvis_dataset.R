@@ -113,7 +113,8 @@ methods::setClass(
 methods::setValidity("ProtVis_dataset", function(object) {
   errors <- character()
   expression <- object@expression_data
-  if (nrow(expression) < 1L || ncol(expression) < 1L) {
+  sage_staging <- identical(object@metadata$workflow_stage, "Sage_staging")
+  if (!sage_staging && (nrow(expression) < 1L || ncol(expression) < 1L)) {
     errors <- c(errors, "expression_data must be non-empty.")
   }
   if (is.null(rownames(expression)) ||
@@ -131,16 +132,17 @@ methods::setValidity("ProtVis_dataset", function(object) {
   }
   if (!all(c("sample_id", "class", "group") %in%
            names(object@sample_info)) ||
-      !identical(as.character(object@sample_info$sample_id),
-                 colnames(expression))) {
+      (!sage_staging && !identical(as.character(object@sample_info$sample_id),
+                                   colnames(expression)))) {
     errors <- c(errors, "sample_info must align exactly with expression_data.")
   }
   if (!all(c("variable_id", "protein_id") %in%
            names(object@variable_info)) ||
-      !identical(as.character(object@variable_info$variable_id),
-                 rownames(expression)) ||
-      !identical(as.character(object@variable_info$protein_id),
-                 rownames(expression))) {
+      (!sage_staging &&
+       (!identical(as.character(object@variable_info$variable_id),
+                   rownames(expression)) ||
+        !identical(as.character(object@variable_info$protein_id),
+                   rownames(expression))))) {
     errors <- c(errors, "variable_info must align exactly with expression_data.")
   }
   if (!identical(names(object@sample_info),
@@ -1099,8 +1101,10 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
          paste(missing, collapse = ", "), call. = FALSE)
   }
   expression_data <- object$expression_data
-  if (!is.data.frame(expression_data) || nrow(expression_data) < 1L ||
-      ncol(expression_data) < 1L) {
+  sage_staging <- identical(object$metadata$workflow_stage, "Sage_staging")
+  if (!is.data.frame(expression_data) ||
+      (!sage_staging && (nrow(expression_data) < 1L ||
+                         ncol(expression_data) < 1L))) {
     stop("expression_data must be a non-empty protein-by-sample data.frame.",
          call. = FALSE)
   }
@@ -1129,17 +1133,18 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
     stop("sample_info must contain sample_id, class, and group columns.",
          call. = FALSE)
   }
-  if (!identical(as.character(object$sample_info$sample_id),
-                 colnames(expression_data))) {
+  if (!sage_staging && !identical(as.character(object$sample_info$sample_id),
+                                  colnames(expression_data))) {
     stop("sample_info sample_id order must match expression_data columns.",
          call. = FALSE)
   }
   if (!is.data.frame(object$variable_info) ||
       !all(c("variable_id", "protein_id") %in% names(object$variable_info)) ||
-      !identical(as.character(object$variable_info$variable_id),
-                 rownames(expression_data)) ||
-      !identical(as.character(object$variable_info$protein_id),
-                 rownames(expression_data))) {
+      (!sage_staging &&
+       (!identical(as.character(object$variable_info$variable_id),
+                   rownames(expression_data)) ||
+        !identical(as.character(object$variable_info$protein_id),
+                   rownames(expression_data))))) {
     stop("variable_info identifiers and order must match expression_data rows.",
          call. = FALSE)
   }

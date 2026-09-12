@@ -25,3 +25,24 @@ test_that("the bundled Sage executable is tracked without the removed gzip copy"
   expect_true(file.exists(sage))
   expect_false(file.exists(sub("[.]exe$", ".exe.gz", sage)))
 })
+
+test_that("Sage can persist a sample-only staging ProtVis_dataset", {
+  directory <- tempfile("protvis-sage-staging-")
+  dir.create(directory)
+  fasta <- file.path(directory, "proteins.fasta")
+  mzml <- file.path(directory, "sample.mzML")
+  file.create(fasta)
+  file.create(mzml)
+  sample_info <- data.frame(
+    mzml_file = basename(mzml), sample_id = "sample_1",
+    group = "Unassigned", stringsAsFactors = FALSE
+  )
+  dataset <- ProtVis:::.protvis_create_sage_staging_dataset(
+    sample_info, fasta, mzml, file.path(directory, "Sage_search")
+  )
+  expect_s4_class(dataset, "ProtVis_dataset")
+  expect_identical(dataset$metadata$workflow_stage, "Sage_staging")
+  expect_equal(nrow(dataset$expression_data), 0L)
+  expect_equal(dataset$sample_info$sample_id, "sample_1")
+  expect_identical(ProtVis::validate_protvis_dataset(dataset), TRUE)
+})

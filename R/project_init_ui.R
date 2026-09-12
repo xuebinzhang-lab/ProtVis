@@ -560,8 +560,35 @@ project_init_server <- function(id, shared_state) {
             )
             return(invisible(NULL))
           }
-          stop("Upload an expression matrix or complete a Sage LFQ search before Project init.",
-               call. = FALSE)
+          mzml_paths <- if (isTRUE(shared_state$raw_check$valid) &&
+                            is.data.frame(shared_state$raw_manifest)) {
+            shared_state$raw_manifest$path
+          } else if (nzchar(raw_directory) && dir.exists(raw_directory)) {
+            list.files(raw_directory, pattern = "[.]mzML$", full.names = TRUE,
+                       ignore.case = TRUE)
+          } else character()
+          fasta <- shared_state$raw_fasta$path %||% ""
+          if (!length(mzml_paths) || !nzchar(fasta) || !file.exists(fasta)) {
+            stop("For Sage staging, register a readable FASTA and at least one mzML file.",
+                 call. = FALSE)
+          }
+          shared_state$workdir <- directory
+          dataset <- .protvis_create_sage_staging_dataset(
+            shared_state$raw_sample_info %||% shared_state$sample_info,
+            fasta, mzml_paths, file.path(directory, "Sage_search")
+          )
+          dataset <- protvis_auto_export_dataset(
+            dataset, directory = directory, include_raw = FALSE
+          )
+          .protvis_ui_sync_state(dataset, shared_state)
+          .protvis_save_stage_dataset(
+            dataset, file.path(directory, "Step1_project_init.rda")
+          )
+          shiny::showNotification(
+            "Sage inputs registered. Run Sage Search to add expression data to ProtVis_dataset.",
+            type = "message"
+          )
+          return(invisible(NULL))
         }
         shiny::req(shared_state$sample_info, shared_state$expression_matrix,
                    shared_state$data_source)

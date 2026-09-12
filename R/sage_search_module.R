@@ -117,6 +117,62 @@
                               dirname(mzml_paths[[1L]]), output_directory)
 }
 
+.protvis_create_sage_staging_dataset <- function(sample_info, fasta,
+                                                 mzml_paths, output_directory) {
+  mzml_paths <- normalizePath(as.character(mzml_paths), winslash = "/",
+                              mustWork = TRUE)
+  sample_names <- basename(mzml_paths)
+  placeholder <- matrix(NA_real_, nrow = 1L, ncol = length(sample_names),
+                        dimnames = list("__SAGE_PENDING__", sample_names))
+  dataset <- create_protvis_dataset(
+    placeholder, sample_info = sample_info,
+    metadata = list(
+      source = "Sage database search",
+      workflow_stage = "Sage_staging",
+      raw_fasta = list(name = basename(fasta), path = fasta),
+      raw_directory = dirname(mzml_paths[[1L]]),
+      raw_mzml_paths = mzml_paths,
+      output_directory = output_directory
+    )
+  )
+  dataset$expression_data <- data.frame(row.names = character())
+  dataset$variable_info <- .protvis_normalise_variable_info(NULL, character())
+  dataset$variable_info_note <- .protvis_normalise_note(
+    NULL, names(dataset$variable_info), "variable"
+  )
+  dataset$metadata$object_name <-
+    "ProtVis_dataset__project_init__Sage_staging__v1"
+  dataset$metadata$object_version <- 1L
+  dataset <- .protvis_append_process(
+    dataset, "project_init_sage_staging", status = "success",
+    parameters = list(fasta = fasta, mzml_paths = mzml_paths),
+    message = "Sage inputs registered; expression data will be added after search."
+  )
+  validate_protvis_dataset(dataset)
+  dataset
+}
+
+.protvis_finalize_sage_dataset <- function(staged, bundle, parameters, fasta,
+                                           mzml_paths, output_directory) {
+  dataset <- .protvis_create_sage_dataset(
+    bundle, staged$sample_info, mzml_paths, parameters, fasta, output_directory
+  )
+  dataset$metadata <- utils::modifyList(staged$metadata, dataset$metadata)
+  dataset$metadata$workflow_stage <- "Sage_complete"
+  dataset$metadata$parent_object_name <- staged$metadata$object_name %||%
+    "ProtVis_dataset__project_init__Sage_staging__v1"
+  dataset$metadata$object_name <-
+    "ProtVis_dataset__Sage_database_search__v2"
+  dataset$metadata$object_version <- 2L
+  dataset$other_files <- c(staged$other_files %||% list(),
+                           dataset$other_files %||% list())
+  old_history <- staged$process_info$history %||% list()
+  new_history <- dataset$process_info$history %||% list()
+  dataset$process_info$history <- c(old_history, new_history)
+  validate_protvis_dataset(dataset)
+  dataset
+}
+
 .protvis_recover_sage_bundle <- function(output_directory, fasta = "",
                                          mzml_paths = character()) {
   output_directory <- path.expand(as.character(output_directory %||% ""))
@@ -395,10 +451,17 @@ sage_search_server <- function(id, shared_state) {
           shared_state$sage_search_parameters <- parameters
           dataset <- shared_state$dataset
           if (inherits(dataset, "ProtVis_dataset")) {
-            dataset <- .protvis_attach_sage_bundle(
-              dataset, bundle, parameters, validated$fasta, p$directory,
-              validated$output
-            )
+            if (identical(dataset$metadata$workflow_stage, "Sage_staging")) {
+              dataset <- .protvis_finalize_sage_dataset(
+                dataset, bundle, parameters, validated$fasta, validated$mzml,
+                validated$output
+              )
+            } else {
+              dataset <- .protvis_attach_sage_bundle(
+                dataset, bundle, parameters, validated$fasta, p$directory,
+                validated$output
+              )
+            }
             dataset <- protvis_auto_export_dataset(
               dataset, directory = shared_state$workdir, include_raw = FALSE
             )
