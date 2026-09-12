@@ -186,7 +186,7 @@ correct_noise_ui <- function(id) {
           header = NULL,
           bslib::nav_panel(
             "Sample info",
-            shiny::uiOutput(ns("sample_info_ui"))
+            DT::DTOutput(ns("tbl_sample_info"))
           ),
           bslib::nav_panel(
             "Expression Matrix",
@@ -324,21 +324,32 @@ correct_noise_server <- function(id, shared_state) {
       }
     })
 
-    output$sample_info_ui <- shiny::renderUI({
-      shiny::req(shared_state$sample_info)
-      DT::DTOutput(ns("tbl_sample_info"))
-    })
-
     output$tbl_sample_info <- DT::renderDT({
-      shiny::req(shared_state$sample_info)
-      DT::datatable(shared_state$sample_info, rownames = FALSE,
+      sample_info <- shared_state$sample_info
+      if (is.null(sample_info) || !is.data.frame(sample_info)) {
+        sample_info <- data.frame(
+          Message = "Load a ProtVis_dataset to display sample information.",
+          stringsAsFactors = FALSE
+        )
+      }
+      DT::datatable(sample_info, rownames = FALSE,
                     options = list(pageLength = 10))
     })
 
     output$expression_matrix_filtered <- DT::renderDT({
-      shiny::req(shared_state$expression_matrix_filtered)
+      matrix <- shared_state$expression_matrix_filtered
+      if (is.null(matrix) || !is.data.frame(matrix) ||
+          nrow(matrix) == 0L || ncol(matrix) < 2L) {
+        matrix <- data.frame(
+          Message = paste(
+            "No expression matrix is available in the current ProtVis_dataset.",
+            "For Raw/Sage staging data, complete Sage Search first."
+          ),
+          stringsAsFactors = FALSE
+        )
+      }
       DT::datatable(
-        shared_state$expression_matrix_filtered,
+        matrix,
         rownames = FALSE,
         options = list(scrollX = TRUE, pageLength = 10)
       )
@@ -401,6 +412,17 @@ correct_noise_server <- function(id, shared_state) {
               type = "warning"
             )
             return(invisible(NULL))
+          }
+          matrix <- shared_state$expression_matrix_filtered
+          if (is.null(matrix) || !is.data.frame(matrix) ||
+              nrow(matrix) == 0L || ncol(matrix) < 2L) {
+            stop(
+              paste(
+                "The current ProtVis_dataset has no expression matrix.",
+                "For Raw/Sage staging data, complete Sage Search before Correct Noise."
+              ),
+              call. = FALSE
+            )
           }
           workdir <- valid_workdir()
           shiny::req(correct_noise_step1())
