@@ -114,7 +114,10 @@ project_init_ui <- function(id) {
         label = 'Upload Sample Information (.csv, .xlsx, .xls)',
         accept = c(".csv", ".xlsx", ".xls")
       ),
-      tags$small("Confirm sample information", style = "color: #6c757d"),
+      tags$small(
+        "Confirm sample information; Sage requires an mzml_file column.",
+        style = "color: #6c757d"
+      ),
       bslib::accordion(
         id = ns("raw_input_accordion"),
         open = NULL,
@@ -387,8 +390,17 @@ project_init_server <- function(id, shared_state) {
         if (any(tolower(trimws(names(sample_info))) %in%
                 c("mzml_file", "mzml", "raw_file", "file", "filename"))) {
           shared_state$raw_sample_info <- sample_info
+          shared_state$sage_workflow <- TRUE
+          shared_state$raw_manifest <- NULL
+          shared_state$raw_check <- NULL
+          shiny::showNotification(
+            "Sample info uploaded and registered for Sage mzML search.",
+            type = "message"
+          )
+        } else {
+          shared_state$sage_workflow <- FALSE
+          shiny::showNotification("Sample info uploaded", type = "message")
         }
-        shiny::showNotification("Sample info uploaded", type = "message")
       }, error = function(e) {
         shiny::showNotification(
           paste0("Sample info upload failed: ", conditionMessage(e)),

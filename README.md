@@ -29,6 +29,7 @@ The application is designed for researchers who need publication-ready visual su
 -   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
 -   **Optional RAW/mzML registration and Sage search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
+-   **Uploadable Sage sample metadata**: a sample table containing `sample_id`, `mzml_file`, and grouping fields automatically enters the Sage staging workflow and can be downloaded as [`PXD065315_sample_info_template.csv`](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/PXD065315_sample_info_template.csv).
 
 ------------------------------------------------------------------------
 

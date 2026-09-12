@@ -10,3 +10,14 @@ test_that("built-in fixtures provide real B73 and Y12 metadata", {
                           info$source_url, fixed = TRUE)))
   }
 })
+
+test_that("the Sage sample-information template is downloadable and searchable", {
+  template <- file.path(testthat::test_path("..", "..", "inst", "extdata"),
+                        "PXD065315_sample_info_template.csv")
+  expect_true(file.exists(template))
+  info <- utils::read.csv(template, stringsAsFactors = FALSE,
+                          check.names = FALSE)
+  expect_equal(nrow(info), 6L)
+  expect_true(all(c("sample_id", "mzml_file", "group") %in% names(info)))
+  expect_true(all(tolower(tools::file_ext(info$mzml_file)) == "mzml"))
+})
