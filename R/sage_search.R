@@ -12,6 +12,18 @@ protvis_sage_executable <- function(path = NULL) {
     Sys.which("sage")
   )
   candidates <- candidates[nzchar(candidates) & file.exists(candidates)]
+  if (!length(candidates) && .Platform$OS.type == "windows") {
+    compressed <- system.file("extdata", "sage", "windows", "sage.exe.gz",
+                              package = "ProtVis")
+    if (nzchar(compressed) && file.exists(compressed)) {
+      target <- file.path(tempdir(), "ProtVis-sage.exe")
+      con_in <- gzfile(compressed, "rb")
+      on.exit(close(con_in), add = TRUE)
+      bytes <- readBin(con_in, what = "raw", n = 20e6)
+      writeBin(bytes, target)
+      candidates <- target
+    }
+  }
   if (!length(candidates)) return(NULL)
   normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
 }
