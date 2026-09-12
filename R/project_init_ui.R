@@ -310,6 +310,7 @@ project_init_server <- function(id, shared_state) {
       # shared_state$sample_info and therefore remained blank.
       shared_state$raw_sample_info <- builtin_info
       shared_state$sample_info <- builtin_info
+      shared_state$sage_workflow <- TRUE
       shared_state$raw_manifest <- NULL
       shared_state$raw_check <- NULL
       shiny::showNotification(
@@ -460,6 +461,9 @@ project_init_server <- function(id, shared_state) {
     # Sync data source selection to shared_state
     shiny::observeEvent(input$data_source, {
       shared_state$data_source <- input$data_source
+      if (nzchar(as.character(input$data_source %||% ""))) {
+        shared_state$sage_workflow <- FALSE
+      }
     })
     # Load a bundled, source-specific example into the shared project state.
     shiny::observeEvent(input$load_builtin, {
@@ -511,7 +515,10 @@ project_init_server <- function(id, shared_state) {
           !is.data.frame(shared_state$expression_matrix) ||
           nrow(shared_state$expression_matrix) < 1L ||
           ncol(shared_state$expression_matrix) < 2L
-        if (expression_missing) {
+        sage_mode <- isTRUE(shared_state$sage_workflow) ||
+          (is.list(shared_state$sage_search_bundle) &&
+           identical(shared_state$sage_search_bundle$status, "success"))
+        if (expression_missing && sage_mode) {
           sage_bundle <- shared_state$sage_search_bundle
           raw_directory <- shared_state$raw_directory %||% ""
           sage_output <- file.path(raw_directory, "Sage_search")

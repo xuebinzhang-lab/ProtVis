@@ -420,6 +420,7 @@ sage_search_server <- function(id, shared_state) {
     )
     shiny::observeEvent(input$run, {
       p <- paths()
+      shared_state$sage_workflow <- TRUE
       parameters <- list(
         precursor_ppm = input$precursor_ppm, fragment_da = input$fragment_da,
         enzyme = input$enzyme, missed_cleavages = input$missed_cleavages,
