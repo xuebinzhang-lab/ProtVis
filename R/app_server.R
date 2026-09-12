@@ -27,6 +27,7 @@ app_server <- function(input, output, session) {
     dep_results = list()
   )
   project_init_server("project_init", shared_state = shared_state)
+  sage_search_server("sage_search", shared_state = shared_state)
   data_input_server(
     "data_input",
     data_source_reactive = reactive(shared_state$data_source),

@@ -87,6 +87,17 @@ macOS, install Sage separately and place `sage` on `PATH`. The helper
 are not copied into `ProtVis_dataset`; only paths, filenames, checks, Sage
 parameters, and results are recorded for reproducibility.
 
+### Sage database search
+
+After initializing a project, open the top-level **Sage search** tab. ProtVis
+uses the registered FASTA and validated mzML directory, shows the resolved
+paths and bundled Sage executable, and exposes the standard Sage parameters.
+Click **Run Sage Search** to generate `sage_config.json`, `results.sage.tsv`,
+`lfq.tsv`, and `results.json` in the project `Sage_search` directory. The PSM
+and LFQ tables, configuration, paths, files, log, and provenance are stored in
+`ProtVis_dataset$analysis_results$Sage_database_search`; the stage checkpoint is
+written as `Step2_sage_database_search.rda` for downstream workflows.
+
 The PXD065315 metadata source is the [PRIDE project page](https://www.ebi.ac.uk/pride/archive/projects/PXD065315).
 Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
 `run_protvis_pipeline()`, `save_protvis_checkpoint()`, and

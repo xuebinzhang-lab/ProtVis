@@ -938,6 +938,12 @@ app_ui <- function(request) {
       ),
 
       bslib::nav_panel(
+        "Sage search",
+        icon = bsicons::bs_icon("search"),
+        sage_search_ui("sage_search")
+      ),
+
+      bslib::nav_panel(
         "Data input",
         icon = bsicons::bs_icon("usb-drive"),
         data_input_ui("data_input")
