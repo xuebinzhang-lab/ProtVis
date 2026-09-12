@@ -287,9 +287,18 @@ correct_noise_server <- function(id, shared_state) {
 
       shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)
       workdir <- valid_workdir()
-      rda_path <- base::file.path(workdir, "Step2_remove_unreliable_peptide.rda")
+      # Sage writes its completed ProtVis_dataset to a dedicated stage file.
+      # Check it first so a session restart can resume from the search result;
+      # retain the historical Step2 path for older non-Sage projects.
+      stage_candidates <- c(
+        base::file.path(workdir, "Step2_sage_database_search.rda"),
+        base::file.path(workdir, "Sage_search", "Step2_sage_database_search.rda"),
+        base::file.path(workdir, "Step2_remove_unreliable_peptide.rda")
+      )
+      existing_stages <- stage_candidates[base::file.exists(stage_candidates)]
 
-      if (base::file.exists(rda_path)) {
+      if (length(existing_stages)) {
+        rda_path <- existing_stages[[1L]]
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 35)
         dataset <- .protvis_load_stage_dataset(
           rda_path,
@@ -303,14 +312,30 @@ correct_noise_server <- function(id, shared_state) {
           shared_state$rename_result <- NULL
           shared_state$correct_noise_result <- NULL
         }
-        rv$load_success <- !base::is.null(dataset)
+        rv$load_success <- !base::is.null(dataset) &&
+          inherits(dataset, "ProtVis_dataset")
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 100)
-        shiny::showNotification("✅ Step2 data loaded successfully.", type = "message")
+        if (isTRUE(rv$load_success)) {
+          stage_label <- if (grepl("sage_database_search", basename(rda_path),
+                                    fixed = TRUE)) "Sage search results" else "Step2 data"
+          shiny::showNotification(
+            paste0("✅ ", stage_label, " loaded successfully for Correct Noise."),
+            type = "message"
+          )
+        } else {
+          shiny::showNotification(
+            paste0("❌ Unable to read ProtVis_dataset from ", basename(rda_path), "."),
+            type = "error"
+          )
+        }
       } else {
         rv$load_success <- FALSE
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 0)
         shiny::showNotification(
-          "❌ Step2_remove_unreliable_peptide.rda not found in working directory.",
+          paste(
+            "No completed input stage was found.",
+            "Run Sage Search or the previous preprocessing step before loading Correct Noise."
+          ),
           type = "error"
         )
       }
