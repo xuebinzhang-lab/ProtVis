@@ -574,8 +574,12 @@ project_init_server <- function(id, shared_state) {
               dataset, file.path(directory, "Step1_project_init.rda")
             )
             shiny::showNotification(
-              "ProtVis_dataset created from the Sage LFQ protein matrix.",
-              type = "message"
+              paste(
+                "Project Init completed:",
+                "ProtVis_dataset created from the Sage LFQ protein matrix.",
+                "You can continue with downstream analysis."
+              ),
+              type = "message", duration = 10
             )
             return(invisible(NULL))
           }
@@ -600,8 +604,12 @@ project_init_server <- function(id, shared_state) {
             dataset, file.path(directory, "Step1_project_init.rda")
           )
           shiny::showNotification(
-            "Sage inputs registered. Run Sage Search to add expression data to ProtVis_dataset.",
-            type = "message"
+            paste(
+              "Project Init completed:",
+              "sample-only ProtVis_dataset saved.",
+              "Next, open Sage Search, confirm the FASTA and mzML paths, and run Sage Search."
+            ),
+            type = "message", duration = 12
           )
           return(invisible(NULL))
         }
@@ -681,7 +689,11 @@ project_init_server <- function(id, shared_state) {
         save_path <- file.path(directory, "Step1_project_init.rda")
         .protvis_save_stage_dataset(dataset, save_path)
         shiny::showNotification(
-          paste("Project initialized:", protvis_dataset_name(dataset)), type = "message"
+          paste(
+            "Project Init completed:", protvis_dataset_name(dataset),
+            "ProtVis_dataset saved. You can continue with Pre-processing or downstream analysis."
+          ),
+          type = "message", duration = 10
         )
         message("✅ Step1_project_init.rda saved to: ", save_path)
       }, error = function(e) {
