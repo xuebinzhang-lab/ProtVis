@@ -12,23 +12,21 @@
 .protvis_raw_sample_template <- function() {
   combinations <- expand.grid(
     genotype = c("B73", "EA2024"),
-    treatment = c("Control", "Drought"),
     replicate = 1:3,
     KEEP.OUT.ATTRS = FALSE,
     stringsAsFactors = FALSE
   )
   combinations <- combinations[order(combinations$genotype,
-                                      combinations$treatment,
                                       combinations$replicate), , drop = FALSE]
-  sample_id <- paste(combinations$genotype, combinations$treatment,
-                     combinations$replicate, sep = "_")
+  sample_id <- paste(combinations$genotype, paste0("C", combinations$replicate),
+                     sep = "_")
   data.frame(
     sample_id = sample_id,
     mzml_file = paste0(sample_id, ".mzML"),
     genotype = combinations$genotype,
-    treatment = combinations$treatment,
-    group = paste(combinations$genotype, combinations$treatment, sep = "_"),
-    condition = combinations$treatment,
+    treatment = "Control",
+    group = combinations$genotype,
+    condition = "Control",
     replicate = combinations$replicate,
     batch = "Batch1",
     tissue = "leaf",
@@ -309,7 +307,7 @@ project_init_server <- function(id, shared_state) {
       shared_state$raw_manifest <- NULL
       shared_state$raw_check <- NULL
       shiny::showNotification(
-        "Built-in PXD065315 sample information loaded (12 samples).",
+        "Built-in PXD065315 sample information loaded (6 samples).",
         type = "message"
       )
     }, ignoreInit = TRUE)
