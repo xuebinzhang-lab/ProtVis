@@ -177,7 +177,12 @@ MaxQuant_server <- function(id, shared_state) {
       filter_done(TRUE)
       shiny::showNotification(paste("Unreliable peptides filtered, remaining rows:", nrow(filtered)), type = "message")
       # Save results
-      save_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+      # Correct Noise owns the canonical Step2 checkpoint.  Keep a separate
+      # MaxQuant checkpoint here so this module no longer defines the shared
+      # stage-file contract used by other data sources.
+      save_path <- base::file.path(
+        shared_state$workdir, "Step1_maxquant_output_preparation.rda"
+      )
       dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         shared_state$dataset
       } else {
@@ -201,7 +206,10 @@ MaxQuant_server <- function(id, shared_state) {
       )
       .protvis_ui_sync_state(dataset, shared_state)
       .protvis_save_stage_dataset(dataset, save_path)
-      shiny::showNotification("✅ Saved to Step2_remove_unreliable_peptide.rda", type = "message")
+      shiny::showNotification(
+        "✅ MaxQuant output prepared; continue with Correct Noise.",
+        type = "message"
+      )
     })
     # Display report results
     shiny::observeEvent(input$report, {

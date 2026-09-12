@@ -287,13 +287,16 @@ correct_noise_server <- function(id, shared_state) {
 
       shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)
       workdir <- valid_workdir()
-      # Sage writes its completed ProtVis_dataset to a dedicated stage file.
-      # Check it first so a session restart can resume from the search result;
-      # retain the historical Step2 path for older non-Sage projects.
+      # Step2_remove_unreliable_peptide.rda is the canonical checkpoint for
+      # Correct Noise, regardless of the selected data source.  Sage and old
+      # project checkpoints remain fallbacks so existing workspaces continue
+      # to load after an update.
       stage_candidates <- c(
+        base::file.path(workdir, "Step2_remove_unreliable_peptide.rda"),
         base::file.path(workdir, "Step2_sage_database_search.rda"),
         base::file.path(workdir, "Sage_search", "Step2_sage_database_search.rda"),
-        base::file.path(workdir, "Step2_remove_unreliable_peptide.rda")
+        base::file.path(workdir, "Step1_project_init.rda"),
+        base::file.path(workdir, "Step3_correct_noise.rda")
       )
       existing_stages <- stage_candidates[base::file.exists(stage_candidates)]
 
@@ -317,7 +320,7 @@ correct_noise_server <- function(id, shared_state) {
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 100)
         if (isTRUE(rv$load_success)) {
           stage_label <- if (grepl("sage_database_search", basename(rda_path),
-                                    fixed = TRUE)) "Sage search results" else "Step2 data"
+                                    fixed = TRUE)) "Sage search results" else "ProtVis data"
           shiny::showNotification(
             paste0("✅ ", stage_label, " loaded successfully for Correct Noise."),
             type = "message"
@@ -477,6 +480,13 @@ correct_noise_server <- function(id, shared_state) {
             parameters = list(method = "replicate_correction")
           )
           .protvis_ui_sync_state(dataset, shared_state)
+          # Keep Step2 as the single, data-source-independent checkpoint for
+          # the hand-off from input/search to Correct Noise.  Step3 remains
+          # as a compatibility export for older downstream modules.
+          .protvis_save_stage_dataset(
+            dataset,
+            base::file.path(workdir, "Step2_remove_unreliable_peptide.rda")
+          )
           .protvis_save_stage_dataset(
             dataset,
             base::file.path(workdir, "Step3_correct_noise.rda")

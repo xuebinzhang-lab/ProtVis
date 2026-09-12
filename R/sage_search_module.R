@@ -510,6 +510,12 @@ sage_search_server <- function(id, shared_state) {
               dataset, file.path(shared_state$workdir,
                                  "Step2_sage_database_search.rda")
             )
+            # Publish the completed search through the canonical checkpoint
+            # consumed by Correct Noise for every data source.
+            .protvis_save_stage_dataset(
+              dataset, file.path(shared_state$workdir,
+                                 "Step2_remove_unreliable_peptide.rda")
+            )
             shared_state$sage_search_bundle <- NULL
             shared_state$sage_search_parameters <- list()
           } else {
@@ -523,6 +529,10 @@ sage_search_server <- function(id, shared_state) {
             .protvis_ui_sync_state(dataset, shared_state)
             .protvis_save_stage_dataset(
               dataset, file.path(validated$output, "Step2_sage_database_search.rda")
+            )
+            .protvis_save_stage_dataset(
+              dataset, file.path(shared_state$workdir,
+                                 "Step2_remove_unreliable_peptide.rda")
             )
             shared_state$sage_search_bundle <- NULL
             shared_state$sage_search_parameters <- list()
