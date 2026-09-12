@@ -743,6 +743,32 @@ golem_add_external_resources <- function() {
       @media (prefers-reduced-motion: reduce) {
         .pv-capability { transition: none; }
       }
+    )),
+    shiny::tags$script(shiny::HTML("
+      (function () {
+        function updateDataInputNavigation() {
+          var source = document.getElementById('project_init-data_source');
+          var link = document.querySelector('[data-value=\"data_input\"]');
+          if (!source || !link) return;
+          var visible = source.value === 'MaxQuant';
+          var item = link.closest('.nav-item') || link.parentElement;
+          if (item) item.style.display = visible ? '' : 'none';
+          if (!visible && link.classList.contains('active')) {
+            var project = document.querySelector('[data-value=\"project_init\"]');
+            if (project) project.click();
+          }
+        }
+        document.addEventListener('DOMContentLoaded', updateDataInputNavigation);
+        document.addEventListener('shiny:connected', updateDataInputNavigation);
+        if (window.jQuery) {
+          $(document).on('shiny:inputchanged', function (event) {
+            if (event.name === 'project_init-data_source') {
+              window.setTimeout(updateDataInputNavigation, 0);
+            }
+          });
+        }
+        window.setTimeout(updateDataInputNavigation, 1000);
+      }());
     "))
   )
 }
@@ -933,6 +959,7 @@ app_ui <- function(request) {
 
       bslib::nav_panel(
         "Project init",
+        value = "project_init",
         icon = bsicons::bs_icon("gear"),
         project_init_ui("project_init")
       ),
@@ -943,15 +970,15 @@ app_ui <- function(request) {
         sage_search_ui("sage_search")
       ),
 
-      bslib::nav_panel(
-        "Data input",
-        icon = bsicons::bs_icon("usb-drive"),
-        data_input_ui("data_input")
-      ),
-
       bslib::nav_menu(
         "Pre-processing",
         icon = bsicons::bs_icon("wrench"),
+        bslib::nav_panel(
+          "Data input",
+          value = "data_input",
+          icon = bsicons::bs_icon("usb-drive"),
+          data_input_ui("data_input")
+        ),
         bslib::nav_panel(
           "Correct Noise",
           icon = bsicons::bs_icon("soundwave"),
