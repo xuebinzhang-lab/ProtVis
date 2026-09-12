@@ -24,7 +24,6 @@
                      combinations$replicate, sep = "_")
   data.frame(
     sample_id = sample_id,
-    raw_file = paste0(sample_id, ".raw"),
     mzml_file = paste0(sample_id, ".mzML"),
     genotype = combinations$genotype,
     treatment = combinations$treatment,
