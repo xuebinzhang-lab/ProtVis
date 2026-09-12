@@ -507,6 +507,62 @@ project_init_server <- function(id, shared_state) {
     shiny::observeEvent(input$run_button, {
       tryCatch({
         directory <- protvis_output_directory(shared_state$workdir %||% getwd())
+        expression_missing <- is.null(shared_state$expression_matrix) ||
+          !is.data.frame(shared_state$expression_matrix) ||
+          nrow(shared_state$expression_matrix) < 1L ||
+          ncol(shared_state$expression_matrix) < 2L
+        if (expression_missing) {
+          sage_bundle <- shared_state$sage_search_bundle
+          raw_directory <- shared_state$raw_directory %||% ""
+          sage_output <- file.path(raw_directory, "Sage_search")
+          if (!is.list(sage_bundle) ||
+              !identical(sage_bundle$status, "success")) {
+            mzml_paths <- if (isTRUE(shared_state$raw_check$valid) &&
+                              is.data.frame(shared_state$raw_manifest)) {
+              shared_state$raw_manifest$path
+            } else if (nzchar(raw_directory) && dir.exists(raw_directory)) {
+              list.files(raw_directory, pattern = "[.]mzML$", full.names = TRUE,
+                         ignore.case = TRUE)
+            } else character()
+            fasta <- shared_state$raw_fasta$path %||% ""
+            sage_bundle <- .protvis_recover_sage_bundle(
+              sage_output, fasta = fasta, mzml_paths = mzml_paths
+            )
+          }
+          if (is.list(sage_bundle) && identical(sage_bundle$status, "success")) {
+            fasta <- shared_state$raw_fasta$path %||%
+              sage_bundle$config$database$fasta %||% ""
+            mzml_paths <- if (isTRUE(shared_state$raw_check$valid) &&
+                              is.data.frame(shared_state$raw_manifest)) {
+              shared_state$raw_manifest$path
+            } else as.character(sage_bundle$config$mzml_paths %||% character())
+            dataset <- .protvis_create_sage_dataset(
+              sage_bundle,
+              shared_state$raw_sample_info %||% shared_state$sample_info,
+              mzml_paths,
+              shared_state$sage_search_parameters %||% list(),
+              fasta, dirname(sage_bundle$config_path)
+            )
+            dataset$metadata$object_name <- paste0(
+              "ProtVis_dataset__project_init__Sage_LFQ__v1"
+            )
+            dataset$metadata$object_version <- 1L
+            dataset <- protvis_auto_export_dataset(
+              dataset, directory = directory, include_raw = FALSE
+            )
+            .protvis_ui_sync_state(dataset, shared_state)
+            .protvis_save_stage_dataset(
+              dataset, file.path(directory, "Step1_project_init.rda")
+            )
+            shiny::showNotification(
+              "ProtVis_dataset created from the Sage LFQ protein matrix.",
+              type = "message"
+            )
+            return(invisible(NULL))
+          }
+          stop("Upload an expression matrix or complete a Sage LFQ search before Project init.",
+               call. = FALSE)
+        }
         shiny::req(shared_state$sample_info, shared_state$expression_matrix,
                    shared_state$data_source)
         validated <- validate_protvis_data(

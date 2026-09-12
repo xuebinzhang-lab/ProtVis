@@ -117,6 +117,32 @@
                               dirname(mzml_paths[[1L]]), output_directory)
 }
 
+.protvis_recover_sage_bundle <- function(output_directory, fasta = "",
+                                         mzml_paths = character()) {
+  output_directory <- path.expand(as.character(output_directory %||% ""))
+  files <- list(
+    config = file.path(output_directory, "sage_config.json"),
+    results = file.path(output_directory, "results.sage.tsv"),
+    lfq = file.path(output_directory, "lfq.tsv"),
+    report = file.path(output_directory, "results.json")
+  )
+  if (!file.exists(files$lfq)) return(NULL)
+  config <- if (file.exists(files$config)) {
+    jsonlite::read_json(files$config, simplifyVector = TRUE)
+  } else list()
+  if (!length(mzml_paths)) mzml_paths <- as.character(config$mzml_paths %||% character())
+  if (!nzchar(fasta)) fasta <- as.character(config$database$fasta %||% "")
+  if (!length(mzml_paths) || !nzchar(fasta) || !file.exists(fasta)) return(NULL)
+  list(
+    status = "success", exit_status = 0L, sage_path = protvis_sage_executable(),
+    config = config, config_path = files$config, files = files,
+    log = "Recovered from the previous Sage_search output directory.",
+    started_at = NA_character_, finished_at = as.character(Sys.time()),
+    psms = protvis_read_sage_table(files$results),
+    lfq_table = protvis_read_sage_table(files$lfq)
+  )
+}
+
 .protvis_sage_paths <- function(fasta, mzml_directory, output_directory) {
   fasta <- path.expand(as.character(fasta %||% ""))
   mzml_directory <- path.expand(as.character(mzml_directory %||% ""))
