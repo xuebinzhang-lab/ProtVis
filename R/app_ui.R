@@ -747,7 +747,7 @@ golem_add_external_resources <- function() {
     shiny::tags$script(shiny::HTML("
       (function () {
         function updateSageNavigation(visible) {
-          var link = document.querySelector('[data-value=\"sage_search\"]');
+          var link = document.querySelector('a.nav-link[data-value=\"sage_search\"]');
           if (!link) return;
           var item = link.closest('.nav-item') || link.parentElement;
           if (item) item.style.display = visible ? '' : 'none';
@@ -759,11 +759,10 @@ golem_add_external_resources <- function() {
 
         function updateDataInputNavigation() {
           var source = document.getElementById('project_init-data_source');
-          var link = document.querySelector('[data-value=\"data_input\"]');
+          var link = document.querySelector('a.nav-link[data-value=\"data_input\"]');
           if (!source || !link) return;
           var visible = source.value === 'MaxQuant';
-          var item = link.closest('li.nav-item') ||
-            link.closest('.nav-item') || link.parentElement;
+          var item = link.closest('li.nav-item') || link.parentElement;
           link.style.display = visible ? '' : 'none';
           link.hidden = !visible;
           link.setAttribute('aria-hidden', visible ? 'false' : 'true');
@@ -771,6 +770,14 @@ golem_add_external_resources <- function() {
             item.style.display = visible ? '' : 'none';
             item.hidden = !visible;
             item.setAttribute('aria-hidden', visible ? 'false' : 'true');
+          }
+          // Always restore the parent Pre-processing dropdown. Only its
+          // MaxQuant-specific child is conditional.
+          var menu = item && item.closest('li.dropdown');
+          if (menu) {
+            menu.style.display = '';
+            menu.hidden = false;
+            menu.setAttribute('aria-hidden', 'false');
           }
           if (!visible && link.classList.contains('active')) {
             var project = document.querySelector('[data-value=\"project_init\"]');
