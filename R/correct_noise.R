@@ -232,14 +232,32 @@ correct_noise_server <- function(id, shared_state) {
     )
 
     valid_workdir <- function() {
-      directory <- shared_state$workdir
-      if (length(directory) != 1L || is.na(directory) ||
-          !nzchar(trimws(as.character(directory))) ||
-          !dir.exists(as.character(directory))) {
-        stop("Set a valid working directory in Project init first.",
+      dataset <- shared_state$dataset
+      metadata <- if (inherits(dataset, "ProtVis_dataset")) {
+        dataset$metadata %||% list()
+      } else list()
+      checkpoint_info <- if (inherits(dataset, "ProtVis_dataset")) {
+        dataset$checkpoint_info %||% list()
+      } else list()
+      candidates <- c(
+        shared_state$workdir,
+        metadata$output_directory,
+        checkpoint_info$output_directory,
+        shared_state$raw_directory,
+        getwd()
+      )
+      candidates <- vapply(candidates, function(value) {
+        if (is.null(value) || length(value) != 1L || is.na(value)) return("")
+        trimws(as.character(value))
+      }, character(1))
+      candidates <- candidates[nzchar(candidates) & dir.exists(candidates)]
+      if (!length(candidates)) {
+        stop("Unable to resolve a writable ProtVis working directory.",
              call. = FALSE)
       }
-      normalizePath(as.character(directory), winslash = "/", mustWork = TRUE)
+      directory <- normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
+      shared_state$workdir <- directory
+      directory
     }
 
     shiny::observe({
@@ -272,19 +290,6 @@ correct_noise_server <- function(id, shared_state) {
         shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
         return(invisible(NULL))
       }
-      if (length(shared_state$workdir) != 1L ||
-          is.na(shared_state$workdir) ||
-          !nzchar(trimws(as.character(shared_state$workdir))) ||
-          !dir.exists(as.character(shared_state$workdir))) {
-        rv$load_success <- FALSE
-        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 0)
-        shiny::showNotification(
-          "Set a valid working directory in Project init before loading data.",
-          type = "error"
-        )
-        return(invisible(NULL))
-      }
-
       shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)
       workdir <- valid_workdir()
       # Step2_remove_unreliable_peptide.rda is the canonical checkpoint for

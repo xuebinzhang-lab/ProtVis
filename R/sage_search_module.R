@@ -409,10 +409,37 @@ sage_search_ui <- function(id) {
 sage_search_server <- function(id, shared_state) {
   shiny::moduleServer(id, function(input, output, session) {
     rv <- shiny::reactiveValues(bundle = NULL, config_path = NULL)
+    scalar_path <- function(value) {
+      if (is.null(value) || length(value) != 1L || is.na(value)) return("")
+      trimws(as.character(value))
+    }
+    dataset_metadata_path <- function(name) {
+      dataset <- shared_state$dataset
+      metadata <- if (inherits(dataset, "ProtVis_dataset")) {
+        dataset$metadata %||% list()
+      } else list()
+      value <- metadata[[name]] %||% ""
+      if (is.list(value)) value <- value$path %||% ""
+      scalar_path(value)
+    }
+    usable_directory <- function(...) {
+      candidates <- c(...)
+      candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
+      candidates <- candidates[dir.exists(candidates)]
+      if (!length(candidates)) return(normalizePath(getwd(), winslash = "/"))
+      normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
+    }
     paths <- shiny::reactive({
-      fasta <- shared_state$raw_fasta$path %||% ""
-      directory <- shared_state$raw_directory %||% ""
-      output_dir <- file.path(shared_state$workdir %||% directory, "Sage_search")
+      fasta <- scalar_path(shared_state$raw_fasta$path %||% "")
+      if (!nzchar(fasta)) fasta <- dataset_metadata_path("raw_fasta")
+      directory <- scalar_path(shared_state$raw_directory %||% "")
+      if (!nzchar(directory)) directory <- dataset_metadata_path("raw_directory")
+      workdir <- usable_directory(
+        scalar_path(shared_state$workdir %||% ""),
+        dataset_metadata_path("output_directory"),
+        directory
+      )
+      output_dir <- file.path(workdir, "Sage_search")
       list(fasta = fasta, directory = directory, output = output_dir)
     })
     output$path_status <- shiny::renderUI({
@@ -470,6 +497,17 @@ sage_search_server <- function(id, shared_state) {
         fdr = input$fdr, lfq = input$lfq
       )
       tryCatch({
+        if (!nzchar(p$fasta) || !file.exists(p$fasta)) {
+          stop("Select a readable protein FASTA file before running Sage.",
+               call. = FALSE)
+        }
+        if (!nzchar(p$directory) || !dir.exists(p$directory)) {
+          stop("Select a directory containing the mzML files before running Sage.",
+               call. = FALSE)
+        }
+        shared_state$workdir <- usable_directory(
+          shared_state$workdir %||% "", dirname(p$output)
+        )
         validated <- .protvis_sage_paths(p$fasta, p$directory, p$output)
         shiny::withProgress(message = "Running Sage database search", value = 0.1, {
           manifest <- shared_state$raw_manifest
