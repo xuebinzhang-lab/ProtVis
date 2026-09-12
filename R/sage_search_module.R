@@ -46,6 +46,77 @@
   )
 }
 
+.protvis_sage_lfq_protein_matrix <- function(lfq, sample_info, mzml_paths) {
+  if (!is.data.frame(lfq) || !nrow(lfq)) {
+    stop("Sage LFQ output is empty. Enable LFQ to create the protein matrix.",
+         call. = FALSE)
+  }
+  protein_col <- names(lfq)[tolower(names(lfq)) %in% c("proteins", "protein")][1L]
+  if (is.na(protein_col) || !nzchar(protein_col)) {
+    stop("Sage LFQ output does not contain the required proteins column.",
+         call. = FALSE)
+  }
+  file_names <- basename(mzml_paths)
+  intensity_cols <- intersect(file_names, names(lfq))
+  if (!length(intensity_cols)) {
+    intensity_cols <- names(lfq)[tolower(names(lfq)) %in% tolower(file_names)]
+  }
+  if (!length(intensity_cols)) {
+    stop("Sage LFQ columns could not be matched to the mzML files.", call. = FALSE)
+  }
+  sample_info <- as.data.frame(sample_info, stringsAsFactors = FALSE,
+                               check.names = FALSE)
+  sample_ids <- as.character(sample_info$sample_id)
+  file_col <- names(sample_info)[tolower(names(sample_info)) %in%
+                                  c("mzml_file", "mzml", "raw_file", "file", "filename")][1L]
+  mapped_ids <- if (!is.na(file_col) && nzchar(file_col)) {
+    sample_ids[match(tolower(intensity_cols), tolower(as.character(sample_info[[file_col]])))]
+  } else character()
+  mapped_ids[is.na(mapped_ids) | !nzchar(mapped_ids)] <-
+    tools::file_path_sans_ext(intensity_cols[is.na(mapped_ids) | !nzchar(mapped_ids)])
+  protein_lists <- strsplit(as.character(lfq[[protein_col]]), ";", fixed = TRUE)
+  protein_lists <- lapply(protein_lists, function(x) {
+    x <- trimws(x)
+    x[nzchar(x) & !grepl("^rev_", x, ignore.case = TRUE)]
+  })
+  proteins <- sort(unique(unlist(protein_lists, use.names = FALSE)))
+  proteins <- proteins[nzchar(proteins)]
+  if (!length(proteins)) stop("No target proteins were found in Sage LFQ output.",
+                              call. = FALSE)
+  result <- matrix(NA_real_, nrow = length(proteins), ncol = length(intensity_cols),
+                   dimnames = list(proteins, mapped_ids))
+  for (j in seq_along(intensity_cols)) {
+    values <- .protvis_safe_numeric(lfq[[intensity_cols[[j]]]])
+    for (i in which(is.finite(values) & lengths(protein_lists) > 0L)) {
+      ids <- protein_lists[[i]]
+      result[ids, j] <- rowSums(cbind(result[ids, j], values[[i]]), na.rm = TRUE)
+    }
+  }
+  as.data.frame(result, check.names = FALSE, stringsAsFactors = FALSE)
+}
+
+.protvis_create_sage_dataset <- function(bundle, sample_info, mzml_paths,
+                                         parameters, fasta, output_directory) {
+  sample_info <- as.data.frame(sample_info %||% data.frame(),
+                               stringsAsFactors = FALSE, check.names = FALSE)
+  file_col <- names(sample_info)[tolower(names(sample_info)) %in%
+                                  c("mzml_file", "mzml", "raw_file", "file", "filename")][1L]
+  if (nrow(sample_info) > 0L && !is.na(file_col) && nzchar(file_col)) {
+    index <- match(tolower(basename(mzml_paths)),
+                   tolower(as.character(sample_info[[file_col]])))
+    if (all(!is.na(index))) sample_info <- sample_info[index, , drop = FALSE]
+  }
+  matrix <- .protvis_sage_lfq_protein_matrix(bundle$lfq_table, sample_info, mzml_paths)
+  dataset <- create_protvis_dataset(
+    matrix, sample_info = sample_info,
+    metadata = list(source = "Sage LFQ", raw_fasta = list(
+      name = basename(fasta), path = fasta
+    ), raw_directory = dirname(mzml_paths[[1L]]), output_directory = output_directory)
+  )
+  .protvis_attach_sage_bundle(dataset, bundle, parameters, fasta,
+                              dirname(mzml_paths[[1L]]), output_directory)
+}
+
 .protvis_sage_paths <- function(fasta, mzml_directory, output_directory) {
   fasta <- path.expand(as.character(fasta %||% ""))
   mzml_directory <- path.expand(as.character(mzml_directory %||% ""))
@@ -312,14 +383,25 @@ sage_search_server <- function(id, shared_state) {
             )
             shared_state$sage_search_bundle <- NULL
             shared_state$sage_search_parameters <- list()
+          } else {
+            dataset <- .protvis_create_sage_dataset(
+              bundle, shared_state$raw_sample_info %||% shared_state$sample_info,
+              validated$mzml, parameters, validated$fasta, validated$output
+            )
+            dataset <- protvis_auto_export_dataset(
+              dataset, directory = validated$output, include_raw = FALSE
+            )
+            .protvis_ui_sync_state(dataset, shared_state)
+            .protvis_save_stage_dataset(
+              dataset, file.path(validated$output, "Step2_sage_database_search.rda")
+            )
+            shared_state$sage_search_bundle <- NULL
+            shared_state$sage_search_parameters <- list()
           }
         })
         shiny::showNotification(
-          if (inherits(shared_state$dataset, "ProtVis_dataset")) {
-            "Sage search completed and was saved to ProtVis_dataset."
-          } else {
-            "Sage search completed. Initialize the project to attach results to ProtVis_dataset."
-          }, type = "message", duration = 5
+          "Sage search completed and the protein LFQ matrix and result tables were saved to ProtVis_dataset.",
+          type = "message", duration = 5
         )
       }, error = function(e) {
         shiny::showNotification(paste("Sage search failed:", conditionMessage(e)),

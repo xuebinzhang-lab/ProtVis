@@ -97,6 +97,11 @@ Click **Run Sage Search** to generate `sage_config.json`, `results.sage.tsv`,
 and LFQ tables, configuration, paths, files, log, and provenance are stored in
 `ProtVis_dataset$analysis_results$Sage_database_search`; the stage checkpoint is
 written as `Step2_sage_database_search.rda` for downstream workflows.
+When no quantitative matrix has been initialized yet, ProtVis aggregates the
+Sage LFQ peptide table by target protein and creates the canonical protein-by-
+sample `ProtVis_dataset` automatically. This matrix becomes the active input
+for the existing preprocessing, differential-abundance, enrichment, and other
+downstream modules.
 
 The PXD065315 metadata source is the [PRIDE project page](https://www.ebi.ac.uk/pride/archive/projects/PXD065315).
 Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
