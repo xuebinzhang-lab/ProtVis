@@ -769,24 +769,33 @@ golem_add_external_resources <- function() {
             if (project) project.click();
           }
         }
+
+        function updatePreprocessingNavigation() {
+          var source = document.getElementById('project_init-data_source');
+          var link = document.querySelector('[data-value=\"data_input\"]');
+          if (!source || !link) return;
+          var menu = link.closest('.dropdown');
+          if (menu) menu.style.display = source.value ? '' : 'none';
+          updateDataInputNavigation();
+        }
         if (window.Shiny) {
           Shiny.addCustomMessageHandler('protvis-sage-nav', function (message) {
             updateSageNavigation(Boolean(message && message.visible));
           });
         }
-        document.addEventListener('DOMContentLoaded', updateDataInputNavigation);
+        document.addEventListener('DOMContentLoaded', updatePreprocessingNavigation);
         document.addEventListener('DOMContentLoaded', function () {
           updateSageNavigation(false);
         });
-        document.addEventListener('shiny:connected', updateDataInputNavigation);
+        document.addEventListener('shiny:connected', updatePreprocessingNavigation);
         if (window.jQuery) {
           $(document).on('shiny:inputchanged', function (event) {
             if (event.name === 'project_init-data_source') {
-              window.setTimeout(updateDataInputNavigation, 0);
+              window.setTimeout(updatePreprocessingNavigation, 0);
             }
           });
         }
-        window.setTimeout(updateDataInputNavigation, 1000);
+        window.setTimeout(updatePreprocessingNavigation, 1000);
       }());
     "))
   )
