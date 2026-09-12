@@ -757,6 +757,11 @@ golem_add_external_resources <- function() {
           }
         }
 
+        function updateSearchNavigation() {
+          var source = document.getElementById('project_init-data_source');
+          updateSageNavigation(Boolean(source && source.value === 'Raw'));
+        }
+
         function findDataInputLink() {
           var link = document.querySelector('a.nav-link[data-value=\"data_input\"]') ||
             document.querySelector('button.nav-link[data-value=\"data_input\"]') ||
@@ -820,24 +825,32 @@ golem_add_external_resources <- function() {
         }
         registerProtvisNavigationHandlers();
         document.addEventListener('DOMContentLoaded', updatePreprocessingNavigation);
-        document.addEventListener('DOMContentLoaded', function () {
-          updateSageNavigation(false);
-        });
+        document.addEventListener('DOMContentLoaded', updateSearchNavigation);
         document.addEventListener('shiny:connected', function () {
           registerProtvisNavigationHandlers();
           updatePreprocessingNavigation();
+          updateSearchNavigation();
         });
         if (window.jQuery) {
           $(document).on('shiny:inputchanged', function (event) {
             if (event.name === 'project_init-data_source') {
-              window.setTimeout(updatePreprocessingNavigation, 0);
+              window.setTimeout(function () {
+                updatePreprocessingNavigation();
+                updateSearchNavigation();
+              }, 0);
             }
           });
           $(document).on('change', '#project_init-data_source', function () {
-            window.setTimeout(updatePreprocessingNavigation, 0);
+            window.setTimeout(function () {
+              updatePreprocessingNavigation();
+              updateSearchNavigation();
+            }, 0);
           });
         }
-        window.setTimeout(updatePreprocessingNavigation, 1000);
+        window.setTimeout(function () {
+          updatePreprocessingNavigation();
+          updateSearchNavigation();
+        }, 1000);
       }());
     "))
   )

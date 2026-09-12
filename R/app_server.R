@@ -29,14 +29,11 @@ app_server <- function(input, output, session) {
     # requiring a legacy Step7_DEP_result.rda file on disk.
     dep_results = list()
   )
-  # Search is a FASTA-backed workflow. Keep its navigation item hidden until
-  # the Project init FASTA upload has been accepted and the temporary file is
-  # still readable.
+  # Search is the Raw-data workflow. FASTA and mzML are validated when the
+  # search is run, while the navigation item follows the selected source.
   shiny::observe({
-    fasta <- shared_state$raw_fasta
-    visible <- is.list(fasta) && length(fasta$path) == 1L &&
-      !is.na(fasta$path) && nzchar(as.character(fasta$path)) &&
-      file.exists(as.character(fasta$path))
+    source <- as.character(shared_state$data_source %||% "Raw")
+    visible <- identical(source, "Raw")
     session$sendCustomMessage("protvis-sage-nav", list(visible = visible))
   })
   shiny::observe({
