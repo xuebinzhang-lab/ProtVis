@@ -231,6 +231,17 @@ correct_noise_server <- function(id, shared_state) {
       noise_requested = FALSE
     )
 
+    valid_workdir <- function() {
+      directory <- shared_state$workdir
+      if (length(directory) != 1L || is.na(directory) ||
+          !nzchar(trimws(as.character(directory))) ||
+          !dir.exists(as.character(directory))) {
+        stop("Set a valid working directory in Project init first.",
+             call. = FALSE)
+      }
+      normalizePath(as.character(directory), winslash = "/", mustWork = TRUE)
+    }
+
     shiny::observe({
       shinyWidgets::updateProgressBar(
         session = session,
@@ -261,10 +272,22 @@ correct_noise_server <- function(id, shared_state) {
         shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
         return(invisible(NULL))
       }
-      shiny::req(shared_state$workdir)
+      if (length(shared_state$workdir) != 1L ||
+          is.na(shared_state$workdir) ||
+          !nzchar(trimws(as.character(shared_state$workdir))) ||
+          !dir.exists(as.character(shared_state$workdir))) {
+        rv$load_success <- FALSE
+        shinyWidgets::updateProgressBar(session, id = "load_progress", value = 0)
+        shiny::showNotification(
+          "Set a valid working directory in Project init before loading data.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
 
       shinyWidgets::updateProgressBar(session, id = "load_progress", value = 10)
-      rda_path <- base::file.path(shared_state$workdir, "Step2_remove_unreliable_peptide.rda")
+      workdir <- valid_workdir()
+      rda_path <- base::file.path(workdir, "Step2_remove_unreliable_peptide.rda")
 
       if (base::file.exists(rda_path)) {
         shinyWidgets::updateProgressBar(session, id = "load_progress", value = 35)
@@ -372,6 +395,14 @@ correct_noise_server <- function(id, shared_state) {
     shiny::observeEvent(input$correct_noise, {
       rv$noise_requested <- TRUE
       tryCatch({
+          if (!isTRUE(rv$load_success)) {
+            shiny::showNotification(
+              "Load data successfully before running Correct Noise.",
+              type = "warning"
+            )
+            return(invisible(NULL))
+          }
+          workdir <- valid_workdir()
           shiny::req(correct_noise_step1())
           shinyWidgets::updateProgressBar(session, id = "noise_progress", value = 15)
           dat <- correct_noise_step1()
@@ -401,7 +432,7 @@ correct_noise_server <- function(id, shared_state) {
           .protvis_ui_sync_state(dataset, shared_state)
           .protvis_save_stage_dataset(
             dataset,
-            base::file.path(shared_state$workdir, "Step3_correct_noise.rda")
+            base::file.path(workdir, "Step3_correct_noise.rda")
           )
           shiny::showNotification("✅ Noise correction completed.", type = "message")
         }, error = function(e) {
