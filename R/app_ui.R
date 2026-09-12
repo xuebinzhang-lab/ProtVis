@@ -779,11 +779,8 @@ golem_add_external_resources <- function() {
         }
 
         function updatePreprocessingNavigation() {
-          var source = document.getElementById('project_init-data_source');
-          var link = document.querySelector('[data-value=\"data_input\"]');
-          if (!source || !link) return;
-          var menu = link.closest('.dropdown');
-          if (menu) menu.style.display = source.value ? '' : 'none';
+          // Pre-processing contains source-independent steps and must remain
+          // available for Raw and every other supported data source.
           updateDataInputNavigation();
         }
         if (window.Shiny) {
