@@ -129,6 +129,13 @@ project_init_ui <- function(id) {
             "The selected directory is checked against every sample before search.",
             class = "text-muted small"
           ),
+          shiny::actionButton(
+            ns("use_builtin_raw_sample_info"),
+            "Use built-in PXD065315 sample information",
+            icon = bsicons::bs_icon("table"),
+            class = "btn btn-outline-primary w-100"
+          ),
+          shiny::uiOutput(ns("raw_sample_info_status")),
           shiny::uiOutput(ns("raw_directory_ui")),
           shiny::actionButton(
             ns("check_raw_files"), "Check mzML files",
@@ -293,6 +300,24 @@ project_init_server <- function(id, shared_state) {
                                       conditionMessage(e)), type = "error")
       })
     }, ignoreInit = TRUE)
+    shiny::observeEvent(input$use_builtin_raw_sample_info, {
+      shared_state$raw_sample_info <- .protvis_raw_sample_template()
+      shared_state$raw_manifest <- NULL
+      shared_state$raw_check <- NULL
+      shiny::showNotification(
+        "Built-in PXD065315 sample information loaded (12 samples).",
+        type = "message"
+      )
+    }, ignoreInit = TRUE)
+    output$raw_sample_info_status <- shiny::renderUI({
+      info <- shared_state$raw_sample_info
+      if (is.null(info)) return(NULL)
+      tags$small(
+        paste("Sample information ready:", nrow(info), "samples;", 
+              "replace mzml_file names with the downloaded PRIDE filenames."),
+        class = "text-success"
+      )
+    })
     output$raw_directory_path <- shiny::renderText({
       path <- shared_state$raw_directory
       if (is.null(path) || !nzchar(path)) "No mzML directory selected" else path
@@ -329,6 +354,10 @@ project_init_server <- function(id, shared_state) {
           input$SampleInfo$datapath, filename = input$SampleInfo$name
         )
         shared_state$sample_info <- sample_info
+        if (any(tolower(trimws(names(sample_info))) %in%
+                c("mzml_file", "mzml", "raw_file", "file", "filename"))) {
+          shared_state$raw_sample_info <- sample_info
+        }
         shiny::showNotification("Sample info uploaded", type = "message")
       }, error = function(e) {
         shiny::showNotification(
@@ -340,7 +369,8 @@ project_init_server <- function(id, shared_state) {
     shiny::observeEvent(input$check_raw_files, {
       tryCatch({
         result <- .protvis_validate_mzml_files(
-          shared_state$sample_info, shared_state$raw_directory
+          shared_state$raw_sample_info %||% shared_state$sample_info,
+          shared_state$raw_directory
         )
         shared_state$raw_manifest <- result$manifest
         shared_state$raw_check <- result
