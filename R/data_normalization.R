@@ -200,11 +200,30 @@ data_normalization_server <- function(id, shared_state) {
       normalization_done = FALSE
     )
 
+    valid_workdir <- function() {
+      directory <- shared_state$workdir
+      if (length(directory) != 1L || is.na(directory) ||
+          !nzchar(trimws(as.character(directory))) ||
+          !dir.exists(as.character(directory))) {
+        stop("Set a valid working directory in Project init first.",
+             call. = FALSE)
+      }
+      normalizePath(as.character(directory), winslash = "/", mustWork = TRUE)
+    }
+
     shiny::observeEvent(input$load_data, {
-      shiny::req(shared_state$workdir)
+      workdir <- tryCatch(
+        valid_workdir(),
+        error = function(e) {
+          rv$load_success <- FALSE
+          shiny::showNotification(conditionMessage(e), type = "error")
+          NULL
+        }
+      )
+      if (is.null(workdir)) return(invisible(NULL))
 
       rda_path <- base::file.path(
-        shared_state$workdir,
+        workdir,
         "Step5_data_imputation.rda"
       )
 
@@ -236,7 +255,10 @@ data_normalization_server <- function(id, shared_state) {
       } else {
         rv$load_success <- FALSE
         shiny::showNotification(
-          "❌ Step5_data_imputation.rda not found.",
+          paste(
+            "No imputed ProtVis_dataset was found.",
+            "Run Data Imputation successfully before loading Normalization."
+          ),
           type = "error"
         )
       }
@@ -290,10 +312,17 @@ data_normalization_server <- function(id, shared_state) {
     })
 
     output$originalData <- DT::renderDT({
-      shiny::req(original_matrix_numeric())
+      matrix <- tryCatch(original_matrix_numeric(), error = function(e) NULL)
+      if (is.null(matrix) || !is.data.frame(matrix) ||
+          nrow(matrix) == 0L || ncol(matrix) == 0L) {
+        matrix <- data.frame(
+          Message = "Load an imputed ProtVis_dataset to display the original data.",
+          stringsAsFactors = FALSE
+        )
+      }
 
       DT::datatable(
-        original_matrix_numeric(),
+        matrix,
         options = list(
           scrollX = TRUE,
           pageLength = 10
@@ -303,9 +332,19 @@ data_normalization_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_normalization, {
-      shiny::req(original_matrix_numeric(), shared_state$workdir)
-
+      if (!isTRUE(rv$load_success)) {
+        shiny::showNotification(
+          "Load imputed data successfully before running Normalization.",
+          type = "warning"
+        )
+        return(invisible(NULL))
+      }
+      workdir <- valid_workdir()
       expr_df <- original_matrix_numeric()
+      if (!nrow(expr_df) || !ncol(expr_df)) {
+        shiny::showNotification("The loaded expression matrix is empty.", type = "error")
+        return(invisible(NULL))
+      }
 
       normalized_data <- sample_subtract(expr_df)
       normalized_data <- base::as.data.frame(
@@ -343,7 +382,7 @@ data_normalization_server <- function(id, shared_state) {
       .protvis_save_stage_dataset(
         dataset,
         base::file.path(
-          shared_state$workdir, "Step6_data_normalization.rda"
+          workdir, "Step6_data_normalization.rda"
         )
       )
 
