@@ -135,6 +135,11 @@ project_init_ui <- function(id) {
             class = "btn btn-outline-primary w-100"
           ),
           shiny::uiOutput(ns("raw_sample_info_status")),
+          shiny::fileInput(
+            ns("raw_fasta"), "Upload protein FASTA (optional)",
+            accept = c(".fa", ".fasta", ".faa", ".gz")
+          ),
+          shiny::uiOutput(ns("raw_fasta_status")),
           shiny::uiOutput(ns("raw_directory_ui")),
           shiny::actionButton(
             ns("check_raw_files"), "Check mzML files",
@@ -316,6 +321,27 @@ project_init_server <- function(id, shared_state) {
               "replace mzml_file names with the downloaded PRIDE filenames."),
         class = "text-success"
       )
+    })
+    shiny::observeEvent(input$raw_fasta, {
+      shiny::req(input$raw_fasta)
+      file_name <- as.character(input$raw_fasta$name %||% "")
+      valid <- grepl("\\.(fa|fasta|faa)(\\.gz)?$", file_name, ignore.case = TRUE)
+      if (!valid) {
+        shared_state$raw_fasta <- NULL
+        shiny::showNotification("FASTA file must use .fa, .fasta, .faa, or .gz extension.",
+                                type = "error")
+      } else {
+        shared_state$raw_fasta <- list(
+          name = file_name,
+          path = normalizePath(input$raw_fasta$datapath, winslash = "/", mustWork = TRUE)
+        )
+        shiny::showNotification("Protein FASTA uploaded.", type = "message")
+      }
+    })
+    output$raw_fasta_status <- shiny::renderUI({
+      fasta <- shared_state$raw_fasta
+      if (is.null(fasta)) return(NULL)
+      tags$small(paste("FASTA ready:", fasta$name), class = "text-success")
     })
     output$raw_directory_path <- shiny::renderText({
       path <- shared_state$raw_directory
@@ -503,6 +529,16 @@ project_init_server <- function(id, shared_state) {
             parameters = list(directory = shared_state$raw_directory),
             message = paste0("Validated ", nrow(shared_state$raw_manifest),
                              " mzML files against sample information.")
+          )
+        }
+        if (is.list(shared_state$raw_fasta) &&
+            nzchar(shared_state$raw_fasta$path) &&
+            file.exists(shared_state$raw_fasta$path)) {
+          dataset$metadata$raw_fasta <- shared_state$raw_fasta
+          dataset <- .protvis_append_process(
+            dataset, "raw_fasta_registration", status = "success",
+            parameters = list(filename = shared_state$raw_fasta$name),
+            message = "Protein FASTA registered for downstream database search."
           )
         }
         dataset$metadata$object_name <- paste0(
