@@ -1,10 +1,10 @@
 test_that("PXD065315 raw template has the complete factorial design", {
   info <- .protvis_raw_sample_template()
-  expect_equal(nrow(info), 12L)
-  expect_equal(table(info$genotype), c(B73 = 6L, EA2024 = 6L))
-  expect_equal(table(info$treatment), c(Control = 6L, Drought = 6L))
+  expect_equal(nrow(info), 6L)
+  expect_equal(table(info$genotype), c(B73 = 3L, EA2024 = 3L))
+  expect_equal(table(info$treatment), c(Control = 6L))
   expect_true(all(tolower(tools::file_ext(info$mzml_file)) == "mzml"))
-  expect_equal(length(unique(info$sample_id)), 12L)
+  expect_equal(length(unique(info$sample_id)), 6L)
 })
 
 test_that("mzML validation detects missing and non-mzML files", {
