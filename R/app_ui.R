@@ -743,7 +743,7 @@ golem_add_external_resources <- function() {
       @media (prefers-reduced-motion: reduce) {
         .pv-capability { transition: none; }
       }
-    )),
+    ")),
     shiny::tags$script(shiny::HTML("
       (function () {
         function updateDataInputNavigation() {
