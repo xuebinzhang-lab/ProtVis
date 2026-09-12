@@ -15,6 +15,7 @@ app_server <- function(input, output, session) {
     expression_matrix_filtered = NULL,
     raw_directory = NULL,
     raw_sample_info = NULL,
+    raw_fasta = NULL,
     raw_manifest = NULL,
     raw_check = NULL,
     data_source = NULL,
