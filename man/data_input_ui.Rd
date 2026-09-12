@@ -2,9 +2,9 @@
 % Please edit documentation in R/data_input.R
 \name{data_input_ui}
 \alias{data_input_ui}
-\title{Data Input UI Module
-This UI module dynamically displays a header showing the current data source
-and renders the corresponding UI for the selected data source module.}
+\title{MaxQuant Output Preparation UI Module
+The visible navigation exposes this preparation step only for MaxQuant
+projects; legacy source adapters remain available internally for compatibility.}
 \usage{
 data_input_ui(id)
 }
@@ -15,7 +15,7 @@ data_input_ui(id)
 A Shiny UI tag list.
 }
 \description{
-Data Input UI Module
-This UI module dynamically displays a header showing the current data source
-and renders the corresponding UI for the selected data source module.
+MaxQuant Output Preparation UI Module
+The visible navigation exposes this preparation step only for MaxQuant
+projects; legacy source adapters remain available internally for compatibility.
 }

@@ -1,4 +1,4 @@
-# Legacy Data input menu adapters. The canonical import implementation lives
+# Legacy MaxQuant output preparation adapters. The canonical import implementation lives
 # in import_protvis(); these modules keep the existing tabular UI usable.
 
 .protvis_legacy_parsed <- function(data, source) {

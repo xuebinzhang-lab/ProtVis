@@ -23,7 +23,7 @@ The application is designed for researchers who need publication-ready visual su
 -   **Multi-source proteomics import** for MaxQuant, Proteome Discoverer, DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, and user-defined matrices.
 -   **ProtVis_dataset** standardized object with expression data, sample/variable metadata, annotations, analysis results, provenance, checkpoints, and portable exports.
 -   **Recoverable workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Failed nodes are recorded and can be retried or resumed without taking down the Shiny session.
--   **Preprocessing workflow handoff** from parser-backed imports into downstream modules such as Correct Noise, Data Transformed, Data Imputation, and Data Normalization.
+-   **MaxQuant output preparation** as the first item in **Pre-processing** for MaxQuant-specific filtering and matrix handoff; other sources use their own parser-backed import path.
 -   **Protein-level downstream analysis** including DEP analysis, enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
 -   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
@@ -177,8 +177,9 @@ run_ProtVis()
     -   Choose a working directory.
     -   Select a data source in **Project init**.
 
-2.  **Import data**
-    -   Use **Data input** to upload the file type matching your selected source.
+2.  **Prepare MaxQuant output when applicable**
+    -   For MaxQuant, open **Pre-processing → MaxQuant Output Preparation** to upload and filter the MaxQuant output.
+    -   Other sources use their dedicated parser-backed import path and do not display this MaxQuant-specific step.
     -   For Proteome Discoverer, Skyline, Mascot, and OpenMS, click the corresponding **Parse ... Output** button.
     -   Upload sample metadata when available. ProtVis expects or infers `sample_id`, `maxquant_id`, and `group` fields for downstream preprocessing.
 

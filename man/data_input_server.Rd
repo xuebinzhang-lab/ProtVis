@@ -2,10 +2,9 @@
 % Please edit documentation in R/data_input.R
 \name{data_input_server}
 \alias{data_input_server}
-\title{Data Input Server Module
-This server module observes the reactive data source selection, renders the
-appropriate UI dynamically, and loads the corresponding server logic module,
-passing along a shared state object.}
+\title{MaxQuant Output Preparation Server Module
+The server retains legacy adapters for existing imports, while the visible
+navigation exposes this preparation step only for MaxQuant projects.}
 \arguments{
 \item{id}{Module ID for namespacing.}
 
@@ -17,8 +16,7 @@ passing along a shared state object.}
 None. This module manages UI rendering and server logic dynamically.
 }
 \description{
-Data Input Server Module
-This server module observes the reactive data source selection, renders the
-appropriate UI dynamically, and loads the corresponding server logic module,
-passing along a shared state object.
+MaxQuant Output Preparation Server Module
+The server retains legacy adapters for existing imports, while the visible
+navigation exposes this preparation step only for MaxQuant projects.
 }

@@ -879,7 +879,7 @@ protvis_homepage <- function() {
       shiny::div(
         class = "pv-workflow",
         workflow_step(1, "Project init", "Define samples and experimental metadata."),
-        workflow_step(2, "Data input", "Parse and validate quantitative evidence."),
+        workflow_step(2, "MaxQuant output preparation", "Prepare MaxQuant quantitative evidence before preprocessing."),
         workflow_step(3, "Pre-process", "Transform, impute, and normalize."),
         workflow_step(4, "Overview", "Inspect QC and sample structure."),
         workflow_step(5, "DEP", "Model differential abundance."),
@@ -974,7 +974,7 @@ app_ui <- function(request) {
         "Pre-processing",
         icon = bsicons::bs_icon("wrench"),
         bslib::nav_panel(
-          "Data input",
+          "MaxQuant Output Preparation",
           value = "data_input",
           icon = bsicons::bs_icon("usb-drive"),
           data_input_ui("data_input")

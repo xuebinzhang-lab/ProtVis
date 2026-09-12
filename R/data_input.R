@@ -1,6 +1,6 @@
-#' Data Input UI Module
-#' This UI module dynamically displays a header showing the current data source
-#' and renders the corresponding UI for the selected data source module.
+#' MaxQuant Output Preparation UI Module
+#' This module prepares MaxQuant output for the ProtVis preprocessing workflow.
+#' It is exposed in the navigation only when MaxQuant is the selected source.
 #' @param id Module ID for namespacing.
 #' @return A Shiny UI tag list.
 #' @import shiny
@@ -13,10 +13,9 @@ data_input_ui <- function(id) {
     shiny::uiOutput(ns("dynamic_ui"))
   )
 }
-#' Data Input Server Module
-#' This server module observes the reactive data source selection, renders the
-#' appropriate UI dynamically, and loads the corresponding server logic module,
-#' passing along a shared state object.
+#' MaxQuant Output Preparation Server Module
+#' The server retains legacy adapters for existing imports, while the visible
+#' navigation exposes this preparation step only for MaxQuant projects.
 #' @param id Module ID for namespacing.
 #' @param data_source_reactive A reactive expression returning the current data source as a string.
 #' @param shared_state A reactiveValues object shared across modules, used for sharing state and data.
@@ -80,10 +79,10 @@ data_input_server <- function(id, data_source_reactive, shared_state) {
       shiny::div(
         class = "pv-data-input-header",
         shiny::div(
-          shiny::span("Data input", class = "pv-section-eyebrow"),
-          shiny::tags$h2("Prepare proteomics data", class = "pv-page-title"),
+          shiny::span("MaxQuant output preparation", class = "pv-section-eyebrow"),
+          shiny::tags$h2("Prepare MaxQuant output", class = "pv-page-title"),
           shiny::tags$p(
-            "Load the selected search-engine output, remove unreliable peptide evidence, and preview each processing result before downstream analysis.",
+            "Load MaxQuant output, remove unreliable peptide evidence, and preview the quantitative matrix before downstream analysis.",
             class = "pv-page-subtitle"
           )
         ),

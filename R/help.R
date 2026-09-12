@@ -30,7 +30,7 @@ help_ui <- function() {
           shiny::div(
             class = "pv-help-note",
             shiny::strong("Recommended start: "),
-            "Project init → Data input → Pre-processing"
+            "Project init → Pre-processing → MaxQuant Output Preparation"
           )
         )
       ),
@@ -42,7 +42,7 @@ help_ui <- function() {
           bslib::card_body(
             shiny::tags$ul(
               shiny::tags$li("Create a project and confirm the working directory."),
-              shiny::tags$li("Import MaxQuant, Proteome Discoverer, Skyline, Mascot, OpenMS, or custom matrices."),
+              shiny::tags$li("Select a data source in Project init; MaxQuant users then open MaxQuant Output Preparation."),
               shiny::tags$li("Use built-in examples to verify the interface before loading a full dataset.")
             )
           )
@@ -77,10 +77,10 @@ help_ui <- function() {
         bslib::card_body(
           DT::datatable(
             data.frame(
-              Module = c("Project init", "Data input", "Pre-processing", "Downstream analysis", "Multi-omics", "Toolkits"),
+              Module = c("Project init", "MaxQuant Output Preparation", "Pre-processing", "Downstream analysis", "Multi-omics", "Toolkits"),
               Purpose = c(
                 "Define project metadata and output location.",
-                "Import expression matrices and search-engine outputs.",
+                "Prepare MaxQuant protein-group output for preprocessing.",
                 "Clean, transform, impute, and normalize data.",
                 "Run differential analysis and functional interpretation.",
                 "Explore expression profiles, co-enrichment, Venn/UpSet, and cross-omics views.",
@@ -97,7 +97,7 @@ help_ui <- function() {
         class = "pv-help-faq",
         bslib::accordion_panel(
           "Common questions",
-          shiny::tags$p(shiny::strong("Where should I start? "), "Use Project init to define the output directory, then load or select a built-in example in Data input."),
+          shiny::tags$p(shiny::strong("Where should I start? "), "Use Project init to define the output directory and select a data source. For MaxQuant, continue with MaxQuant Output Preparation."),
           shiny::tags$p(shiny::strong("Can I work without uploading a file? "), "Yes. Modules with a Use Example Data button provide deterministic example data for testing."),
           shiny::tags$p(shiny::strong("How are results preserved? "), "Each analysis writes its result into the current ProtVis_dataset and can be exported with the associated tables or figures.")
         )
