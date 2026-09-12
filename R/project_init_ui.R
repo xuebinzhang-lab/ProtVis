@@ -9,6 +9,95 @@
 #' @name project_init_ui
 #' @export
 #'
+.protvis_raw_sample_template <- function() {
+  combinations <- expand.grid(
+    genotype = c("B73", "EA2024"),
+    treatment = c("Control", "Drought"),
+    replicate = 1:3,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  combinations <- combinations[order(combinations$genotype,
+                                      combinations$treatment,
+                                      combinations$replicate), , drop = FALSE]
+  sample_id <- paste(combinations$genotype, combinations$treatment,
+                     combinations$replicate, sep = "_")
+  data.frame(
+    sample_id = sample_id,
+    raw_file = paste0(sample_id, ".raw"),
+    mzml_file = paste0(sample_id, ".mzML"),
+    genotype = combinations$genotype,
+    treatment = combinations$treatment,
+    group = paste(combinations$genotype, combinations$treatment, sep = "_"),
+    condition = combinations$treatment,
+    replicate = combinations$replicate,
+    batch = "Batch1",
+    tissue = "leaf",
+    organism = "Zea mays",
+    accession = "PXD065315",
+    source_url = "https://www.ebi.ac.uk/pride/archive/projects/PXD065315",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+.protvis_validate_mzml_files <- function(sample_info, directory) {
+  if (!is.data.frame(sample_info) || nrow(sample_info) == 0L) {
+    stop("Upload sample information before checking mzML files.", call. = FALSE)
+  }
+  if (length(directory) != 1L || is.na(directory) ||
+      !nzchar(directory) || !dir.exists(directory)) {
+    stop("Select an accessible input directory before checking mzML files.",
+         call. = FALSE)
+  }
+  names(sample_info) <- trimws(names(sample_info))
+  find_col <- function(patterns) {
+    hit <- which(tolower(names(sample_info)) %in% tolower(patterns))
+    if (length(hit)) names(sample_info)[hit[[1L]]] else NULL
+  }
+  sample_col <- find_col(c("sample_id", "sample", "sample.name"))
+  file_col <- find_col(c("mzml_file", "mzml", "raw_file", "file", "filename"))
+  if (is.null(sample_col)) {
+    stop("Sample information requires a sample_id column.", call. = FALSE)
+  }
+  if (is.null(file_col)) {
+    stop("Sample information requires an mzML file column named mzml_file.",
+         call. = FALSE)
+  }
+  sample_id <- trimws(as.character(sample_info[[sample_col]]))
+  file_name <- trimws(as.character(sample_info[[file_col]]))
+  if (anyNA(sample_id) || any(!nzchar(sample_id)) || anyDuplicated(sample_id)) {
+    stop("sample_id values must be non-empty and unique.", call. = FALSE)
+  }
+  if (anyNA(file_name) || any(!nzchar(file_name)) || anyDuplicated(tolower(file_name))) {
+    stop("mzML file names must be non-empty and unique.", call. = FALSE)
+  }
+  extension_ok <- tolower(tools::file_ext(file_name)) == "mzml"
+  resolved <- normalizePath(file.path(directory, file_name),
+                            winslash = "/", mustWork = FALSE)
+  exists <- file.exists(resolved) & !dir.exists(resolved)
+  manifest <- data.frame(
+    sample_id = sample_id,
+    mzml_file = file_name,
+    path = resolved,
+    extension_ok = extension_ok,
+    exists = exists,
+    status = ifelse(!extension_ok, "Invalid extension",
+                    ifelse(exists, "Found", "Missing")),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  errors <- c(
+    if (any(!extension_ok)) paste0("Non-mzML files: ",
+                                   paste(file_name[!extension_ok], collapse = ", ")),
+    if (any(!exists)) paste0("Missing files: ",
+                             paste(file_name[!exists], collapse = ", "))
+  )
+  list(valid = !length(errors), manifest = manifest,
+       message = if (length(errors)) paste(errors, collapse = "; ")
+                 else paste(nrow(manifest), "mzML files found and matched."))
+}
+
 project_init_ui <- function(id) {
   ns <- NS(id)
   bslib::page_sidebar(
@@ -29,6 +118,30 @@ project_init_ui <- function(id) {
         accept = c(".csv", ".xlsx", ".xls")
       ),
       tags$small("Confirm sample information", style = "color: #6c757d"),
+      bslib::accordion(
+        id = ns("raw_input_accordion"),
+        open = NULL,
+        bslib::accordion_panel(
+          "Raw/mzML input (optional)",
+          icon = bsicons::bs_icon("file-earmark-binary"),
+          tags$p(
+            "Use this section when sample_info contains an mzML file column. " ,
+            "The selected directory is checked against every sample before search.",
+            class = "text-muted small"
+          ),
+          shiny::uiOutput(ns("raw_directory_ui")),
+          shiny::actionButton(
+            ns("check_raw_files"), "Check mzML files",
+            icon = bsicons::bs_icon("check2-circle"),
+            class = "btn btn-outline-primary w-100"
+          ),
+          shiny::uiOutput(ns("raw_check_sidebar")),
+          shiny::downloadButton(
+            ns("download_raw_template"), "Download PXD065315 sample template",
+            class = "btn btn-outline-secondary w-100"
+          )
+        )
+      ),
       shiny::fileInput(
         inputId = ns("expression_matrix"),
         label = 'Upload Expression Matrix (.csv, .xlsx, .xls)',
@@ -75,6 +188,10 @@ project_init_ui <- function(id) {
           bslib::nav_panel("Expression Matrix",
                            shiny::htmlOutput(ns("matrix_check")),
                     DT::DTOutput(ns("tbl_expression_matrix"))
+          ),
+          bslib::nav_panel("Raw/mzML Files",
+                           shiny::htmlOutput(ns("raw_check_summary")),
+                           DT::DTOutput(ns("tbl_raw_manifest"))
           )
         )
       )
@@ -109,6 +226,13 @@ project_init_server <- function(id, shared_state) {
       session = session,
       defaultRoot = names(volumes)[[1L]]
     )
+    shinyFiles::shinyDirChoose(
+      input,
+      "raw_directory",
+      roots = volumes,
+      session = session,
+      defaultRoot = names(volumes)[[1L]]
+    )
     # Listen to directory selection and update shared_state$workdir
     shiny::observeEvent(input$prj_wd, {
       shiny::req(input$prj_wd)
@@ -137,6 +261,41 @@ project_init_server <- function(id, shared_state) {
     output$raw_wd_path <- renderText({
       shiny::req(shared_state$workdir)
       base::paste("Working directory:", shared_state$workdir)
+    })
+    output$raw_directory_ui <- shiny::renderUI({
+      tagList(
+        shinyFiles::shinyDirButton(
+          ns("raw_directory"), "Select mzML input directory",
+          title = "Select directory containing mzML files",
+          icon = bsicons::bs_icon("folder2-open"),
+          class = "btn btn-outline-secondary w-100"
+        ),
+        tags$small(
+          textOutput(ns("raw_directory_path")),
+          class = "text-muted"
+        )
+      )
+    })
+    shiny::observeEvent(input$raw_directory, {
+      shiny::req(input$raw_directory)
+      tryCatch({
+        selected_dir <- shinyFiles::parseDirPath(volumes, input$raw_directory)
+        selected_dir <- as.character(selected_dir)[[1L]]
+        if (!nzchar(selected_dir) || !dir.exists(selected_dir)) {
+          stop("The selected mzML directory is not accessible.", call. = FALSE)
+        }
+        shared_state$raw_directory <- normalizePath(selected_dir, winslash = "/",
+                                                     mustWork = TRUE)
+        shared_state$raw_manifest <- NULL
+        shared_state$raw_check <- NULL
+      }, error = function(e) {
+        shiny::showNotification(paste("Unable to select mzML directory:",
+                                      conditionMessage(e)), type = "error")
+      })
+    }, ignoreInit = TRUE)
+    output$raw_directory_path <- shiny::renderText({
+      path <- shared_state$raw_directory
+      if (is.null(path) || !nzchar(path)) "No mzML directory selected" else path
     })
     # Show the provenance URL immediately for the selected built-in example;
     # this is intentionally rendered in Project init as well as the canonical
@@ -178,6 +337,50 @@ project_init_server <- function(id, shared_state) {
         )
       })
     })
+    shiny::observeEvent(input$check_raw_files, {
+      tryCatch({
+        result <- .protvis_validate_mzml_files(
+          shared_state$sample_info, shared_state$raw_directory
+        )
+        shared_state$raw_manifest <- result$manifest
+        shared_state$raw_check <- result
+        shiny::showNotification(
+          result$message, type = if (result$valid) "message" else "error",
+          duration = if (result$valid) 5 else NULL
+        )
+      }, error = function(e) {
+        shared_state$raw_manifest <- NULL
+        shared_state$raw_check <- list(valid = FALSE, message = conditionMessage(e))
+        shiny::showNotification(paste("mzML check failed:", conditionMessage(e)),
+                                type = "error", duration = NULL)
+      })
+    }, ignoreInit = TRUE)
+    output$raw_check_sidebar <- shiny::renderUI({
+      result <- shared_state$raw_check
+      if (is.null(result)) return(NULL)
+      cls <- if (isTRUE(result$valid)) "text-success" else "text-danger"
+      tags$p(result$message, class = cls, style = "margin-top: .5rem;")
+    })
+    output$raw_check_summary <- shiny::renderUI({
+      result <- shared_state$raw_check
+      if (is.null(result)) {
+        return(tags$p("Select a directory and check the mzML files.",
+                      class = "text-muted"))
+      }
+      tags$p(result$message,
+             class = if (isTRUE(result$valid)) "text-success" else "text-danger")
+    })
+    output$tbl_raw_manifest <- DT::renderDT({
+      shiny::req(shared_state$raw_manifest)
+      DT::datatable(shared_state$raw_manifest, rownames = FALSE,
+                    options = list(pageLength = 10, scrollX = TRUE))
+    })
+    output$download_raw_template <- shiny::downloadHandler(
+      filename = function() "PXD065315_sample_info_template.csv",
+      content = function(file) utils::write.csv(
+        .protvis_raw_sample_template(), file, row.names = FALSE, na = ""
+      )
+    )
     # Upload and read expression matrix, then store it in shared_state
     shiny::observeEvent(input$expression_matrix, {
       shiny::req(input$expression_matrix)
@@ -262,6 +465,17 @@ project_init_server <- function(id, shared_state) {
           sample_info = sample_info,
           metadata = list(source = data_source, output_directory = directory)
         )
+        if (isTRUE(shared_state$raw_check$valid) &&
+            is.data.frame(shared_state$raw_manifest)) {
+          dataset$metadata$raw_directory <- shared_state$raw_directory
+          dataset$metadata$raw_manifest <- shared_state$raw_manifest
+          dataset <- .protvis_append_process(
+            dataset, "raw_file_registration", status = "success",
+            parameters = list(directory = shared_state$raw_directory),
+            message = paste0("Validated ", nrow(shared_state$raw_manifest),
+                             " mzML files against sample information.")
+          )
+        }
         dataset$metadata$object_name <- paste0(
           "ProtVis_dataset__project_init__", .protvis_object_label(data_source), "__v1"
         )
