@@ -303,7 +303,13 @@ project_init_server <- function(id, shared_state) {
       })
     }, ignoreInit = TRUE)
     shiny::observeEvent(input$use_builtin_raw_sample_info, {
-      shared_state$raw_sample_info <- .protvis_raw_sample_template()
+      builtin_info <- .protvis_raw_sample_template()
+      # Keep the built-in manifest visible in the canonical Sample Info tab as
+      # well as in the raw/mzML validation state.  Previously only
+      # raw_sample_info was updated, while the preview table required
+      # shared_state$sample_info and therefore remained blank.
+      shared_state$raw_sample_info <- builtin_info
+      shared_state$sample_info <- builtin_info
       shared_state$raw_manifest <- NULL
       shared_state$raw_check <- NULL
       shiny::showNotification(
@@ -596,8 +602,16 @@ project_init_server <- function(id, shared_state) {
     })
     # Confirm sample info upload UI
     output$file_check_init <- renderUI({
-      shiny::req(input$SampleInfo)
-      tags$p("✅ Sample info uploaded:", input$SampleInfo$name, class = "text-success")
+      if (!is.null(input$SampleInfo)) {
+        return(tags$p("✅ Sample info uploaded:", input$SampleInfo$name,
+                      class = "text-success"))
+      }
+      if (is.data.frame(shared_state$sample_info) &&
+          identical(shared_state$sample_info, shared_state$raw_sample_info)) {
+        return(tags$p("✅ Built-in PXD065315 sample information loaded.",
+                      class = "text-success"))
+      }
+      NULL
     })
     # Confirm expression matrix upload UI
     output$matrix_check <- renderUI({
