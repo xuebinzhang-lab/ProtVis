@@ -18,6 +18,8 @@ app_server <- function(input, output, session) {
     raw_fasta = NULL,
     raw_manifest = NULL,
     raw_check = NULL,
+    sage_search_bundle = NULL,
+    sage_search_parameters = list(),
     data_source = NULL,
     dataset = NULL,
     dataset_history = list(),

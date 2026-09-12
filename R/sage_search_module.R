@@ -16,6 +16,36 @@
   )
 }
 
+.protvis_attach_sage_bundle <- function(dataset, bundle, parameters,
+                                        fasta, mzml_directory, output_directory) {
+  dataset <- as_protvis_dataset(dataset)
+  validate_protvis_dataset(dataset)
+  dataset$analysis_results$Sage_database_search <- bundle
+  metadata <- dataset$metadata
+  metadata$raw_search <- list(
+    fasta = fasta, mzml_directory = mzml_directory,
+    output_directory = output_directory, engine = "Sage 0.14.7"
+  )
+  dataset$metadata <- metadata
+  attachments <- dataset$other_files %||% list()
+  for (path in unname(unlist(bundle$files))) {
+    if (file.exists(path)) {
+      attachments[[length(attachments) + 1L]] <- list(
+        path = normalizePath(path, winslash = "/", mustWork = FALSE),
+        name = basename(path), kind = "Sage database-search output",
+        size_bytes = as.numeric(file.info(path)$size),
+        md5 = unname(tools::md5sum(path)), attached_at = as.character(Sys.time())
+      )
+    }
+  }
+  dataset$other_files <- attachments
+  .protvis_append_process(
+    dataset, "Sage_database_search", status = "success",
+    parameters = parameters,
+    message = "Sage search completed and result tables were retained."
+  )
+}
+
 .protvis_sage_paths <- function(fasta, mzml_directory, output_directory) {
   fasta <- path.expand(as.character(fasta %||% ""))
   mzml_directory <- path.expand(as.character(mzml_directory %||% ""))
@@ -248,10 +278,6 @@ sage_search_server <- function(id, shared_state) {
       )
       tryCatch({
         validated <- .protvis_sage_paths(p$fasta, p$directory, p$output)
-        dataset <- shared_state$dataset
-        if (!inherits(dataset, "ProtVis_dataset")) {
-          stop("Initialize a ProtVis_dataset in Project init before running Sage.", call. = FALSE)
-        }
         shiny::withProgress(message = "Running Sage database search", value = 0.1, {
           manifest <- shared_state$raw_manifest
           if (isTRUE(shared_state$raw_check$valid %||% FALSE) &&
@@ -264,46 +290,37 @@ sage_search_server <- function(id, shared_state) {
           rv$bundle <- bundle
           rv$config_path <- bundle$config_path
           shiny::incProgress(0.8)
-          dataset$analysis_results$Sage_database_search <- bundle
-          metadata <- dataset$metadata
-          metadata$raw_search <- list(
-            fasta = validated$fasta, mzml_directory = p$directory,
-            output_directory = validated$output, engine = "Sage 0.14.7"
-          )
-          dataset$metadata <- metadata
-          attachments <- dataset$other_files %||% list()
-          for (path in unname(unlist(bundle$files))) {
-            if (file.exists(path)) {
-              attachments[[length(attachments) + 1L]] <- list(
-                path = normalizePath(path, winslash = "/", mustWork = FALSE),
-                name = basename(path), kind = "Sage database-search output",
-                size_bytes = as.numeric(file.info(path)$size),
-                md5 = unname(tools::md5sum(path)),
-                attached_at = as.character(Sys.time())
-              )
-            }
-          }
-          dataset$other_files <- attachments
           if (!identical(bundle$status, "success")) {
             stop(paste(c("Sage search failed.", bundle$log), collapse = "\n"),
                  call. = FALSE)
           }
-          dataset <- .protvis_append_process(
-            dataset, "Sage_database_search", status = "success",
-            parameters = parameters,
-            message = "Sage search completed and result tables were retained."
-          )
-          .protvis_ui_sync_state(dataset, shared_state)
-          dataset <- protvis_auto_export_dataset(
-            dataset, directory = shared_state$workdir, include_raw = FALSE
-          )
-          .protvis_ui_sync_state(dataset, shared_state)
-          .protvis_save_stage_dataset(dataset,
-                                      file.path(shared_state$workdir,
-                                                "Step2_sage_database_search.rda"))
+          shared_state$sage_search_bundle <- bundle
+          shared_state$sage_search_parameters <- parameters
+          dataset <- shared_state$dataset
+          if (inherits(dataset, "ProtVis_dataset")) {
+            dataset <- .protvis_attach_sage_bundle(
+              dataset, bundle, parameters, validated$fasta, p$directory,
+              validated$output
+            )
+            dataset <- protvis_auto_export_dataset(
+              dataset, directory = shared_state$workdir, include_raw = FALSE
+            )
+            .protvis_ui_sync_state(dataset, shared_state)
+            .protvis_save_stage_dataset(
+              dataset, file.path(shared_state$workdir,
+                                 "Step2_sage_database_search.rda")
+            )
+            shared_state$sage_search_bundle <- NULL
+            shared_state$sage_search_parameters <- list()
+          }
         })
-        shiny::showNotification("Sage search completed and was saved to ProtVis_dataset.",
-                                type = "message", duration = 5)
+        shiny::showNotification(
+          if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+            "Sage search completed and was saved to ProtVis_dataset."
+          } else {
+            "Sage search completed. Initialize the project to attach results to ProtVis_dataset."
+          }, type = "message", duration = 5
+        )
       }, error = function(e) {
         shiny::showNotification(paste("Sage search failed:", conditionMessage(e)),
                                 type = "error", duration = NULL)

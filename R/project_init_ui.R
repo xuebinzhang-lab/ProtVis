@@ -543,6 +543,18 @@ project_init_server <- function(id, shared_state) {
           "ProtVis_dataset__project_init__", .protvis_object_label(data_source), "__v1"
         )
         dataset$metadata$object_version <- 1L
+        if (is.list(shared_state$sage_search_bundle) &&
+            identical(shared_state$sage_search_bundle$status, "success")) {
+          dataset <- .protvis_attach_sage_bundle(
+            dataset, shared_state$sage_search_bundle,
+            shared_state$sage_search_parameters %||% list(),
+            shared_state$sage_search_bundle$config$database$fasta %||% "",
+            shared_state$raw_directory %||% "",
+            dirname(shared_state$sage_search_bundle$config_path)
+          )
+          shared_state$sage_search_bundle <- NULL
+          shared_state$sage_search_parameters <- list()
+        }
         # Preserve a valid background uploaded before Project init.  Attach it
         # after the initial project version is named, creating a traceable v2.
         if (is.list(shared_state$pending_enrichment_background) &&
