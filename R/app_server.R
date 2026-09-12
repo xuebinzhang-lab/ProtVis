@@ -21,7 +21,7 @@ app_server <- function(input, output, session) {
     sage_search_bundle = NULL,
     sage_search_parameters = list(),
     sage_workflow = FALSE,
-    data_source = NULL,
+    data_source = "Raw",
     dataset = NULL,
     dataset_history = list(),
     dataset_name = NULL,
@@ -38,6 +38,13 @@ app_server <- function(input, output, session) {
       !is.na(fasta$path) && nzchar(as.character(fasta$path)) &&
       file.exists(as.character(fasta$path))
     session$sendCustomMessage("protvis-sage-nav", list(visible = visible))
+  })
+  shiny::observe({
+    source <- as.character(shared_state$data_source %||% "Raw")
+    session$sendCustomMessage(
+      "protvis-data-input-nav",
+      list(visible = identical(source, "MaxQuant"))
+    )
   })
   project_init_server("project_init", shared_state = shared_state)
   sage_search_server("sage_search", shared_state = shared_state)

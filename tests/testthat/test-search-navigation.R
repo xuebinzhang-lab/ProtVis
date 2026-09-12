@@ -7,6 +7,8 @@ test_that("Search navigation is FASTA-gated", {
   expect_match(ui_text, '"Search"')
   expect_match(ui_text, 'value = "sage_search"')
   expect_match(ui_text, "protvis-sage-nav")
+  expect_match(ui_text, "protvis-data-input-nav")
   expect_match(server_text, "file.exists")
   expect_match(server_text, "sendCustomMessage")
+  expect_match(server_text, 'data_source = "Raw"')
 })

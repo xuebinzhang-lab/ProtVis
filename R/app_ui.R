@@ -759,9 +759,12 @@ golem_add_external_resources <- function() {
 
         function updateDataInputNavigation() {
           var source = document.getElementById('project_init-data_source');
-          var link = document.querySelector('a.nav-link[data-value=\"data_input\"]');
-          if (!source || !link) return;
-          var visible = source.value === 'MaxQuant';
+          var link = document.querySelector('a.nav-link[data-value=\"data_input\"]') ||
+            document.querySelector('button.nav-link[data-value=\"data_input\"]') ||
+            document.querySelector('.nav-link[data-value=\"data_input\"]');
+          if (!link) return;
+          var visible = arguments.length > 0 && typeof arguments[0] === 'boolean' ?
+            arguments[0] : (source && source.value === 'MaxQuant');
           var item = link.closest('li.nav-item') || link.parentElement;
           link.style.display = visible ? '' : 'none';
           link.hidden = !visible;
@@ -793,6 +796,9 @@ golem_add_external_resources <- function() {
         if (window.Shiny) {
           Shiny.addCustomMessageHandler('protvis-sage-nav', function (message) {
             updateSageNavigation(Boolean(message && message.visible));
+          });
+          Shiny.addCustomMessageHandler('protvis-data-input-nav', function (message) {
+            updateDataInputNavigation(Boolean(message && message.visible));
           });
         }
         document.addEventListener('DOMContentLoaded', updatePreprocessingNavigation);
