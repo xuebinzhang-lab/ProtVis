@@ -29,6 +29,16 @@ app_server <- function(input, output, session) {
     # requiring a legacy Step7_DEP_result.rda file on disk.
     dep_results = list()
   )
+  # Search is a FASTA-backed workflow. Keep its navigation item hidden until
+  # the Project init FASTA upload has been accepted and the temporary file is
+  # still readable.
+  shiny::observe({
+    fasta <- shared_state$raw_fasta
+    visible <- is.list(fasta) && length(fasta$path) == 1L &&
+      !is.na(fasta$path) && nzchar(as.character(fasta$path)) &&
+      file.exists(as.character(fasta$path))
+    session$sendCustomMessage("protvis-sage-nav", list(visible = visible))
+  })
   project_init_server("project_init", shared_state = shared_state)
   sage_search_server("sage_search", shared_state = shared_state)
   data_input_server(

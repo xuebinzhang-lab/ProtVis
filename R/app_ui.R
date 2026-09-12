@@ -746,6 +746,17 @@ golem_add_external_resources <- function() {
     ")),
     shiny::tags$script(shiny::HTML("
       (function () {
+        function updateSageNavigation(visible) {
+          var link = document.querySelector('[data-value=\"sage_search\"]');
+          if (!link) return;
+          var item = link.closest('.nav-item') || link.parentElement;
+          if (item) item.style.display = visible ? '' : 'none';
+          if (!visible && link.classList.contains('active')) {
+            var project = document.querySelector('[data-value=\"project_init\"]');
+            if (project) project.click();
+          }
+        }
+
         function updateDataInputNavigation() {
           var source = document.getElementById('project_init-data_source');
           var link = document.querySelector('[data-value=\"data_input\"]');
@@ -758,7 +769,15 @@ golem_add_external_resources <- function() {
             if (project) project.click();
           }
         }
+        if (window.Shiny) {
+          Shiny.addCustomMessageHandler('protvis-sage-nav', function (message) {
+            updateSageNavigation(Boolean(message && message.visible));
+          });
+        }
         document.addEventListener('DOMContentLoaded', updateDataInputNavigation);
+        document.addEventListener('DOMContentLoaded', function () {
+          updateSageNavigation(false);
+        });
         document.addEventListener('shiny:connected', updateDataInputNavigation);
         if (window.jQuery) {
           $(document).on('shiny:inputchanged', function (event) {
@@ -965,7 +984,8 @@ app_ui <- function(request) {
       ),
 
       bslib::nav_panel(
-        "Sage search",
+        "Search",
+        value = "sage_search",
         icon = bsicons::bs_icon("search"),
         sage_search_ui("sage_search")
       ),
