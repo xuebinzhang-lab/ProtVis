@@ -34,6 +34,6 @@ importer removes rows marked Reverse, Potential contaminant, or Only
 identified by site by default.
 
 The `kmeans.csv` file is the built-in expression-profile example for
-Multi-omics -> Kmeans. Click `Load built-in example` to load it, or download it
+Multi-omics -> Kmeans. Click `LOAD DEMO DATA` to load it, or download it
 from `Download example CSV` as an input-format template. An uploaded CSV always
 takes precedence.

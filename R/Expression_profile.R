@@ -53,7 +53,7 @@ Expression_profile_ui <- function(id) {
         accept = c(".csv", "text/csv", "text/comma-separated-values")
       ),
       shiny::actionButton(
-        ns("load_builtin"), "Load built-in example",
+        ns("load_builtin"), "LOAD DEMO DATA",
         icon = shiny::icon("table"), class = "btn btn-primary w-100"
       ),
       shiny::downloadButton(
@@ -205,7 +205,7 @@ Expression_profile_server <- function(id) {
           class = "alert alert-secondary py-2 mt-2 mb-0",
           shiny::tags$strong("No data loaded"),
           shiny::tags$br(),
-          shiny::tags$small("Upload a CSV or click Load built-in example.")
+          shiny::tags$small("Upload a CSV or click LOAD DEMO DATA.")
         ))
       }
       matrix <- data()
@@ -226,7 +226,7 @@ Expression_profile_server <- function(id) {
     output$expression_data_preview <- DT::renderDT({
       shiny::validate(shiny::need(
         !is.null(input$file) || isTRUE(builtin_loaded()),
-        "Upload an expression matrix or click Load built-in example."
+        "Upload an expression matrix or click LOAD DEMO DATA."
       ))
       matrix <- data()
       preview <- data.frame(
@@ -253,7 +253,7 @@ Expression_profile_server <- function(id) {
       shiny::req(input$dropdown == "Kmeans")
       if (is.null(input$file) && !isTRUE(builtin_loaded())) {
         shiny::showNotification(
-          "Upload a CSV or click Load built-in example before running Kmeans.",
+          "Upload a CSV or click LOAD DEMO DATA before running Kmeans.",
           type = "error"
         )
         return(invisible(NULL))
@@ -381,7 +381,7 @@ Expression_profile_server <- function(id) {
       shiny::req(input$dropdown == "Heatmap")
       if (is.null(input$file) && !isTRUE(builtin_loaded())) {
         shiny::showNotification(
-          "Upload a CSV or click Load built-in example before running the heatmap.",
+          "Upload a CSV or click LOAD DEMO DATA before running the heatmap.",
           type = "error"
         )
         return(invisible(NULL))
