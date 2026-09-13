@@ -1,3 +1,33 @@
+.protvis_kmeans_builtin_path <- function() {
+  candidates <- c(
+    system.file("extdata", "kmeans.csv", package = "ProtVis"),
+    file.path(getwd(), "inst", "extdata", "kmeans.csv"),
+    file.path(getwd(), "..", "inst", "extdata", "kmeans.csv"),
+    file.path(getwd(), "..", "..", "inst", "extdata", "kmeans.csv")
+  )
+  candidates <- unique(candidates[nzchar(candidates) & file.exists(candidates)])
+  if (!length(candidates)) {
+    stop("The bundled Kmeans example (inst/extdata/kmeans.csv) is missing.",
+         call. = FALSE)
+  }
+  normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
+}
+
+.protvis_read_expression_profile <- function(path) {
+  result <- utils::read.csv(
+    path, row.names = 1, check.names = FALSE, stringsAsFactors = FALSE
+  )
+  if (!nrow(result) || ncol(result) < 2L) {
+    stop("The expression matrix must contain feature rows and at least two samples.",
+         call. = FALSE)
+  }
+  numeric_columns <- vapply(result, is.numeric, logical(1))
+  if (!all(numeric_columns)) {
+    stop("All expression-matrix sample columns must be numeric.", call. = FALSE)
+  }
+  result
+}
+
 #' Expression Profile User Interface
 #' Creates a user interface for displaying expression profiles in a Shiny application.
 #' @param id A unique identifier for the Shiny namespace.
@@ -21,7 +51,8 @@ Expression_profile_ui <- function(id) {
         label = "Expression matrix (optional; built-in example is used when empty)",
         multiple = FALSE,
         accept = c(".csv", "text/csv", "text/comma-separated-values")
-      )
+      ),
+      shiny::uiOutput(ns("expression_data_status"))
     ),
     bslib::accordion_panel(
       title = "Method",
@@ -68,8 +99,11 @@ Expression_profile_ui <- function(id) {
         ),
         shiny::tabsetPanel(
           type = "tabs",
+          id = ns("kmeans_tabs"),
+          selected = "Input Data",
           shiny::tabPanel("Figure", shiny::plotOutput(ns("Kmeansplotshow"))),
-          shiny::tabPanel("Table", DT::DTOutput(ns("Kmeans_dataTable")))
+          shiny::tabPanel("Table", DT::DTOutput(ns("Kmeans_dataTable"))),
+          shiny::tabPanel("Input Data", DT::DTOutput(ns("expression_data_preview")))
         )
       )
     )
@@ -141,31 +175,38 @@ utils::globalVariables(c("Cluster_Count", "variable",
 Expression_profile_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    builtin_expression_profile <- local({
-      candidates <- c(
-        system.file("extdata", "kmeans.csv", package = "ProtVis"),
-        file.path(getwd(), "inst", "extdata", "kmeans.csv"),
-        file.path(getwd(), "..", "inst", "extdata", "kmeans.csv"),
-        file.path(getwd(), "..", "..", "inst", "extdata", "kmeans.csv")
-      )
-      candidates <- candidates[nzchar(candidates) & file.exists(candidates)]
-      if (!length(candidates)) {
-        stop("The bundled Kmeans example (inst/extdata/kmeans.csv) is missing.",
-             call. = FALSE)
-      }
-      builtin_path <- normalizePath(candidates[[1L]], winslash = "/",
-                                     mustWork = TRUE)
-      function() {
-        utils::read.csv(builtin_path, row.names = 1, check.names = FALSE,
-                        stringsAsFactors = FALSE)
-      }
-    })
     data <- shiny::reactive({
       if (!is.null(input$file)) {
-        return(utils::read.csv(input$file$datapath, row.names = 1,
-                               check.names = FALSE, stringsAsFactors = FALSE))
+        return(.protvis_read_expression_profile(input$file$datapath))
       }
-      builtin_expression_profile()
+      .protvis_read_expression_profile(.protvis_kmeans_builtin_path())
+    })
+    output$expression_data_status <- shiny::renderUI({
+      matrix <- data()
+      source <- if (is.null(input$file)) {
+        "Built-in data loaded: kmeans.csv"
+      } else {
+        paste0("Uploaded data loaded: ", input$file$name)
+      }
+      shiny::tags$div(
+        class = "alert alert-success py-2 mt-2 mb-0",
+        shiny::tags$strong(paste0("\u2713 ", source)),
+        shiny::tags$br(),
+        shiny::tags$small(
+          paste0(nrow(matrix), " features \u00d7 ", ncol(matrix), " samples")
+        )
+      )
+    })
+    output$expression_data_preview <- DT::renderDT({
+      matrix <- data()
+      preview <- data.frame(
+        id = rownames(matrix), matrix, check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      DT::datatable(
+        preview, rownames = FALSE,
+        options = list(pageLength = 10, scrollX = TRUE)
+      )
     })
     shiny::observeEvent(input$run_btn_Kmeans, {
       shiny::req(input$dropdown == "Kmeans")
@@ -284,6 +325,7 @@ Expression_profile_server <- function(id) {
           ggplot2::ggsave(file, plot = patchwork_plot, device = "pdf", width = input$Kmeans_width, height = input$Kmeans_height)
         }
       )
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Figure")
     }
     )
 
