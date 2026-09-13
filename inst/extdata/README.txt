@@ -32,3 +32,7 @@ to run_protvis_pipeline(), checkpoint functions, and downstream modules.
 Maxquant_Export.xlsx remains the full reproducible MaxQuant example. Its
 importer removes rows marked Reverse, Potential contaminant, or Only
 identified by site by default.
+
+The `kmeans.csv` file is the built-in expression-profile example for
+Multi-omics -> Kmeans. The Kmeans module uses it automatically when no file is
+uploaded; an uploaded CSV always takes precedence.
