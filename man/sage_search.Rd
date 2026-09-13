@@ -8,8 +8,8 @@
 \alias{sage_search_server}
 \title{Sage database-search workflow}
 \description{
-  Standardized helpers and Shiny module for running the bundled Sage database
-  search engine and retaining its tables and provenance in a
+  Standardized helpers and Shiny module for running the platform-matched
+  bundled Sage database search engine and retaining its tables and provenance in a
   \code{ProtVis_dataset}.
 }
 \usage{
@@ -23,7 +23,9 @@ sage_search_ui(id)
 sage_search_server(id, shared_state)
 }
 \arguments{
-  \item{path}{Optional Sage executable path.}
+  \item{path}{Optional Sage executable path. If omitted, ProtVis selects the
+  bundled Windows, Linux, or macOS executable for the current platform and
+  architecture, then checks Sage on \code{PATH}.}
   \item{fasta}{Protein FASTA path.}
   \item{mzml_paths}{One or more mzML paths.}
   \item{output_directory}{Directory for Sage outputs.}

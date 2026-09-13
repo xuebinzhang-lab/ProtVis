@@ -16,19 +16,42 @@
   normalizePath(path, winslash = "/", mustWork = must_work)
 }
 
+.protvis_sage_bundled_candidates <- function() {
+  sysname <- unname(Sys.info()[["sysname"]])
+  machine <- tolower(unname(Sys.info()[["machine"]]))
+  root <- function(...) system.file("extdata", "sage", ..., package = "ProtVis")
+  if (identical(.Platform$OS.type, "windows")) {
+    return(root("windows", "sage.exe"))
+  }
+  if (identical(sysname, "Darwin")) {
+    architecture <- if (grepl("arm|aarch", machine)) "ARM64" else "Intel"
+    return(root("macOS", architecture, "sage"))
+  }
+  if (identical(sysname, "Linux")) return(root("Linux", "sage"))
+  character()
+}
+
+.protvis_prepare_sage_executable <- function(path) {
+  if (!identical(.Platform$OS.type, "windows") && file.exists(path)) {
+    # Source packages can lose the executable bit during transfer.
+    try(Sys.chmod(path, mode = "0755"), silent = TRUE)
+  }
+  path
+}
+
 #' Locate Sage for database-search workflows.
 #' @param path Optional user-selected executable path.
 #' @return An executable path, or NULL when Sage is not available.
 #' @export
 protvis_sage_executable <- function(path = NULL) {
-  candidates <- c(
-    if (!is.null(path) && length(path) == 1L && !is.na(path)) as.character(path),
-    if (.Platform$OS.type == "windows")
-      system.file("extdata", "sage", "windows", "sage.exe", package = "ProtVis"),
-    Sys.which("sage")
-  )
+  path_candidate <- if (!is.null(path) && length(path) == 1L && !is.na(path)) {
+    as.character(path)
+  } else character()
+  candidates <- c(path_candidate, .protvis_sage_bundled_candidates(),
+                  unname(Sys.which("sage")), unname(Sys.which("sage.exe")))
   candidates <- candidates[!is.na(candidates) & nzchar(candidates) &
                            file.exists(candidates)]
   if (!length(candidates)) return(NULL)
-  .protvis_sage_path(candidates[[1L]], "Sage executable")
+  selected <- .protvis_prepare_sage_executable(candidates[[1L]])
+  .protvis_sage_path(selected, "Sage executable")
 }

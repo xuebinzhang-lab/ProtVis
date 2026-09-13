@@ -81,12 +81,14 @@ The built-in table uses `B73_C1.mzML`–`B73_C3.mzML` and
 `EA2024_C1.mzML`–`EA2024_C3.mzML`.
 
 For database searching, upload a matching protein FASTA file (for example,
-`UP000007305_4577.fasta` for *Zea mays*). On Windows, ProtVis can use the
-bundled Sage executable at `inst/extdata/sage/windows/sage.exe`; on Linux or
-macOS, install Sage separately and place `sage` on `PATH`. The helper
-`protvis_sage_executable()` locates the executable. RAW, mzML, and FASTA bytes
-are not copied into `ProtVis_dataset`; only paths, filenames, checks, Sage
-parameters, and results are recorded for reproducibility.
+`UP000007305_4577.fasta` for *Zea mays*). ProtVis selects the bundled Sage
+executable for the current platform: `windows/sage.exe` on Windows,
+`Linux/sage` on Linux, and `macOS/ARM64/sage` or `macOS/Intel/sage` on macOS.
+If no matching bundled executable is available, it falls back to `sage` on
+`PATH`. The helper `protvis_sage_executable()` reports the selected path. RAW,
+mzML, and FASTA bytes are not copied into `ProtVis_dataset`; only paths,
+filenames, checks, Sage parameters, and results are recorded for
+reproducibility.
 
 ### Sage database search
 

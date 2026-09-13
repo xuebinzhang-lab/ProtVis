@@ -335,7 +335,7 @@ run_sage_search <- function(fasta, mzml_paths, output_directory,
                                          must_work = TRUE)
   sage <- protvis_sage_executable(sage_path)
   if (is.null(sage) || !file.exists(sage)) {
-    stop("Sage executable was not found. Use the bundled Windows executable or install Sage on PATH.",
+    stop("Sage executable was not found. ProtVis checks the bundled executable for Windows, Linux, and macOS, then Sage on PATH.",
          call. = FALSE)
   }
   config <- protvis_sage_build_config(fasta, mzml_paths, output_directory, parameters)
