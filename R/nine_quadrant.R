@@ -72,7 +72,7 @@ nine_quadrant_ui <- function(id) {
                        "text/comma-separated-values")
           ),
           shiny::actionButton(
-            ns("load_builtin"), "Load built-in example",
+            ns("load_builtin"), "LOAD DEMO DATA",
             icon = shiny::icon("table"),
             class = "btn btn-primary fw-bold pv-load-button",
             width = "100%"
@@ -273,7 +273,7 @@ nine_quadrant_server <- function(id) {
           class = "alert alert-secondary py-2 mt-2 mb-0",
           shiny::tags$strong("No data loaded"),
           shiny::tags$br(),
-          shiny::tags$small("Upload a file or click Load built-in example.")
+          shiny::tags$small("Upload a file or click LOAD DEMO DATA.")
         ))
       }
       df <- data()
@@ -390,7 +390,7 @@ nine_quadrant_server <- function(id) {
 
     output$data_preview <- DT::renderDT({
       shiny::validate(shiny::need(
-        has_data(), "Upload a file or click Load built-in example."
+        has_data(), "Upload a file or click LOAD DEMO DATA."
       ))
       df <- data()
 
@@ -436,7 +436,7 @@ nine_quadrant_server <- function(id) {
     shiny::observeEvent(input$run_plot, {
       if (!has_data()) {
         shiny::showNotification(
-          "Upload a file or click Load built-in example before running the plot.",
+          "Upload a file or click LOAD DEMO DATA before running the plot.",
           type = "error"
         )
         return(invisible(NULL))
@@ -541,7 +541,7 @@ nine_quadrant_server <- function(id) {
     output$plot_ui <- shiny::renderUI({
       if (!plot_ready()) {
         guidance <- if (!has_data()) {
-          "Upload a CSV/XLSX file or click Load built-in example to begin."
+          "Upload a CSV/XLSX file or click LOAD DEMO DATA to begin."
         } else {
           "Please select the X and Y columns, adjust the cutoff and display settings, then click Run to generate the plot."
         }
