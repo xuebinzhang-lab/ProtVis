@@ -1,3 +1,90 @@
+.protvis_fasta_header_ids <- function(header) {
+  tokens <- unlist(strsplit(header, "[[:space:];|,]+", perl = TRUE),
+                   use.names = FALSE)
+  tokens <- sub("^(gene|transcript|protein):", "", tokens,
+                ignore.case = TRUE, perl = TRUE)
+  unique(tokens[nzchar(tokens)])
+}
+
+.protvis_canonical_protein_id <- function(ids) {
+  ids <- trimws(as.character(ids))
+  ids <- sub("^>", "", ids)
+  ids <- sub("^(gene|transcript|protein):", "", ids,
+             ignore.case = TRUE, perl = TRUE)
+  ids <- sub("[[:space:]].*$", "", ids)
+  # Treat gene, transcript, and protein isoform suffixes as the same stable ID.
+  ids <- sub("[_.-](P|T|isoform)[0-9]+$", "", ids,
+             ignore.case = TRUE, perl = TRUE)
+  ids <- sub("\\.[0-9]+$", "", ids)
+  toupper(ids)
+}
+
+.protvis_match_protein_ids <- function(headers, queries, max_distance = 1L) {
+  header_ids <- lapply(headers, .protvis_fasta_header_ids)
+  raw_ids <- lapply(header_ids, toupper)
+  canonical_ids <- lapply(header_ids, .protvis_canonical_protein_id)
+  matched_rows <- list()
+  row_index <- 0L
+
+  for (query in unique(queries)) {
+    raw_query <- toupper(trimws(query))
+    canonical_query <- .protvis_canonical_protein_id(query)
+    hits <- which(vapply(raw_ids, function(ids) raw_query %in% ids, logical(1)))
+    match_type <- "Exact"
+
+    if (!length(hits)) {
+      hits <- which(vapply(
+        canonical_ids,
+        function(ids) canonical_query %in% ids,
+        logical(1)
+      ))
+      match_type <- "Normalized"
+    }
+
+    if (!length(hits) && nchar(canonical_query) >= 8L) {
+      unique_ids <- unique(unlist(canonical_ids, use.names = FALSE))
+      distances <- utils::adist(canonical_query, unique_ids)
+      fuzzy_ids <- unique_ids[distances <= max_distance]
+
+      # Approximate matching is used only when it identifies one stable ID.
+      if (length(fuzzy_ids) == 1L) {
+        hits <- which(vapply(
+          canonical_ids,
+          function(ids) fuzzy_ids %in% ids,
+          logical(1)
+        ))
+        match_type <- "Fuzzy (1 character)"
+      }
+    }
+
+    if (length(hits)) {
+      row_index <- row_index + 1L
+      matched_rows[[row_index]] <- data.frame(
+        sequence_index = hits,
+        Query_ID = query,
+        Match_type = match_type,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  matches <- if (length(matched_rows)) {
+    do.call(rbind, matched_rows)
+  } else {
+    data.frame(
+      sequence_index = integer(0), Query_ID = character(0),
+      Match_type = character(0), stringsAsFactors = FALSE
+    )
+  }
+
+  list(
+    sequence_index = sort(unique(matches$sequence_index)),
+    matches = matches,
+    found_ids = unique(matches$Query_ID),
+    unmatched_ids = setdiff(queries, unique(matches$Query_ID))
+  )
+}
+
 #' Protein Extract UI Module
 #' UI for protein sequence extraction from FASTA by protein IDs.
 #'
@@ -126,6 +213,7 @@ protein_extract_ui <- function(id) {
                 style = "padding-left: 18px; margin-bottom: 0; font-size: 13px;",
                 shiny::tags$li("Upload the protein FASTA file first."),
                 shiny::tags$li("Enter IDs manually or upload an ID list."),
+                shiny::tags$li("Matches include normalized gene/transcript/protein IDs and unique one-character fuzzy matches."),
                 shiny::tags$li("Click Run Extraction to generate results."),
                 shiny::tags$li("Matched sequences can be viewed and downloaded.")
               )
@@ -242,6 +330,7 @@ protein_extract_server <- function(id) {
       matched_seqs = NULL,
       unmatched_ids = NULL,
       found_ids = NULL,
+      match_details = NULL,
       has_run = FALSE
     )
 
@@ -353,37 +442,16 @@ protein_extract_server <- function(id) {
       }
 
       tryCatch({
-        headers <- names(rv$fasta_data)
-
-        matched_idx <- vapply(
-          headers,
-          function(h) {
-            any(vapply(
-              rv$protein_ids,
-              function(id) {
-                stringr::str_detect(h, stringr::fixed(id))
-              },
-              logical(1)
-            ))
-          },
-          logical(1)
+        match_result <- .protvis_match_protein_ids(
+          names(rv$fasta_data), rv$protein_ids
         )
-
-        rv$matched_seqs <- rv$fasta_data[matched_idx]
-
-        found_ids <- unique(unlist(lapply(
-          headers[matched_idx],
-          function(h) {
-            rv$protein_ids[vapply(
-              rv$protein_ids,
-              function(id) stringr::str_detect(h, stringr::fixed(id)),
-              logical(1)
-            )]
-          }
-        )))
-
-        rv$found_ids <- found_ids
-        rv$unmatched_ids <- setdiff(rv$protein_ids, found_ids)
+        rv$matched_seqs <- rv$fasta_data[match_result$sequence_index]
+        rv$match_details <- transform(
+          match_result$matches,
+          FASTA_header = names(rv$fasta_data)[sequence_index]
+        )
+        rv$found_ids <- match_result$found_ids
+        rv$unmatched_ids <- match_result$unmatched_ids
         rv$has_run <- TRUE
 
         if (length(rv$matched_seqs) > 0) {
@@ -404,6 +472,7 @@ protein_extract_server <- function(id) {
         rv$matched_seqs <- NULL
         rv$unmatched_ids <- NULL
         rv$found_ids <- NULL
+        rv$match_details <- NULL
         rv$has_run <- TRUE
         shinyjs::disable("download_results")
 
@@ -508,6 +577,16 @@ protein_extract_server <- function(id) {
 
       df <- data.frame(
         Protein_ID = names(rv$matched_seqs),
+        Matched_query = vapply(names(rv$matched_seqs), function(header) {
+          paste(unique(rv$match_details$Query_ID[
+            rv$match_details$FASTA_header == header
+          ]), collapse = "; ")
+        }, character(1)),
+        Match_type = vapply(names(rv$matched_seqs), function(header) {
+          paste(unique(rv$match_details$Match_type[
+            rv$match_details$FASTA_header == header
+          ]), collapse = "; ")
+        }, character(1)),
         Length = Biostrings::width(rv$matched_seqs),
         Sequence = as.character(rv$matched_seqs),
         stringsAsFactors = FALSE,
