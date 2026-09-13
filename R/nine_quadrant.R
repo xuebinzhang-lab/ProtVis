@@ -1,3 +1,16 @@
+.protvis_nine_quadrant_builtin_data <- function() {
+  set.seed(20260910)
+  x <- stats::rnorm(2800, 0, 2.2)
+  y <- stats::rnorm(2800, 0, 2.2)
+  data.frame(
+    Omic1_ID = sprintf("Omic1_%04d", seq_along(x)),
+    Log2FC_Omic1 = x,
+    Omic2_ID = sprintf("Omic2_%04d", seq_along(y)),
+    Log2FC_Omic2 = y,
+    check.names = FALSE
+  )
+}
+
 #' Creates the user interface for the Nine-Quadrant Plot module.
 #' This module allows users to upload a CSV/XLSX file, select numeric columns for X/Y axes,
 #' set cutoffs, customize colors for each quadrant, preview uploaded data, and download the plot as a PDF.
@@ -51,12 +64,27 @@ nine_quadrant_ui <- function(id) {
 
         bslib::accordion_panel(
           "Data Input",
-          shiny::tags$small("A built-in 2,800-row example is used when no file is uploaded.", class = "text-muted"),
+          shiny::tags$small("Load the built-in 2,800-row example or upload your own file.", class = "text-muted"),
           shiny::fileInput(
             ns("file"),
             "Upload CSV/XLSX File",
-            accept = c(".csv", ".xlsx")
+            accept = c(".csv", ".xlsx", "text/csv", "text/plain",
+                       "text/comma-separated-values")
           ),
+          shiny::actionButton(
+            ns("load_builtin"), "Load built-in example",
+            icon = shiny::icon("table"),
+            class = "btn btn-primary fw-bold pv-load-button",
+            width = "100%"
+          ),
+          shiny::div(style = "margin-top: 8px;"),
+          shiny::downloadButton(
+            ns("download_builtin"), "Download example CSV",
+            icon = shiny::icon("download"),
+            class = "btn btn-outline-primary fw-bold pv-load-button",
+            width = "100%"
+          ),
+          shiny::uiOutput(ns("data_status")),
           shiny::uiOutput(ns("col_select_ui"))
         ),
 
@@ -204,15 +232,29 @@ nine_quadrant_server <- function(id) {
     shinyjs::disable("download_pdf")
     lapply(quadrant_names, function(q) shinyjs::disable(paste0("download_", q)))
 
-    builtin_data <- local({
-      set.seed(20260910)
-      x <- rnorm(2800, 0, 2.2); y <- rnorm(2800, 0, 2.2)
-      data.frame(Omic1_ID = sprintf("Omic1_%04d", seq_along(x)),
-                 Log2FC_Omic1 = x,
-                 Omic2_ID = sprintf("Omic2_%04d", seq_along(y)),
-                 Log2FC_Omic2 = y, check.names = FALSE)
+    builtin_data <- .protvis_nine_quadrant_builtin_data()
+    builtin_loaded <- shiny::reactiveVal(FALSE)
+    plot_ready <- shiny::reactiveVal(FALSE)
+    has_data <- shiny::reactive({
+      !is.null(input$file) || isTRUE(builtin_loaded())
     })
+    reset_plot <- function() {
+      plot_ready(FALSE)
+      shinyjs::disable("download_pdf")
+      lapply(quadrant_names, function(q) shinyjs::disable(paste0("download_", q)))
+    }
+
+    shiny::observeEvent(input$load_builtin, {
+      builtin_loaded(TRUE)
+      reset_plot()
+    })
+    shiny::observeEvent(input$file, {
+      shiny::req(input$file)
+      reset_plot()
+    })
+
     data <- shiny::reactive({
+      shiny::req(has_data())
       if (is.null(input$file)) return(builtin_data)
       ext <- tools::file_ext(input$file$name)
 
@@ -225,7 +267,36 @@ nine_quadrant_server <- function(id) {
       }
     })
 
+    output$data_status <- shiny::renderUI({
+      if (!has_data()) {
+        return(shiny::tags$div(
+          class = "alert alert-secondary py-2 mt-2 mb-0",
+          shiny::tags$strong("No data loaded"),
+          shiny::tags$br(),
+          shiny::tags$small("Upload a file or click Load built-in example.")
+        ))
+      }
+      df <- data()
+      source <- if (is.null(input$file)) {
+        "Built-in example loaded"
+      } else {
+        paste0("Uploaded file loaded: ", input$file$name)
+      }
+      shiny::tags$div(
+        class = "alert alert-success py-2 mt-2 mb-0",
+        shiny::tags$strong(paste0("\u2713 ", source)),
+        shiny::tags$br(),
+        shiny::tags$small(paste0(nrow(df), " rows \u00d7 ", ncol(df), " columns"))
+      )
+    })
+
     output$data_info <- shiny::renderUI({
+      if (!has_data()) {
+        return(shiny::tags$span(
+          style = "display:inline-block; padding:4px 10px; border-radius:999px; background:#f3f4f6; color:#6b7280; font-size:12px; font-weight:500;",
+          "No data loaded"
+        ))
+      }
       df <- data()
       shiny::tags$span(
         style = paste(
@@ -243,7 +314,7 @@ nine_quadrant_server <- function(id) {
     })
 
     output$plot_status <- shiny::renderUI({
-      if (is.null(input$run_plot) || input$run_plot == 0) {
+      if (!plot_ready()) {
         shiny::tags$span(
           style = paste(
             "display:inline-block;",
@@ -273,6 +344,12 @@ nine_quadrant_server <- function(id) {
     })
 
     output$col_select_ui <- shiny::renderUI({
+      if (!has_data()) {
+        return(shiny::div(
+          style = "margin-top:10px; padding:10px 12px; border-radius:10px; background:#f8fafc; color:#4b5563; font-size:13px;",
+          "Column selection becomes available after loading data."
+        ))
+      }
       df <- data()
       num_cols <- base::names(df)[base::sapply(df, is.numeric)]
 
@@ -312,6 +389,9 @@ nine_quadrant_server <- function(id) {
     })
 
     output$data_preview <- DT::renderDT({
+      shiny::validate(shiny::need(
+        has_data(), "Upload a file or click Load built-in example."
+      ))
       df <- data()
 
       DT::datatable(
@@ -329,6 +409,7 @@ nine_quadrant_server <- function(id) {
     })
 
     processed <- shiny::eventReactive(input$run_plot, {
+      shiny::req(has_data())
       shiny::req(input$col_x, input$col_y)
 
       df <- data()
@@ -353,6 +434,21 @@ nine_quadrant_server <- function(id) {
     }, ignoreNULL = TRUE)
 
     shiny::observeEvent(input$run_plot, {
+      if (!has_data()) {
+        shiny::showNotification(
+          "Upload a file or click Load built-in example before running the plot.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
+      if (is.null(input$col_x) || is.null(input$col_y)) {
+        shiny::showNotification(
+          "Select two numeric columns before running the plot.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
+      plot_ready(TRUE)
       shinyjs::enable("download_pdf")
       lapply(quadrant_names, function(q) shinyjs::enable(paste0("download_", q)))
     })
@@ -443,7 +539,12 @@ nine_quadrant_server <- function(id) {
     }
 
     output$plot_ui <- shiny::renderUI({
-      if (is.null(input$run_plot) || input$run_plot == 0) {
+      if (!plot_ready()) {
+        guidance <- if (!has_data()) {
+          "Upload a CSV/XLSX file or click Load built-in example to begin."
+        } else {
+          "Please select the X and Y columns, adjust the cutoff and display settings, then click Run to generate the plot."
+        }
         shiny::div(
           style = paste(
             "height: 820px;",
@@ -469,9 +570,7 @@ nine_quadrant_server <- function(id) {
             ),
             shiny::tags$div(
               style = "font-size: 15px; line-height: 1.7; color: #4b5563;",
-              "Please select the X and Y columns, adjust the cutoff and display settings, then click ",
-              shiny::tags$b("Run"),
-              " to generate the plot."
+              guidance
             )
           )
         )
@@ -481,12 +580,12 @@ nine_quadrant_server <- function(id) {
     })
 
     output$plot <- shiny::renderPlot({
-      shiny::req(input$run_plot > 0)
+      shiny::req(plot_ready())
       create_plot()
     })
 
     output$quadrant_tables_ui <- shiny::renderUI({
-      if (is.null(input$run_plot) || input$run_plot == 0) {
+      if (!plot_ready()) {
         return(
           shiny::div(
             style = paste(
@@ -525,7 +624,7 @@ nine_quadrant_server <- function(id) {
     })
 
     quadrant_data_list <- shiny::reactive({
-      shiny::req(input$run_plot > 0)
+      shiny::req(plot_ready())
       df <- processed()
       out <- stats::setNames(vector("list", length(quadrant_names)), quadrant_names)
 
@@ -540,7 +639,7 @@ nine_quadrant_server <- function(id) {
         quadrant <- q
 
         output[[paste0("table_", quadrant)]] <- DT::renderDT({
-          shiny::req(input$run_plot > 0)
+          shiny::req(plot_ready())
           df_q <- quadrant_data_list()[[quadrant]]
 
           DT::datatable(
@@ -561,7 +660,7 @@ nine_quadrant_server <- function(id) {
             paste0(quadrant, "_", Sys.Date(), ".csv")
           },
           content = function(file) {
-            shiny::req(input$run_plot > 0)
+            shiny::req(plot_ready())
             utils::write.csv(
               quadrant_data_list()[[quadrant]],
               file,
@@ -577,7 +676,7 @@ nine_quadrant_server <- function(id) {
         base::paste0("Nine_Quadrant_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
-        shiny::req(input$run_plot > 0)
+        shiny::req(plot_ready())
 
         if (capabilities("cairo")) {
           grDevices::cairo_pdf(
@@ -596,6 +695,13 @@ nine_quadrant_server <- function(id) {
         print(create_plot())
         grDevices::dev.off()
       }
+    )
+    output$download_builtin <- shiny::downloadHandler(
+      filename = function() "nine_quadrant_example.csv",
+      content = function(file) {
+        utils::write.csv(builtin_data, file, row.names = FALSE)
+      },
+      contentType = "text/csv"
     )
   })
 }
