@@ -28,7 +28,7 @@ data_transformed_ui <- function(id) {
 
         shiny::div(
           style = "margin-bottom: 15px;",
-          shiny::actionButton(ns("load_data"), "Load data", class = "btn btn-primary fw-bold pv-load-button")
+          shiny::actionButton(ns("load_data"), "Load data", class = "btn btn-primary fw-bold pv-load-button pv-run-button")
         ),
 
         shiny::uiOutput(ns("load_status_panel")),
@@ -52,7 +52,7 @@ data_transformed_ui <- function(id) {
 
         shiny::div(
           style = "margin-top: 15px;",
-          shiny::actionButton(ns("run_transformation"), "Run transformation", class = "btn btn-success fw-bold pv-load-button")
+          shiny::actionButton(ns("run_transformation"), "Run transformation", class = "btn btn-success fw-bold pv-load-button pv-run-button")
         ),
 
         shiny::uiOutput(ns("transformation_status_panel")),
@@ -198,6 +198,14 @@ data_transformed_server <- function(id, shared_state) {
     )
 
     shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "transformation_load", session,
+                              "load_data")) {
+        shiny::showNotification("Transformation data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "transformation_load", session,
+                               "load_data"), add = TRUE)
       # Use the canonical in-memory dataset first. The RDA branch is retained
       # only as a compatibility path for projects created before ProtVis_dataset.
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
@@ -295,6 +303,14 @@ data_transformed_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_transformation, {
+      if (!.protvis_begin_run(shared_state, "transformation", session,
+                              "run_transformation")) {
+        shiny::showNotification("Data transformation is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "transformation", session,
+                               "run_transformation"), add = TRUE)
       shiny::req(original_matrix_numeric())
 
       df_mat <- original_matrix_numeric()

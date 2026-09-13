@@ -186,7 +186,8 @@ project_init_ui <- function(id) {
         selected = "Raw"
       )
     ),
-    shiny::actionButton(ns("run_button"), "Project init"),
+    shiny::actionButton(ns("run_button"), "Project init",
+                        class = "pv-run-button"),
     shiny::uiOutput(ns("project_init_status")),
     bslib::card(
       bslib::card_header("Preview Sample Info and Expression Matrix"),
@@ -539,6 +540,16 @@ project_init_server <- function(id, shared_state) {
     # On clicking init, validate the current inputs and create one canonical
     # ProtVis_dataset for the project. Later analyses create new versions only.
     shiny::observeEvent(input$run_button, {
+      if (!.protvis_begin_run(shared_state, "project_init", session,
+                              "run_button")) {
+        shiny::showNotification(
+          "Project init is already running; duplicate click ignored.",
+          type = "warning"
+        )
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "project_init", session,
+                               "run_button"), add = TRUE)
       init_status(list(state = "running", text = "PROJECT INIT in progress..."))
       tryCatch({
         directory <- protvis_output_directory(shared_state$workdir %||% getwd())

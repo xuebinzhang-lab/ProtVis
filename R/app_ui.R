@@ -16,6 +16,36 @@ golem_add_external_resources <- function() {
   )
 
   shiny::tags$head(
+    shiny::tags$script(shiny::HTML("
+      (function () {
+        function unlockProtVisButtons() {
+          document.querySelectorAll('button.pv-run-button[data-pv-running=\"true\"]').forEach(function (button) {
+            button.disabled = false;
+            button.dataset.pvRunning = 'false';
+            if (button.dataset.pvOriginalLabel) {
+              button.innerHTML = button.dataset.pvOriginalLabel;
+            }
+            button.classList.remove('pv-running');
+          });
+        }
+
+        document.addEventListener('click', function (event) {
+          var button = event.target.closest('button.pv-run-button');
+          if (!button) return;
+          if (button.dataset.pvRunning === 'true') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return false;
+          }
+          button.dataset.pvRunning = 'true';
+          button.dataset.pvOriginalLabel = button.innerHTML;
+          button.disabled = true;
+          button.classList.add('pv-running');
+        }, true);
+
+        document.addEventListener('shiny:idle', unlockProtVisButtons);
+      }());
+    ")),
     shiny::tags$link(
       rel = "icon",
       type = "image/x-icon",
@@ -1020,6 +1050,7 @@ protvis_homepage <- function() {
 #'
 app_ui <- function(request) {
   shiny::tagList(
+    shinyjs::useShinyjs(),
     golem_add_external_resources(),
     bslib::page_navbar(
       title = "ProtVis",

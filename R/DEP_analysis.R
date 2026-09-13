@@ -25,7 +25,7 @@ DEP_analysis_ui <- function(id) {
           shiny::actionButton(
             ns("load_data"),
             "LOAD DATA",
-            class = "btn btn-light fw-bold"
+            class = "btn btn-light fw-bold pv-run-button"
           )
         ),
 
@@ -110,7 +110,7 @@ DEP_analysis_ui <- function(id) {
         shiny::actionButton(
           ns("run_dep"),
           "RUN DEP",
-          class = "btn btn-light fw-bold"
+          class = "btn btn-light fw-bold pv-run-button"
         ),
         shiny::br(),
         shiny::br(),
@@ -334,6 +334,13 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "dep_load", session, "load_data")) {
+        shiny::showNotification("DEP data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "dep_load", session, "load_data"),
+              add = TRUE)
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         matrix <- numeric_expression_matrix(shared_state$dataset$expression_data)
         rv$sample_info <- shared_state$dataset$sample_info
@@ -778,6 +785,13 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_dep, {
+      if (!.protvis_begin_run(shared_state, "dep", session, "run_dep")) {
+        shiny::showNotification("DEP analysis is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "dep", session, "run_dep"),
+              add = TRUE)
       shiny::req(rv$load_success, rv$compare_data, rv$normalized_matrix, rv$sample_info)
 
       if (!base::all(c("Group1", "Group2") %in% base::colnames(rv$compare_data))) {

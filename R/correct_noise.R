@@ -120,7 +120,7 @@ correct_noise_ui <- function(id) {
       shiny::actionButton(
         ns("load_data"),
         "Load data",
-        class = "btn btn-primary fw-bold pv-load-button"
+        class = "btn btn-primary fw-bold pv-load-button pv-run-button"
       ),
       shiny::uiOutput(ns("load_status_panel")),
       shinyWidgets::progressBar(
@@ -140,7 +140,7 @@ correct_noise_ui <- function(id) {
           shiny::actionButton(
             inputId = ns("rename_columns"),
             label = "Rename Columns",
-            class = "btn btn-outline-primary w-100"
+            class = "btn btn-outline-primary w-100 pv-run-button"
           )
         ),
         bslib::accordion_panel(
@@ -149,7 +149,7 @@ correct_noise_ui <- function(id) {
           shiny::actionButton(
             inputId = ns("correct_noise"),
             label = "Correct Noise",
-            class = "btn btn-success w-100"
+            class = "btn btn-success w-100 pv-run-button"
           ),
           shinyWidgets::progressBar(
             id = ns("noise_progress"),
@@ -276,6 +276,14 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "correct_noise_load", session,
+                              "load_data")) {
+        shiny::showNotification("Correct Noise data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "correct_noise_load", session,
+                               "load_data"), add = TRUE)
       # The ProtVis_dataset is the primary source. The legacy RDA path below
       # remains only for projects created by older releases.
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
@@ -423,6 +431,14 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$rename_columns, {
+      if (!.protvis_begin_run(shared_state, "correct_noise_rename", session,
+                              "rename_columns")) {
+        shiny::showNotification("Column renaming is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "correct_noise_rename", session,
+                               "rename_columns"), add = TRUE)
       shiny::req(shared_state$expression_matrix_filtered)
       rv$rename_requested <- TRUE
       tryCatch({
@@ -437,6 +453,14 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$correct_noise, {
+      if (!.protvis_begin_run(shared_state, "correct_noise", session,
+                              "correct_noise")) {
+        shiny::showNotification("Correct Noise is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "correct_noise", session,
+                               "correct_noise"), add = TRUE)
       rv$noise_requested <- TRUE
       tryCatch({
           if (!isTRUE(rv$load_success)) {

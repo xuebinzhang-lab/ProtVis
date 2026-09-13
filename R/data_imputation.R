@@ -36,7 +36,7 @@ data_imputation_ui <- function(id) {
         shiny::actionButton(
           ns("load_data"),
           "Load data",
-          class = "btn btn-primary fw-bold pv-load-button"
+          class = "btn btn-primary fw-bold pv-load-button pv-run-button"
         ),
 
         shiny::actionButton(
@@ -68,7 +68,7 @@ data_imputation_ui <- function(id) {
             shiny::actionButton(
               ns("run_impute"),
               "Run imputation",
-              class = "btn btn-success fw-bold pv-load-button"
+              class = "btn btn-success fw-bold pv-load-button pv-run-button"
             )
           ),
           bslib::accordion_panel(
@@ -225,6 +225,14 @@ data_imputation_server <- function(id, shared_state) {
     }
 
     shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "imputation_load", session,
+                              "load_data")) {
+        shiny::showNotification("Imputation data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "imputation_load", session,
+                               "load_data"), add = TRUE)
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         rv$sample_info <- shared_state$dataset$sample_info
         rv$expression_matrix <- clean_missing_sentinels(
@@ -518,6 +526,14 @@ data_imputation_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_impute, {
+      if (!.protvis_begin_run(shared_state, "imputation", session,
+                              "run_impute")) {
+        shiny::showNotification("Imputation is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "imputation", session,
+                               "run_impute"), add = TRUE)
       shiny::req(imputed_data(), rv$sample_info, shared_state$workdir)
 
       sample_info <- rv$sample_info

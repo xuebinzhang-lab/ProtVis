@@ -25,6 +25,9 @@ app_server <- function(input, output, session) {
     dataset = NULL,
     dataset_history = list(),
     dataset_name = NULL,
+    # Per-session operation locks prevent duplicate Shiny events from starting
+    # the same long-running or state-changing task twice.
+    run_locks = list(),
     # Keep the current DEP results available to downstream modules without
     # requiring a legacy Step7_DEP_result.rda file on disk.
     dep_results = list()

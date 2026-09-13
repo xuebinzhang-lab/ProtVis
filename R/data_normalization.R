@@ -60,7 +60,7 @@ data_normalization_ui <- function(id) {
         shiny::actionButton(
           ns("load_data"),
           "Load data",
-          class = "btn btn-primary fw-bold pv-load-button"
+          class = "btn btn-primary fw-bold pv-load-button pv-run-button"
         ),
 
         shiny::uiOutput(ns("load_status_panel")),
@@ -69,7 +69,7 @@ data_normalization_ui <- function(id) {
         shiny::actionButton(
           ns("run_normalization"),
           "Run normalization",
-          class = "btn btn-success fw-bold pv-load-button"
+          class = "btn btn-success fw-bold pv-load-button pv-run-button"
         ),
 
         shiny::uiOutput(ns("normalization_status_panel")),
@@ -212,6 +212,14 @@ data_normalization_server <- function(id, shared_state) {
     }
 
     shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "normalization_load", session,
+                              "load_data")) {
+        shiny::showNotification("Normalization data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "normalization_load", session,
+                               "load_data"), add = TRUE)
       workdir <- tryCatch(
         valid_workdir(),
         error = function(e) {
@@ -332,6 +340,14 @@ data_normalization_server <- function(id, shared_state) {
     })
 
     shiny::observeEvent(input$run_normalization, {
+      if (!.protvis_begin_run(shared_state, "normalization", session,
+                              "run_normalization")) {
+        shiny::showNotification("Normalization is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "normalization", session,
+                               "run_normalization"), add = TRUE)
       if (!isTRUE(rv$load_success)) {
         shiny::showNotification(
           "Load imputed data successfully before running Normalization.",

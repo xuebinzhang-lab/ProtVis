@@ -389,7 +389,7 @@ sage_search_ui <- function(id) {
       shiny::numericInput(ns("fdr"), "Spectrum/peptide/protein FDR", 0.01, min = 0.0001, max = 0.2, step = 0.001),
       shiny::checkboxInput(ns("lfq"), "Enable LFQ", TRUE),
       shiny::actionButton(ns("run"), "Run Sage Search", icon = bsicons::bs_icon("play-fill"),
-                          class = "btn-primary w-100"),
+                          class = "btn-primary w-100 pv-run-button"),
       shiny::downloadButton(ns("download_config"), "Download Sage config", class = "btn-outline-secondary w-100")
     ),
     bslib::layout_columns(
@@ -485,6 +485,15 @@ sage_search_server <- function(id, shared_state) {
       }
     )
     shiny::observeEvent(input$run, {
+      if (!.protvis_begin_run(shared_state, "sage_search", session, "run")) {
+        shiny::showNotification(
+          "Sage Search is already running; duplicate click ignored.",
+          type = "warning"
+        )
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "sage_search", session, "run"),
+              add = TRUE)
       p <- paths()
       shared_state$sage_workflow <- TRUE
       parameters <- list(
