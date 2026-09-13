@@ -582,9 +582,69 @@ golem_add_external_resources <- function() {
         line-height: 1.7;
       }
 
+      .pv-route-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .pv-route-card {
+        min-height: 232px;
+        padding: 24px;
+        border: 1px solid #dbe6ec;
+        border-radius: 21px;
+        background: #fff;
+        box-shadow: 0 10px 26px rgba(16, 43, 63, 0.05);
+      }
+
+      .pv-route-icon {
+        width: 43px;
+        height: 43px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 18px;
+        border-radius: 13px;
+        color: var(--pv-cyan);
+        background: #eaf7fc;
+      }
+
+      .pv-route-maxquant .pv-route-icon {
+        color: var(--pv-green);
+        background: #e9f8f2;
+      }
+
+      .pv-route-table .pv-route-icon {
+        color: var(--pv-gold);
+        background: #fff7e6;
+      }
+
+      .pv-route-icon svg { width: 21px; height: 21px; }
+
+      .pv-route-card h3 {
+        margin: 0 0 10px;
+        color: var(--pv-ink);
+        font-size: 1.03rem;
+        font-weight: 800;
+      }
+
+      .pv-route-card p {
+        margin: 0 0 16px;
+        color: #647b8b;
+        font-size: 0.9rem;
+        line-height: 1.7;
+      }
+
+      .pv-route-card small {
+        display: block;
+        color: #2c5369;
+        font-size: 0.78rem;
+        font-weight: 750;
+        line-height: 1.5;
+      }
+
       .pv-workflow {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(8, 1fr);
         overflow: hidden;
         border: 1px solid #d6e5ec;
         border-radius: 22px;
@@ -737,6 +797,7 @@ golem_add_external_resources <- function() {
         .pv-home-hero { grid-template-columns: 1fr; padding: 50px; }
         .pv-object-map { max-width: 700px; }
         .pv-workflow { grid-template-columns: repeat(4, 1fr); }
+        .pv-route-grid { grid-template-columns: 1fr; }
         .pv-workflow-step:nth-child(4) { border-right: 0; }
         .pv-workflow-step:nth-child(n+5) { border-top: 1px solid #e1ebf0; }
       }
@@ -750,6 +811,7 @@ golem_add_external_resources <- function() {
         .pv-metric:nth-child(2) { border-right: 0; }
         .pv-metric:nth-child(-n+2) { border-bottom: 1px solid #e2ebf0; }
         .pv-capability-grid { grid-template-columns: repeat(2, 1fr); }
+        .pv-route-grid { grid-template-columns: repeat(2, 1fr); }
         .pv-workflow { grid-template-columns: repeat(2, 1fr); }
         .pv-workflow-step:nth-child(even) { border-right: 0; }
         .pv-workflow-step:nth-child(n+3) { border-top: 1px solid #e1ebf0; }
@@ -764,6 +826,7 @@ golem_add_external_resources <- function() {
         .pv-metrics { margin: -1px 10px 38px; }
         .pv-metric { padding: 18px 15px; }
         .pv-capability-grid { grid-template-columns: 1fr; }
+        .pv-route-grid { grid-template-columns: 1fr; }
         .pv-workflow { grid-template-columns: 1fr; }
         .pv-workflow-step { border-right: 0; border-top: 1px solid #e1ebf0; }
         .pv-workflow-step:first-child { border-top: 0; }
@@ -888,7 +951,7 @@ golem_add_external_resources <- function() {
 
 #' ProtVis Homepage
 #'
-#' Builds the static, publication-oriented landing page without coupling it to
+#' Builds the static, workflow-oriented landing page without coupling it to
 #' any server-side reactive state.
 #'
 #' @keywords internal
@@ -920,18 +983,18 @@ protvis_homepage <- function() {
         class = "pv-home-copy",
         shiny::div(
           class = "pv-eyebrow",
-          "Reproducible proteomics · end-to-end analysis"
+          "Integrated proteomics analysis platform"
         ),
         shiny::h1("From quantitative proteomes to ", shiny::span("biological insight.")),
         shiny::p(
           class = "pv-lead",
-          "ProtVis unifies data preparation, statistical analysis, functional annotation, and publication-ready visualization in a traceable scientific workflow."
+          "ProtVis connects heterogeneous proteomics outputs, reproducible preprocessing, statistical analysis, functional interpretation, protein structure exploration, and multi-omics views in one traceable workflow."
         ),
         shiny::div(
           class = "pv-pill-row",
-          shiny::span(class = "pv-pill", "Transparent provenance"),
-          shiny::span(class = "pv-pill", "Checkpoint recovery"),
-          shiny::span(class = "pv-pill", "Interactive visualization")
+          shiny::span(class = "pv-pill", "ProtVis_dataset state"),
+          shiny::span(class = "pv-pill", "Recoverable checkpoints"),
+          shiny::span(class = "pv-pill", "Tables + figures")
         )
       ),
       shiny::div(
@@ -954,8 +1017,8 @@ protvis_homepage <- function() {
     ),
     shiny::div(
       class = "pv-metrics",
-      shiny::div(class = "pv-metric", shiny::tags$strong("8"), shiny::span("supported input sources")),
-      shiny::div(class = "pv-metric", shiny::tags$strong("7"), shiny::span("connected workflow stages")),
+      shiny::div(class = "pv-metric", shiny::tags$strong("8"), shiny::span("tabular input adapters")),
+      shiny::div(class = "pv-metric", shiny::tags$strong("4"), shiny::span("core preprocessing stages")),
       shiny::div(class = "pv-metric", shiny::tags$strong("3"), shiny::span("annotation layers")),
       shiny::div(class = "pv-metric", shiny::tags$strong("S4"), shiny::span("independent data architecture"))
     ),
@@ -964,10 +1027,45 @@ protvis_homepage <- function() {
       shiny::div(
         class = "pv-section-head",
         shiny::div(
-          shiny::span(class = "pv-section-index", "01 · Analytical scope"),
+          shiny::span(class = "pv-section-index", "02 · Choose an input route"),
+          shiny::h2("The selected source controls the next step")
+        ),
+        shiny::p("Project init is the common entry point. After the source is selected, ProtVis shows only the route-specific tools needed for that data type.")
+      ),
+      shiny::div(
+        class = "pv-route-grid",
+        shiny::div(
+          class = "pv-route-card pv-route-raw",
+          shiny::div(class = "pv-route-icon", bsicons::bs_icon("search")),
+          shiny::h3("Raw / mzML + Sage"),
+          shiny::p("Register sample information, a protein FASTA, and the mzML directory. The Search tab then runs the bundled Sage executable on Windows."),
+          shiny::tags$small("Project init → Search → Correct Noise")
+        ),
+        shiny::div(
+          class = "pv-route-card pv-route-maxquant",
+          shiny::div(class = "pv-route-icon", bsicons::bs_icon("usb-drive")),
+          shiny::h3("MaxQuant"),
+          shiny::p("Upload the MaxQuant output and open MaxQuant Output Preparation. This menu item is shown only when MaxQuant is selected."),
+          shiny::tags$small("Project init → MaxQuant Output Preparation → Correct Noise")
+        ),
+        shiny::div(
+          class = "pv-route-card pv-route-table",
+          shiny::div(class = "pv-route-icon", bsicons::bs_icon("table")),
+          shiny::h3("Other tabular sources"),
+          shiny::p("Use the source-specific parser for DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, Proteome Discoverer, or a custom matrix."),
+          shiny::tags$small("Project init → Pre-processing → Downstream analysis")
+        )
+      )
+    ),
+    shiny::tags$section(
+      class = "pv-section",
+      shiny::div(
+        class = "pv-section-head",
+        shiny::div(
+          shiny::span(class = "pv-section-index", "03 · Analytical scope"),
           shiny::h2("A rigorous workflow, from input to interpretation")
         ),
-        shiny::p("Purpose-built modules preserve biological context while reducing friction between data processing, statistics, and scientific communication.")
+        shiny::p("Purpose-built modules preserve biological context while keeping data processing, statistics, interpretation, and visualization connected.")
       ),
       shiny::div(
         class = "pv-capability-grid",
@@ -984,27 +1082,28 @@ protvis_homepage <- function() {
       shiny::div(
         class = "pv-section-head",
         shiny::div(
-          shiny::span(class = "pv-section-index", "02 · Reproducible workflow"),
-          shiny::h2("Seven stages, one continuous analytical record")
+          shiny::span(class = "pv-section-index", "04 · Reproducible workflow"),
+          shiny::h2("One project, one continuous analytical record")
         ),
-        shiny::p("Every stage contributes data, parameters, status, and history to the same project object, enabling inspection and checkpoint recovery.")
+        shiny::p("Every completed stage contributes data, parameters, status, and history to the same project object, enabling inspection and checkpoint recovery.")
       ),
       shiny::div(
         class = "pv-workflow",
-        workflow_step(1, "Project init", "Define samples and experimental metadata."),
-        workflow_step(2, "MaxQuant output preparation", "Prepare MaxQuant quantitative evidence before preprocessing."),
-        workflow_step(3, "Pre-process", "Transform, impute, and normalize."),
-        workflow_step(4, "Overview", "Inspect QC and sample structure."),
-        workflow_step(5, "DEP", "Model differential abundance."),
-        workflow_step(6, "Interpret", "Enrichment, GSEA, and pathways."),
-        workflow_step(7, "Communicate", "Visualize, export, and revisit results.")
+        workflow_step(1, "Project init", "Set the working directory and confirm metadata."),
+        workflow_step(2, "Input route", "Use Sage, MaxQuant, or a source-specific parser."),
+        workflow_step(3, "Pre-processing", "Correct noise, transform, impute, and normalize."),
+        workflow_step(4, "Overview", "Inspect data quality and sample structure."),
+        workflow_step(5, "DEP", "Model differential protein abundance."),
+        workflow_step(6, "Interpret", "Run enrichment, GSEA, and pathways."),
+        workflow_step(7, "Explore", "Use structure, PTM, and multi-omics modules."),
+        workflow_step(8, "Export", "Save tables, figures, results, and checkpoints.")
       )
     ),
     shiny::tags$section(
       class = "pv-section pv-object-section",
       shiny::div(
         class = "pv-object-story",
-        shiny::span(class = "pv-section-index", "03 · Data architecture"),
+        shiny::span(class = "pv-section-index", "05 · Data architecture"),
         shiny::h2("One object, complete provenance"),
         shiny::p("ProtVis_dataset is an independent S4 class designed specifically for proteomics. It keeps quantitative data aligned with sample and variable metadata while recording every processing decision."),
         shiny::div(
