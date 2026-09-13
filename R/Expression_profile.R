@@ -48,9 +48,17 @@ Expression_profile_ui <- function(id) {
       icon = bsicons::bs_icon("upload"),
       shiny::fileInput(
         inputId = ns("file"),
-        label = "Expression matrix (optional; built-in example is used when empty)",
+        label = "Upload expression matrix (.csv)",
         multiple = FALSE,
         accept = c(".csv", "text/csv", "text/comma-separated-values")
+      ),
+      shiny::actionButton(
+        ns("load_builtin"), "Load built-in example",
+        icon = shiny::icon("table"), class = "btn btn-primary w-100"
+      ),
+      shiny::downloadButton(
+        ns("download_builtin"), "Download example CSV",
+        icon = shiny::icon("download"), class = "btn btn-outline-primary w-100 mt-2"
       ),
       shiny::uiOutput(ns("expression_data_status"))
     ),
@@ -175,13 +183,31 @@ utils::globalVariables(c("Cluster_Count", "variable",
 Expression_profile_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    builtin_loaded <- shiny::reactiveVal(FALSE)
+    shiny::observeEvent(input$load_builtin, {
+      builtin_loaded(TRUE)
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Input Data")
+    })
+    shiny::observeEvent(input$file, {
+      shiny::req(input$file)
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Input Data")
+    })
     data <- shiny::reactive({
       if (!is.null(input$file)) {
         return(.protvis_read_expression_profile(input$file$datapath))
       }
+      shiny::req(isTRUE(builtin_loaded()))
       .protvis_read_expression_profile(.protvis_kmeans_builtin_path())
     })
     output$expression_data_status <- shiny::renderUI({
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        return(shiny::tags$div(
+          class = "alert alert-secondary py-2 mt-2 mb-0",
+          shiny::tags$strong("No data loaded"),
+          shiny::tags$br(),
+          shiny::tags$small("Upload a CSV or click Load built-in example.")
+        ))
+      }
       matrix <- data()
       source <- if (is.null(input$file)) {
         "Built-in data loaded: kmeans.csv"
@@ -198,6 +224,10 @@ Expression_profile_server <- function(id) {
       )
     })
     output$expression_data_preview <- DT::renderDT({
+      shiny::validate(shiny::need(
+        !is.null(input$file) || isTRUE(builtin_loaded()),
+        "Upload an expression matrix or click Load built-in example."
+      ))
       matrix <- data()
       preview <- data.frame(
         id = rownames(matrix), matrix, check.names = FALSE,
@@ -208,8 +238,26 @@ Expression_profile_server <- function(id) {
         options = list(pageLength = 10, scrollX = TRUE)
       )
     })
+    output$download_builtin <- shiny::downloadHandler(
+      filename = function() "kmeans.csv",
+      content = function(file) {
+        copied <- file.copy(.protvis_kmeans_builtin_path(), file,
+                            overwrite = TRUE)
+        if (!isTRUE(copied)) {
+          stop("Unable to copy the built-in Kmeans example.", call. = FALSE)
+        }
+      },
+      contentType = "text/csv"
+    )
     shiny::observeEvent(input$run_btn_Kmeans, {
       shiny::req(input$dropdown == "Kmeans")
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        shiny::showNotification(
+          "Upload a CSV or click Load built-in example before running Kmeans.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
       data <- data()
       data_scale <- base::data.frame(base::round(base::t(base::apply(data, 1, scale)), 2))
       base::colnames(data_scale) <- base::colnames(data)
@@ -331,6 +379,13 @@ Expression_profile_server <- function(id) {
 
     shiny::observeEvent(input$run_btn_heatmap, {
       shiny::req(input$dropdown == "Heatmap")
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        shiny::showNotification(
+          "Upload a CSV or click Load built-in example before running the heatmap.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
       mat <- data()
       mat <- as.matrix(mat)
       storage.mode(mat) <- "numeric"

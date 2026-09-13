@@ -18,3 +18,10 @@ test_that("Kmeans expression input rejects non-numeric sample columns", {
     "sample columns must be numeric"
   )
 })
+
+test_that("Kmeans UI exposes explicit built-in load and download controls", {
+  html <- htmltools::renderTags(ProtVis::Expression_profile_ui("profile"))$html
+  expect_match(html, "profile-load_builtin", fixed = TRUE)
+  expect_match(html, "profile-download_builtin", fixed = TRUE)
+  expect_match(html, "Upload expression matrix", fixed = TRUE)
+})
