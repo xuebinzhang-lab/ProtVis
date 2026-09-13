@@ -496,6 +496,16 @@ correct_noise_server <- function(id, shared_state) {
             dataset,
             base::file.path(workdir, "Step3_correct_noise.rda")
           )
+          # Show the newly generated table immediately.  Without selecting
+          # this tab, a hidden DT output may remain suspended by Shiny and
+          # make a successful correction look like an empty result.
+          tryCatch(
+            bslib::nav_select(
+              id = "Expression_Matrix", selected = "Correct Noise",
+              session = session
+            ),
+            error = function(e) invisible(NULL)
+          )
           shiny::showNotification("✅ Noise correction completed.", type = "message")
         }, error = function(e) {
           shared_state$correct_noise_result <- NULL
@@ -519,14 +529,19 @@ correct_noise_server <- function(id, shared_state) {
     })
 
     output$tbl_correct_noise <- DT::renderDT({
-      if (isTRUE(rv$noise_requested)) {
-        shiny::req(shared_state$correct_noise_result)
-        DT::datatable(
-          shared_state$correct_noise_result,
-          rownames = FALSE,
-          options = list(scrollX = TRUE, pageLength = 10)
+      result <- shared_state$correct_noise_result
+      if (!isTRUE(rv$noise_requested) || is.null(result) ||
+          !is.data.frame(result)) {
+        result <- data.frame(
+          Message = "Run Correct Noise to display the corrected matrix.",
+          stringsAsFactors = FALSE
         )
       }
+      DT::datatable(
+        result,
+        rownames = FALSE,
+        options = list(scrollX = TRUE, pageLength = 10)
+      )
     })
 
   })
