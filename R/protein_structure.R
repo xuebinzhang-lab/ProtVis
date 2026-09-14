@@ -1,3 +1,24 @@
+.protvis_draw_nma_fluctuations <- function(modes, pdb, sheet_color,
+                                            helix_color, line_width) {
+  fluctuations <- modes$fluctuations
+  if (is.null(fluctuations) || !length(fluctuations)) {
+    stop("Normal mode analysis did not return residue fluctuations.", call. = FALSE)
+  }
+
+  # plot.bio3d is an S3 method and is not exported by every bio3d release.
+  plot_bio3d <- get("plot.bio3d", envir = asNamespace("bio3d"), inherits = FALSE)
+  plot_bio3d(
+    fluctuations,
+    sse = pdb,
+    sheet.col = sheet_color,
+    helix.col = helix_color,
+    typ = "l",
+    lwd = line_width,
+    xlab = "Residue",
+    ylab = expression("Fluctuations from NMA (" * ring(A) * ")")
+  )
+}
+
 #' Protein Structure Analysis UI Module
 #'
 #' Creates a user interface for protein secondary structure analysis using
@@ -198,6 +219,7 @@ protein_structure_server <- function(id) {
       modes = NULL,
       summary = NULL,
       analysis_done = FALSE,
+      analysis_error = NULL,
       use_demo = FALSE,
       active_file_path = NULL,
       active_file_name = NULL,
@@ -300,6 +322,22 @@ protein_structure_server <- function(id) {
       if (isTRUE(rv$analysis_done)) {
         shiny::plotOutput(session$ns("protein_plot"), height = "560px")
       } else {
+        if (!is.null(rv$analysis_error)) {
+          return(bslib::card(
+            class = "border-danger",
+            style = "margin-top: 10px;",
+            bslib::card_body(
+              style = "display:flex; align-items:center; justify-content:center; height:560px;",
+              shiny::div(
+                style = "max-width:620px; text-align:center; color:#842029;",
+                bsicons::bs_icon("exclamation-triangle", size = "2em"),
+                shiny::h5("Protein structure analysis failed", style = "margin-top: 12px;"),
+                shiny::tags$p(rv$analysis_error),
+                shiny::tags$small("Check that the PDB contains protein C-alpha atoms and try again.")
+              )
+            )
+          ))
+        }
         bslib::card(
           class = "border-0 shadow-sm",
           style = "margin-top: 10px;",
@@ -319,30 +357,14 @@ protein_structure_server <- function(id) {
     output$protein_plot <- shiny::renderPlot({
       shiny::req(rv$analysis_done, rv$modes, rv$pdb)
 
-      if (!base::is.null(rv$modes$fluctuations)) {
-        bio3d::plot.bio3d(
-          rv$modes$fluctuations,
-          sse = rv$pdb,
-          sheet.col = input$sheet_color,
-          helix.col = input$helix_color,
-          typ = "l",
-          lwd = input$line_width,
-          xlab = "Residue Index",
-          ylab = expression("Fluctuations from NMA (" * ring(A) * ")")
-        )
-        graphics::title(
-          main = "Protein Secondary Structure Analysis",
-          sub = paste("Source:", rv$active_source)
-        )
-      } else {
-        graphics::plot.new()
-        graphics::text(
-          0.5, 0.5,
-          "No fluctuation data available",
-          cex = 1.2,
-          col = "red"
-        )
-      }
+      .protvis_draw_nma_fluctuations(
+        rv$modes, rv$pdb, input$sheet_color, input$helix_color,
+        input$line_width
+      )
+      graphics::title(
+        main = "Protein Secondary Structure Analysis",
+        sub = paste("Source:", rv$active_source)
+      )
     })
 
     shiny::observeEvent(input$run, {
@@ -368,6 +390,7 @@ protein_structure_server <- function(id) {
       rv$pdb <- NULL
       rv$modes <- NULL
       rv$summary <- NULL
+      rv$analysis_error <- NULL
 
       shiny::showNotification("Reading PDB file...", type = "message", duration = 2)
 
@@ -442,6 +465,7 @@ protein_structure_server <- function(id) {
 
       }, error = function(e) {
         rv$analysis_done <- FALSE
+        rv$analysis_error <- e$message
         rv$pdb <- NULL
         rv$modes <- NULL
         rv$summary <- data.frame(
@@ -463,7 +487,7 @@ protein_structure_server <- function(id) {
     })
 
     output$summary_table <- DT::renderDT({
-      if (isFALSE(rv$analysis_done) || is.null(rv$summary)) {
+      if (is.null(rv$summary)) {
         return(
           DT::datatable(
             data.frame(
@@ -539,15 +563,9 @@ protein_structure_server <- function(id) {
           grDevices::svg(file, width = width, height = height)
         }
 
-        bio3d::plot.bio3d(
-          rv$modes$fluctuations,
-          sse = rv$pdb,
-          sheet.col = input$sheet_color,
-          helix.col = input$helix_color,
-          typ = "l",
-          lwd = input$line_width,
-          xlab = "Residue Index",
-          ylab = expression("Fluctuations from NMA (" * ring(A) * ")")
+        .protvis_draw_nma_fluctuations(
+          rv$modes, rv$pdb, input$sheet_color, input$helix_color,
+          input$line_width
         )
 
         graphics::title(
