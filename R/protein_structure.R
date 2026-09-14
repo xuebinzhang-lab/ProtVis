@@ -1,3 +1,14 @@
+.protvis_run_normal_modes <- function(pdb_file) {
+  pdb <- bio3d::read.pdb(pdb_file)
+  modes <- bio3d::nma(pdb)
+
+  if (is.null(modes$fluctuations) || !length(modes$fluctuations)) {
+    stop("Normal mode analysis did not return residue fluctuations.", call. = FALSE)
+  }
+
+  list(pdb = pdb, modes = modes)
+}
+
 .protvis_draw_nma_fluctuations <- function(modes, pdb, sheet_color,
                                             helix_color, line_width) {
   fluctuations <- modes$fluctuations
@@ -5,9 +16,7 @@
     stop("Normal mode analysis did not return residue fluctuations.", call. = FALSE)
   }
 
-  # plot.bio3d is an S3 method and is not exported by every bio3d release.
-  plot_bio3d <- get("plot.bio3d", envir = asNamespace("bio3d"), inherits = FALSE)
-  plot_bio3d(
+  bio3d::plot.bio3d(
     fluctuations,
     sse = pdb,
     sheet.col = sheet_color,
@@ -15,7 +24,7 @@
     typ = "l",
     lwd = line_width,
     xlab = "Residue",
-    ylab = expression("Fluctuations from NMA (" * ring(A) * ")")
+    ylab = "Fluctuations from NMA"
   )
 }
 
@@ -395,15 +404,15 @@ protein_structure_server <- function(id) {
       shiny::showNotification("Reading PDB file...", type = "message", duration = 2)
 
       tryCatch({
-        pdb <- bio3d::read.pdb(rv$active_file_path)
-
         shiny::showNotification(
           "Performing Normal Mode Analysis...",
           type = "message",
           duration = 2
         )
 
-        modes <- bio3d::nma(pdb)
+        nma_result <- .protvis_run_normal_modes(rv$active_file_path)
+        pdb <- nma_result$pdb
+        modes <- nma_result$modes
 
         residue_count <- NA_integer_
         atom_count <- NA_integer_
