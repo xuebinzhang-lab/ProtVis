@@ -32,6 +32,11 @@ stacked_column_chart_ui <- function(id) {
           bslib::accordion_panel(
             "Data Input",
 
+            shiny::tags$p(
+              "Upload a tidy CSV or load the included example to explore the chart format.",
+              class = "pv-stacked-column-help"
+            ),
+
             shiny::fileInput(
               ns("file_input"),
               "Upload CSV File",
@@ -42,16 +47,20 @@ stacked_column_chart_ui <- function(id) {
 
             shiny::actionButton(
               ns("use_demo"),
-              "Use Demo Data",
-              class = "btn btn-outline-primary btn-sm"
+              "USE DEMO DATA",
+              icon = shiny::icon("table"),
+              class = "btn btn-outline-primary fw-bold pv-stacked-column-action",
+              width = "100%"
             ),
 
             shiny::div(style = "height: 8px;"),
 
             shiny::downloadButton(
               ns("download_demo"),
-              "Download Demo CSV",
-              class = "btn btn-outline-secondary btn-sm"
+              "DOWNLOAD DEMO CSV",
+              icon = shiny::icon("download"),
+              class = "btn btn-outline-secondary fw-bold pv-stacked-column-action",
+              width = "100%"
             ),
 
             shiny::div(style = "height: 12px;"),
@@ -118,8 +127,10 @@ stacked_column_chart_ui <- function(id) {
 
             shiny::actionButton(
               ns("run_plot"),
-              "Run",
-              class = "btn btn-success"
+              "RUN CHART",
+              icon = shiny::icon("play"),
+              class = "btn btn-success fw-bold pv-stacked-column-action",
+              width = "100%"
             )
           ),
 
@@ -171,13 +182,23 @@ stacked_column_chart_ui <- function(id) {
         )
       ),
 
-      shiny::mainPanel(
+      shiny::div(
+        class = "pv-stacked-column-main",
         bslib::layout_columns(
           col_widths = c(8, 4),
 
           bslib::card(
             full_screen = TRUE,
-            bslib::card_header("Column Chart"),
+            bslib::card_header(
+              shiny::div(
+                class = "pv-stacked-column-card-title",
+                shiny::div(
+                  shiny::span("Column Chart"),
+                  shiny::tags$small("Build publication-ready categorical comparisons")
+                ),
+                shiny::uiOutput(ns("plot_status"))
+              )
+            ),
             bslib::card_body(
               shiny::uiOutput(ns("plot_ui"))
             )
@@ -185,17 +206,22 @@ stacked_column_chart_ui <- function(id) {
 
           bslib::card(
             full_screen = TRUE,
-            bslib::card_header("Uploaded Data Preview"),
+            bslib::card_header(
+              shiny::div(
+                shiny::span("Data Preview"),
+                shiny::tags$small("First 8 rows")
+              )
+            ),
             bslib::card_body(
               shiny::uiOutput(ns("preview_info")),
-              shiny::tableOutput(ns("data_preview"))
+              DT::DTOutput(ns("data_preview"))
             )
           )
         )
       )
     ),
 
-    shiny::tags$style(shiny::HTML("\n      .pv-stacked-column .sidebar {\n        background: #f8fafc;\n        border-right: 1px solid #cbd5df;\n      }\n      .pv-stacked-column .card {\n        border: 1px solid #cbd5df;\n        border-radius: 6px;\n        box-shadow: none;\n      }\n      .pv-stacked-column .card-header {\n        color: #24445f;\n        font-weight: 700;\n        background: #f8fafc;\n      }\n      .pv-stacked-column .btn {\n        border-radius: 4px;\n        box-shadow: none;\n        text-transform: none;\n        letter-spacing: 0;\n      }\n      .pv-stacked-column .btn-success {\n        background: #24445f;\n        border-color: #24445f;\n      }\n      .pv-stacked-column .btn-success:hover,\n      .pv-stacked-column .btn-success:focus {\n        background: #19364f;\n        border-color: #19364f;\n      }\n      .pv-stacked-column .form-control,\n      .pv-stacked-column .selectize-input {\n        border-radius: 4px !important;\n      }\n    "))
+    shiny::tags$style(shiny::HTML("\n      .pv-stacked-column {\n        --pv-column-navy: #1f4d6d;\n        --pv-column-blue: #1976c8;\n        --pv-column-border: #d7e3ee;\n        --pv-column-muted: #64748b;\n      }\n      .pv-stacked-column .sidebar {\n        background: #f8fafc;\n        border-right: 1px solid var(--pv-column-border);\n      }\n      .pv-stacked-column-main {\n        width: 100%;\n        padding: 8px 2px 2px;\n      }\n      .pv-stacked-column .card {\n        border: 1px solid var(--pv-column-border);\n        border-radius: 16px;\n        box-shadow: 0 5px 18px rgba(31, 77, 109, 0.06);\n        overflow: hidden;\n      }\n      .pv-stacked-column .card-header {\n        color: var(--pv-column-navy);\n        font-weight: 700;\n        background: linear-gradient(90deg, #f8fbfe 0%, #ffffff 100%);\n        border-bottom: 1px solid #e8eff5;\n      }\n      .pv-stacked-column-card-title {\n        display: flex;\n        align-items: center;\n        justify-content: space-between;\n        gap: 12px;\n      }\n      .pv-stacked-column .card-header small {\n        display: block;\n        margin-top: 2px;\n        color: var(--pv-column-muted);\n        font-size: 12px;\n        font-weight: 500;\n      }\n      .pv-stacked-column .btn {\n        border-radius: 8px;\n        box-shadow: none;\n        letter-spacing: 0.01em;\n      }\n      .pv-stacked-column .btn-success {\n        background: var(--pv-column-navy);\n        border-color: var(--pv-column-navy);\n      }\n      .pv-stacked-column .btn-success:hover,\n      .pv-stacked-column .btn-success:focus {\n        background: #19364f;\n        border-color: #19364f;\n      }\n      .pv-stacked-column .btn-outline-primary {\n        color: var(--pv-column-blue);\n        border-color: #91c4e8;\n      }\n      .pv-stacked-column .btn-outline-primary:hover {\n        background: #e8f4fc;\n        color: #0d5d9f;\n      }\n      .pv-stacked-column-action {\n        min-height: 40px;\n        font-size: 13px;\n      }\n      .pv-stacked-column-help {\n        color: var(--pv-column-muted);\n        font-size: 12px;\n        line-height: 1.55;\n        margin-bottom: 12px;\n      }\n      .pv-stacked-column .form-control,\n      .pv-stacked-column .selectize-input {\n        border-radius: 8px !important;\n        border-color: #cbddeb;\n      }\n      .pv-stacked-column .dataTables_wrapper {\n        overflow-x: auto;\n      }\n    "))
   )
 }
 
@@ -451,7 +477,7 @@ stacked_column_chart_server <- function(id) {
           shiny::div(
             style = "padding: 40px 20px; text-align: center; color: #666;",
             shiny::h5("No data available"),
-            shiny::p("Please upload a CSV file or click 'Use Demo Data', then click Run.")
+            shiny::p("Please upload a CSV file or click 'USE DEMO DATA', then click RUN CHART.")
           )
         )
       }
@@ -461,12 +487,31 @@ stacked_column_chart_server <- function(id) {
           shiny::div(
             style = "padding: 40px 20px; text-align: center; color: #666;",
             shiny::h5("Ready to run"),
-            shiny::p("Data has been loaded. Adjust parameters if needed, then click Run.")
+            shiny::p("Data has been loaded. Adjust parameters if needed, then click RUN CHART.")
           )
         )
       }
 
       shiny::plotOutput(ns("protein_plot"), height = "560px")
+    })
+
+    output$plot_status <- shiny::renderUI({
+      if (is.null(rv$current_data)) {
+        return(shiny::tags$span(
+          class = "badge rounded-pill text-bg-secondary",
+          "No data"
+        ))
+      }
+      if (!isTRUE(rv$has_run)) {
+        return(shiny::tags$span(
+          class = "badge rounded-pill text-bg-warning",
+          "Ready to run"
+        ))
+      }
+      shiny::tags$span(
+        class = "badge rounded-pill text-bg-success",
+        "Chart ready"
+      )
     })
 
     output$protein_plot <- shiny::renderPlot({
@@ -505,13 +550,26 @@ stacked_column_chart_server <- function(id) {
       )
     })
 
-    output$data_preview <- shiny::renderTable({
+    output$data_preview <- DT::renderDT({
       if (is.null(rv$current_data)) {
-        return(NULL)
+        return(DT::datatable(
+          data.frame(Message = "Load a CSV file or demo data to preview it."),
+          rownames = FALSE,
+          options = list(dom = "t", paging = FALSE)
+        ))
       }
 
-      utils::head(rv$current_data, 8)
-    }, striped = TRUE, bordered = TRUE, spacing = "s", width = "100%")
+      DT::datatable(
+        utils::head(rv$current_data, 8),
+        rownames = FALSE,
+        options = list(
+          dom = "t",
+          scrollX = TRUE,
+          autoWidth = TRUE
+        ),
+        class = "stripe hover compact"
+      )
+    })
 
     output$download_demo <- shiny::downloadHandler(
       filename = function() {
