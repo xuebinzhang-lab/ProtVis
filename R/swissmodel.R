@@ -1,3 +1,9 @@
+.protvis_swissmodel_demo_sequence <- paste0(
+  "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKV",
+  "ADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHAS",
+  "LDKFLASVSTVLTSKYR"
+)
+
 #' Swiss-Model UI Function
 #' Creates the user interface for the Swiss-Model protein structure prediction module.
 #' Includes input fields for protein sequences and API tokens, as well as display panels
@@ -41,7 +47,7 @@ swissmodel_ui <- function(id) {
               shiny::textAreaInput(
                 ns("sequence"),
                 "Protein sequence",
-                value = "",
+                value = .protvis_swissmodel_demo_sequence,
                 rows = 10,
                 width = "100%",
                 placeholder = "Enter protein sequence here"
@@ -215,7 +221,7 @@ swissmodel_ui <- function(id) {
 swissmodel_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
 
-    example_sequence <- "VLSPADKTNVKAAWAKVGNHAADFGAEALERMFMSFPSTKTYFSHFDLGHNSTQVKGHGKKVADALTKAVGHLDTLPDALSDLSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPGDFTPSVHASLDKFLASVSTVLTSKYR"
+    example_sequence <- .protvis_swissmodel_demo_sequence
 
     rv <- shiny::reactiveValues(
       result = NULL,
