@@ -1,4 +1,19 @@
+.protvis_prepare_bio3d_nma <- function() {
+  # bio3d's force-field helpers used by nma() resolve the bundled `elements`
+  # data through the attached package environment.  ProtVis imports bio3d as a
+  # namespace, so attach it once here to make the standard NMA workflow behave
+  # exactly as it does in an interactive `library(bio3d)` session.
+  if (!("package:bio3d" %in% search())) {
+    suppressPackageStartupMessages(
+      base::library(package = "bio3d", character.only = TRUE)
+    )
+  }
+
+  invisible(TRUE)
+}
+
 .protvis_run_normal_modes <- function(pdb_file) {
+  .protvis_prepare_bio3d_nma()
   pdb <- bio3d::read.pdb(pdb_file)
   modes <- bio3d::nma(pdb)
 
