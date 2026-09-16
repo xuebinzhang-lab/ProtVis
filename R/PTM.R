@@ -16,10 +16,14 @@
 PTM_ui <- function(id) {
   ns <- NS(id)
   shiny::tagList(
-    bslib::layout_sidebar(
-      sidebar = bslib::sidebar(
-        width = 300,
-        bslib::accordion(
+    bslib::navset_card_tab(
+      id = ns("ptm_workflow"),
+      bslib::nav_panel(
+        "PTM data overview",
+        bslib::layout_sidebar(
+          sidebar = bslib::sidebar(
+            width = 300,
+            bslib::accordion(
           bslib::accordion_panel(
             title = "Upload File",
             shiny::fileInput(ns("ptm_file"),
@@ -95,16 +99,22 @@ PTM_ui <- function(id) {
             shiny::downloadButton(ns("download_ptm_plot"),
                                   "DOWNLOAD")
           )
+            )
+          ),
+
+          main = bslib::card(
+            height = "500px",
+            bslib::card_header("Protein Post-translational Modifications (PTMs) Visualization"),
+            bslib::card_body(
+              shiny::textOutput(ns("status_message")),
+              shiny::plotOutput(ns("ptm_plot"), height = "360px")
+            )
+          )
         )
       ),
-
-      main = bslib::card(
-        height = "500px",
-        bslib::card_header("Protein Post-translational Modifications (PTMs) Visualization"),
-        bslib::card_body(
-          shiny::textOutput(ns("status_message")),
-          shiny::plotOutput(ns("ptm_plot"), height = "360px")
-        )
+      bslib::nav_panel(
+        "Vac14 / PXD001057",
+        .protvis_vac14_ui(ns)
       )
     )
   )
@@ -122,6 +132,7 @@ PTM_ui <- function(id) {
 #' @export
 PTM_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
+    .protvis_vac14_server(input, output, session)
     ptm_data <- shiny::reactive({
       shiny::req(input$ptm_file)
       ext <- base::tolower(tools::file_ext(input$ptm_file$name))
