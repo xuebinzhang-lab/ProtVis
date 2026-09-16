@@ -286,6 +286,325 @@
   dat
 }
 
+.protvis_psm_values <- function(psm_row, column) {
+  if (!column %in% names(psm_row)) return(character())
+  value <- psm_row[[column]]
+  if (is.list(value) && length(value) == 1L) value <- value[[1L]]
+  value <- unlist(value, recursive = TRUE, use.names = FALSE)
+  value <- as.character(value)
+  if (length(value) == 1L && grepl(";", value, fixed = TRUE)) {
+    value <- unlist(strsplit(value, ";", fixed = TRUE), use.names = FALSE)
+  }
+  trimws(value[!is.na(value) & nzchar(trimws(value))])
+}
+
+.protvis_ptm_modifications <- function(psm_row, sequence) {
+  locations <- suppressWarnings(as.integer(.protvis_psm_values(psm_row, "modLocation")))
+  masses <- suppressWarnings(as.numeric(.protvis_psm_values(psm_row, "modMass")))
+  names <- .protvis_psm_values(psm_row, "modName")
+  count <- max(length(locations), length(masses), length(names), 0L)
+  if (!count) {
+    return(data.frame(location = integer(), mass = numeric(), name = character()))
+  }
+  recycle <- function(x, n, missing) {
+    if (!length(x)) return(rep(missing, n))
+    rep(x, length.out = n)
+  }
+  result <- data.frame(
+    location = recycle(locations, count, NA_integer_),
+    mass = recycle(masses, count, NA_real_),
+    name = recycle(names, count, "Modification"),
+    stringsAsFactors = FALSE
+  )
+  result <- result[is.finite(result$mass) & !is.na(result$location), , drop = FALSE]
+  result$location[result$location < 0L] <- 0L
+  result$location[result$location > nchar(sequence) + 1L] <- nchar(sequence) + 1L
+  result
+}
+
+.protvis_modified_sequence_label <- function(sequence, modifications) {
+  residues <- strsplit(sequence, "", fixed = TRUE)[[1L]]
+  if (!nrow(modifications)) return(sequence)
+  nterm <- modifications[modifications$location == 0L, , drop = FALSE]
+  cterm <- modifications[modifications$location == length(residues) + 1L, , drop = FALSE]
+  labels <- residues
+  for (i in seq_along(residues)) {
+    mods <- modifications[modifications$location == i, , drop = FALSE]
+    if (!nrow(mods)) next
+    if (nrow(mods) == 1L && grepl("phosph", mods$name[[1L]], ignore.case = TRUE)) {
+      labels[i] <- paste0("[p", residues[i], "]")
+      next
+    }
+    annotations <- vapply(seq_len(nrow(mods)), function(j) {
+      paste0(mods$name[j], " ", sprintf("%+.4f", mods$mass[j]))
+    }, character(1L))
+    labels[i] <- paste0(residues[i], "[", paste(annotations, collapse = "; "), "]")
+  }
+  result <- paste0(labels, collapse = "")
+  if (nrow(nterm)) result <- paste0("[N-term ", sprintf("%+.4f", sum(nterm$mass)), "]", result)
+  if (nrow(cterm)) result <- paste0(result, "[C-term ", sprintf("%+.4f", sum(cterm$mass)), "]")
+  result
+}
+
+.protvis_ptm_theoretical <- function(sequence, modifications = NULL) {
+  sequence <- toupper(gsub("[^A-Z]", "", as.character(sequence[[1L]])))
+  residues <- strsplit(sequence, "", fixed = TRUE)[[1L]]
+  n <- length(residues)
+  if (n < 2L) stop("The selected peptide must contain at least two residues.", call. = FALSE)
+  base_masses <- .protvis_vac14_masses()
+  unsupported <- setdiff(unique(residues), names(base_masses))
+  if (length(unsupported)) {
+    stop("Unsupported amino-acid code(s): ", paste(unsupported, collapse = ", "), call. = FALSE)
+  }
+  if (is.null(modifications)) {
+    modifications <- data.frame(location = integer(), mass = numeric(), name = character())
+  }
+  constants <- list(
+    proton = 1.007276466621, water = 18.010564684,
+    ammonia = 17.026549101, phosphoric_acid = 97.976895574
+  )
+  residue_mass <- unname(base_masses[residues])
+  residue_mod <- numeric(n)
+  for (i in seq_len(nrow(modifications))) {
+    location <- modifications$location[i]
+    if (is.finite(location) && location >= 1L && location <= n) {
+      residue_mod[location] <- residue_mod[location] + modifications$mass[i]
+    }
+  }
+  residue_mass <- residue_mass + residue_mod
+  nterm_shift <- sum(modifications$mass[modifications$location == 0L], na.rm = TRUE)
+  cterm_shift <- sum(modifications$mass[modifications$location == n + 1L], na.rm = TRUE)
+  phospho_positions <- modifications$location[
+    grepl("phosph", modifications$name, ignore.case = TRUE) |
+      abs(modifications$mass - 79.966330890) < 0.02
+  ]
+  phospho_positions <- phospho_positions[phospho_positions >= 1L & phospho_positions <= n]
+
+  b_mz <- vapply(seq_len(n - 1L), function(i) {
+    sum(residue_mass[seq_len(i)]) + nterm_shift + constants$proton
+  }, numeric(1L))
+  y_mz <- vapply(seq_len(n - 1L), function(i) {
+    idx <- seq.int(n - i + 1L, n)
+    sum(residue_mass[idx]) + cterm_shift + constants$water + constants$proton
+  }, numeric(1L))
+  names(b_mz) <- paste0("b", seq_along(b_mz))
+  names(y_mz) <- paste0("y", seq_along(y_mz))
+  mh <- sum(residue_mass) + nterm_shift + cterm_shift + constants$water + constants$proton
+  precursor_charge_2 <- (mh + constants$proton) / 2
+
+  prefix <- vapply(seq_len(n), function(i) paste0(residues[seq_len(i)], collapse = ""), character(1L))
+  suffix <- vapply(seq_len(n), function(i) paste0(residues[seq.int(i, n)], collapse = ""), character(1L))
+  b_full <- c(b_mz, mh)
+  y_full <- rev(c(y_mz, mh))
+  aa_labels <- residues
+  modified_residues <- which(abs(residue_mod) > .Machine$double.eps)
+  aa_labels[modified_residues] <- paste0(
+    residues[modified_residues],
+    ifelse(residue_mod[modified_residues] >= 0, "+", ""),
+    round(residue_mod[modified_residues], 1)
+  )
+  fragment_table <- data.frame(
+    B = seq_len(n), `B Ions` = b_full,
+    `B+2H` = (b_full + constants$proton) / 2,
+    `B-NH3` = ifelse(grepl("[KNQR]", prefix), b_full - constants$ammonia, NA_real_),
+    `B-H2O` = ifelse(grepl("[DEST]", prefix), b_full - constants$water, NA_real_),
+    AA = aa_labels, `Y Ions` = y_full,
+    `Y+2H` = (y_full + constants$proton) / 2,
+    `Y-NH3` = ifelse(grepl("[KNQR]", suffix), y_full - constants$ammonia, NA_real_),
+    `Y-H2O` = ifelse(grepl("[DEST]", suffix), y_full - constants$water, NA_real_),
+    Y = n:1L, check.names = FALSE
+  )
+  numeric_columns <- vapply(fragment_table, is.numeric, logical(1L))
+  fragment_table[numeric_columns] <- lapply(fragment_table[numeric_columns], round, digits = 1L)
+
+  candidate_list <- list()
+  add <- function(label, mz, series, charge = 1L, neutral = FALSE, priority = 1L) {
+    candidate_list[[length(candidate_list) + 1L]] <<- data.frame(
+      label = label, mz = as.numeric(mz), series = series, charge = charge,
+      neutral = neutral, priority = priority, stringsAsFactors = FALSE
+    )
+  }
+  for (i in seq_along(b_mz)) add(paste0("b", i), b_mz[i], "b")
+  for (i in seq_along(y_mz)) add(paste0("y", i), y_mz[i], "y")
+  for (i in seq_along(b_mz)) add(paste0("b", i, "++"), (b_mz[i] + constants$proton) / 2, "b", 2L, FALSE, 2L)
+  for (i in seq_along(y_mz)) add(paste0("y", i, "++"), (y_mz[i] + constants$proton) / 2, "y", 2L, FALSE, 2L)
+  for (i in seq_along(b_mz)) {
+    frag <- prefix[i]
+    if (grepl("[DEST]", frag)) add(paste0("b", i, "-H2O"), b_mz[i] - constants$water, "b", neutral = TRUE, priority = 4L)
+    if (grepl("[KNQR]", frag)) add(paste0("b", i, "-NH3"), b_mz[i] - constants$ammonia, "b", neutral = TRUE, priority = 4L)
+    if (any(phospho_positions <= i)) add(paste0("b", i, "-98"), b_mz[i] - constants$phosphoric_acid, "b", neutral = TRUE, priority = 3L)
+  }
+  for (i in seq_along(y_mz)) {
+    start <- n - i + 1L
+    frag <- paste0(residues[seq.int(start, n)], collapse = "")
+    if (grepl("[DEST]", frag)) add(paste0("y", i, "-H2O"), y_mz[i] - constants$water, "y", neutral = TRUE, priority = 4L)
+    if (grepl("[KNQR]", frag)) add(paste0("y", i, "-NH3"), y_mz[i] - constants$ammonia, "y", neutral = TRUE, priority = 4L)
+    if (any(phospho_positions >= start)) add(paste0("y", i, "-98"), y_mz[i] - constants$phosphoric_acid, "y", neutral = TRUE, priority = 3L)
+  }
+  candidates <- do.call(rbind, candidate_list)
+  candidates <- candidates[is.finite(candidates$mz) & candidates$mz > 0, , drop = FALSE]
+  candidates <- candidates[order(candidates$mz), , drop = FALSE]
+  ion_coverage <- candidates[
+    !candidates$neutral & candidates$charge == 1L,
+    c("label", "mz", "series"), drop = FALSE
+  ]
+  list(
+    b_mz = b_mz, y_mz = y_mz, mh = mh,
+    precursor_2plus = precursor_charge_2,
+    fragment_table = fragment_table,
+    candidates = candidates,
+    key_ions = ion_coverage,
+    modifications = modifications
+  )
+}
+
+.protvis_ptm_psm_catalog <- function(psm) {
+  rows <- lapply(seq_len(nrow(psm)), function(i) {
+    row <- psm[i, , drop = FALSE]
+    sequence <- .protvis_psm_values(row, "sequence")
+    if (!length(sequence)) return(NULL)
+    sequence <- sequence[[1L]]
+    modifications <- .protvis_ptm_modifications(row, sequence)
+    modified <- .protvis_modified_sequence_label(sequence, modifications)
+    spectrum_id <- .protvis_psm_values(row, "spectrumID")
+    title <- .protvis_psm_values(row, "spectrum.title")
+    charge <- .protvis_psm_values(row, "chargeState")
+    spectrum_label <- if (length(title)) title[[1L]] else if (length(spectrum_id)) spectrum_id[[1L]] else paste0("PSM ", i)
+    charge_label <- if (length(charge)) paste0("z=", charge[[1L]]) else "charge NA"
+    data.frame(
+      psm_index = i, sequence = sequence, modified_sequence = modified,
+      spectrum_id = if (length(spectrum_id)) spectrum_id[[1L]] else "",
+      spectrum_title = if (length(title)) title[[1L]] else "",
+      charge = if (length(charge)) charge[[1L]] else "",
+      label = paste(modified, charge_label, spectrum_label, sep = " | "),
+      stringsAsFactors = FALSE
+    )
+  })
+  catalog <- do.call(rbind, Filter(Negate(is.null), rows))
+  if (is.null(catalog) || !nrow(catalog)) {
+    stop("No peptide-spectrum matches were found in the mzIdentML file.", call. = FALSE)
+  }
+  key <- paste(catalog$modified_sequence, catalog$spectrum_id,
+               catalog$spectrum_title, catalog$charge, sep = "|")
+  catalog[!duplicated(key), , drop = FALSE]
+}
+
+.protvis_ptm_load_bundle <- function(mzid_file, mgf_file, source = "Input files") {
+  .protvis_vac14_require_packages()
+  psm <- PSMatch::PSM(mzid_file)
+  catalog <- .protvis_ptm_psm_catalog(psm)
+  spectra <- Spectra::Spectra(mgf_file, source = MsBackendMgf::MsBackendMgf())
+  metadata <- as.data.frame(Spectra::spectraData(spectra), optional = TRUE)
+  if (!length(spectra)) stop("No spectra were found in the MGF file.", call. = FALSE)
+  list(psm = psm, catalog = catalog, spectra = spectra,
+       metadata = metadata, source = source)
+}
+
+.protvis_ptm_find_spectrum <- function(bundle, psm_row, catalog_row) {
+  metadata <- bundle$metadata
+  text_columns <- names(metadata)[vapply(
+    metadata, function(x) is.character(x) || is.factor(x), logical(1L)
+  )]
+  requested <- unique(c(
+    catalog_row$spectrum_title,
+    .protvis_psm_values(psm_row, "spectrum.title")
+  ))
+  requested <- requested[nzchar(requested)]
+  for (needle in requested) {
+    for (column in text_columns) {
+      hit <- which(as.character(metadata[[column]]) == needle)
+      if (length(hit)) return(list(index = hit[[1L]], column = column, method = "title"))
+    }
+  }
+  scan_patterns <- unique(gsub(".*?(\\d+\\.\\d+\\.\\d+).*", "\\1", requested))
+  scan_patterns <- scan_patterns[grepl("^\\d+\\.\\d+\\.\\d+$", scan_patterns)]
+  for (needle in scan_patterns) {
+    for (column in text_columns) {
+      hit <- grep(needle, as.character(metadata[[column]]), fixed = TRUE)
+      if (length(hit)) return(list(index = hit[[1L]], column = column, method = "scan title"))
+    }
+  }
+  spectrum_id <- c(catalog_row$spectrum_id, .protvis_psm_values(psm_row, "spectrumID"))
+  index_value <- suppressWarnings(as.integer(sub("^index=", "", spectrum_id[grepl("^index=", spectrum_id)][1L])))
+  if (is.finite(index_value)) {
+    candidates <- unique(c(index_value + 1L, index_value))
+    candidates <- candidates[candidates >= 1L & candidates <= length(bundle$spectra)]
+    if (length(candidates)) return(list(index = candidates[[1L]], column = "spectrumID", method = "index"))
+  }
+  stop("The spectrum linked to the selected PSM was not found in the MGF file.", call. = FALSE)
+}
+
+.protvis_ptm_run_selected <- function(bundle, psm_index, tolerance_da = 0.5) {
+  catalog_hit <- which(bundle$catalog$psm_index == as.integer(psm_index[[1L]]))
+  if (!length(catalog_hit)) stop("Select a valid peptide/PSM.", call. = FALSE)
+  catalog_row <- bundle$catalog[catalog_hit[[1L]], , drop = FALSE]
+  psm_row <- bundle$psm[catalog_row$psm_index, , drop = FALSE]
+  sequence <- catalog_row$sequence[[1L]]
+  modifications <- .protvis_ptm_modifications(psm_row, sequence)
+  theoretical <- .protvis_ptm_theoretical(sequence, modifications)
+  spectrum_match <- .protvis_ptm_find_spectrum(bundle, psm_row, catalog_row)
+  spectrum <- bundle$spectra[spectrum_match$index]
+  peak_matrix <- Spectra::peaksData(spectrum)[[1L]]
+  if (is.null(dim(peak_matrix)) || !nrow(peak_matrix)) stop("The selected spectrum has no peaks.", call. = FALSE)
+  keep <- is.finite(peak_matrix[, "mz"]) & is.finite(peak_matrix[, "intensity"])
+  peak_matrix <- peak_matrix[keep, , drop = FALSE]
+  peak_matrix <- peak_matrix[order(peak_matrix[, "mz"]), , drop = FALSE]
+  peaks <- data.frame(mz = as.numeric(peak_matrix[, "mz"]),
+                      intensity = as.numeric(peak_matrix[, "intensity"]))
+  if (!nrow(peaks) || max(peaks$intensity) <= 0) stop("The selected spectrum has no positive intensities.", call. = FALSE)
+  peaks$rel <- peaks$intensity / max(peaks$intensity) * 100
+  matched <- .protvis_vac14_match_ions(peaks, theoretical$candidates, tolerance_da)
+  coverage <- theoretical$key_ions
+  coverage$matched <- vapply(coverage$mz, function(mz) {
+    min(abs(peaks$mz - mz), na.rm = TRUE) <= tolerance_da
+  }, logical(1L))
+  variables <- Spectra::spectraVariables(spectrum)
+  observed_mz <- if ("precursorMz" %in% variables) as.numeric(spectrum$precursorMz[1L]) else NA_real_
+  charge_values <- suppressWarnings(as.integer(.protvis_psm_values(psm_row, "chargeState")))
+  observed_charge <- if ("precursorCharge" %in% variables) as.integer(spectrum$precursorCharge[1L]) else NA_integer_
+  charge <- if (length(charge_values) && is.finite(charge_values[[1L]])) charge_values[[1L]] else observed_charge
+  if (!is.finite(charge)) charge <- 2L
+  calculated_precursor <- (theoretical$mh + (charge - 1L) * 1.007276466621) / charge
+  proteins <- .protvis_psm_values(psm_row, "DatabaseAccess")
+  protein <- if (length(proteins)) paste(proteins, collapse = "; ") else "Protein not reported"
+  spectrum_title <- catalog_row$spectrum_title[[1L]]
+  if (!nzchar(spectrum_title)) spectrum_title <- catalog_row$spectrum_id[[1L]]
+  target <- list(
+    project = if (identical(bundle$source, "PRIDE public files")) "PXD001057" else "Uploaded dataset",
+    protein = protein, sequence = sequence,
+    modified_sequence = catalog_row$modified_sequence[[1L]],
+    spectrum_id = catalog_row$spectrum_id[[1L]],
+    spectrum_title = spectrum_title,
+    precursor_mz = if (is.finite(observed_mz)) observed_mz else calculated_precursor,
+    precursor_charge = charge
+  )
+  psm_table <- .protvis_flatten_psm(psm_row)
+  display_columns <- intersect(
+    c("sequence", "spectrumID", "chargeState", "passThreshold",
+      "experimentalMassToCharge", "calculatedMassToCharge", "DatabaseAccess",
+      "spectrum.title", "Scaffold.Peptide.Probability", "Mascot.score",
+      "modName", "modMass", "modLocation"), names(psm_table)
+  )
+  psm_table <- psm_table[, display_columns, drop = FALSE]
+  summary <- data.frame(
+    Item = c("Dataset", "Protein", "Peptide", "Modified peptide", "Spectrum",
+             "Spectrum mapping", "Data source", "Observed precursor m/z",
+             "Calculated precursor m/z", "Charge", "Fragment tolerance",
+             "Matched fragment ions", "Matched b/y coverage ions"),
+    Value = c(target$project, protein, sequence, target$modified_sequence,
+              spectrum_title, spectrum_match$method, bundle$source,
+              ifelse(is.finite(observed_mz), sprintf("%.6f", observed_mz), "Not reported"),
+              sprintf("%.6f", calculated_precursor), charge,
+              paste0(tolerance_da, " Da"), nrow(matched),
+              paste0(sum(coverage$matched), "/", nrow(coverage))),
+    stringsAsFactors = FALSE
+  )
+  list(target = target, source = bundle$source, psm_table = psm_table,
+       spectrum_match_column = spectrum_match$column, peaks = peaks,
+       matched = matched, theoretical = theoretical, key_ions = coverage,
+       summary = summary)
+}
+
 .protvis_vac14_run <- function(mzid_file, mgf_file, tolerance_da = 0.5,
                                source = "Input files") {
   .protvis_vac14_require_packages()
@@ -668,5 +987,329 @@
     }
   )
 
+  invisible(shiny::reactive(result()))
+}
+
+# Generic mzIdentML/MGF browser. These definitions intentionally supersede the
+# original fixed-target UI/server above while retaining its public benchmark.
+.protvis_vac14_draw_table <- function(table) {
+  nr <- nrow(table)
+  nc <- ncol(table)
+  plot.new()
+  plot.window(xlim = c(0, nc), ylim = c(0, nr + 2))
+  for (j in seq_len(nc)) text(j - 0.5, nr + 1.2, names(table)[j], cex = 0.7, font = 2)
+  segments(0, nr + 0.7, nc, nr + 0.7, lwd = 0.8)
+  modified_rows <- if ("AA" %in% names(table)) grep("[+-]", table$AA) else integer()
+  for (i in seq_len(nr)) {
+    y <- nr - i + 0.6
+    for (j in seq_len(nc)) {
+      value <- table[i, j]
+      label <- if (is.na(value)) "" else as.character(value)
+      text(j - 0.5, y, label, cex = 0.66,
+           font = if (names(table)[j] == "AA" && i %in% modified_rows) 2 else 1)
+    }
+  }
+  box()
+}
+
+.protvis_vac14_draw_spectrum <- function(result, b_color = "#C0392B",
+                                          y_color = "#2E63C4") {
+  peaks <- result$peaks
+  matched <- result$matched
+  plot(
+    peaks$mz, peaks$rel, type = "h", lwd = 0.75,
+    xlim = c(0, max(1300, max(peaks$mz, na.rm = TRUE))), ylim = c(0, 108),
+    xlab = "m/z", ylab = "Relative intensity (%)", main = ""
+  )
+  colors <- ifelse(matched$neutral, "#228B22",
+                   ifelse(matched$series == "b", b_color, y_color))
+  segments(matched$observed_mz, 0, matched$observed_mz, matched$intensity,
+           col = colors, lwd = 1.5)
+  labels <- matched[matched$intensity >= 1, , drop = FALSE]
+  label_colors <- ifelse(labels$neutral, "#228B22",
+                         ifelse(labels$series == "b", b_color, y_color))
+  text(labels$observed_mz, pmin(labels$intensity + 3, 101), labels = labels$label,
+       col = label_colors, cex = 0.72, font = 2)
+  legend("topright", legend = c("b ions", "y ions", "neutral loss"),
+         col = c(b_color, y_color, "#228B22"), lwd = 2, bty = "n", cex = 0.8)
+  mtext(
+    paste0(result$target$modified_sequence, "; ",
+           sprintf("%.4f m/z, %d+", result$target$precursor_mz,
+                   result$target$precursor_charge)),
+    side = 3, line = 0.15, adj = 0, cex = 0.86, font = 2
+  )
+}
+
+.protvis_vac14_draw_figure <- function(result, b_color = "#C0392B",
+                                        y_color = "#2E63C4") {
+  layout(matrix(c(1, 2), nrow = 2L), heights = c(1.15, 1.6))
+  on.exit(layout(1), add = TRUE)
+  par(mar = c(1, 1, 3.5, 1))
+  .protvis_vac14_draw_table(result$theoretical$fragment_table)
+  mtext(
+    paste(result$target$protein, result$target$modified_sequence, sep = "     "),
+    side = 3, line = 1.5, cex = 1.05, font = 2
+  )
+  par(mar = c(5, 5, 2.5, 1))
+  .protvis_vac14_draw_spectrum(result, b_color, y_color)
+}
+
+.protvis_vac14_ui <- function(ns) {
+  bslib::layout_sidebar(
+    sidebar = bslib::sidebar(
+      width = 380,
+      shiny::h4("PTM peptide-spectrum visualization"),
+      shiny::p(
+        "Load all PSMs from mzIdentML, select any peptide/spectrum, and visualize its dynamic fragment annotation. ",
+        shiny::strong("AT[pS]GVPFSQYK (Ser3)"), " remains the default public benchmark."
+      ),
+      shiny::radioButtons(
+        ns("vac14_source"), "Input source",
+        choices = c("PRIDE PXD001057 files" = "public", "Upload files" = "upload"),
+        selected = "public"
+      ),
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] === 'upload'", ns("vac14_source")),
+        shiny::fileInput(ns("vac14_mzid"), "mzIdentML (.mzid or .mzid.gz)",
+                         accept = c(".mzid", ".gz")),
+        shiny::fileInput(ns("vac14_mgf"), "MGF (.mgf)", accept = ".mgf")
+      ),
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] === 'public'", ns("vac14_source")),
+        shiny::div(
+          class = "alert alert-info py-2 small",
+          shiny::strong("PXD001057 files"), shiny::tags$br(),
+          "E1R2_SCX5_soluble.mzid.gz", shiny::tags$br(),
+          "E1R2_SCX5_soluble.mzid_E1R2_SCX5_soluble.MGF", shiny::tags$br(),
+          shiny::tags$a(href = .protvis_vac14_target()$base_url,
+                        target = "_blank", rel = "noopener noreferrer",
+                        "Open PRIDE archive")
+        )
+      ),
+      shiny::actionButton(
+        ns("vac14_load"), "LOAD PSM LIST",
+        class = "btn-outline-primary w-100 pv-run-button",
+        icon = bsicons::bs_icon("list-ul")
+      ),
+      shiny::selectizeInput(
+        ns("vac14_psm_choice"), "Select peptide / PSM",
+        choices = NULL, multiple = FALSE,
+        options = list(placeholder = "Load files first, then search peptide or spectrum")
+      ),
+      shiny::numericInput(ns("vac14_tolerance"), "Fragment tolerance (Da)",
+                          value = 0.5, min = 0.01, max = 2, step = 0.01),
+      shiny::fluidRow(
+        shiny::column(6, colourpicker::colourInput(ns("vac14_b_color"), "b ions", "#C0392B")),
+        shiny::column(6, colourpicker::colourInput(ns("vac14_y_color"), "y ions", "#2E63C4"))
+      ),
+      shiny::actionButton(
+        ns("vac14_run"), "VISUALIZE SELECTED PEPTIDE",
+        class = "btn-primary w-100 pv-run-button",
+        icon = bsicons::bs_icon("play-fill")
+      ),
+      shiny::uiOutput(ns("vac14_status")),
+      shiny::hr(),
+      shiny::downloadButton(ns("vac14_pdf"), "PDF", class = "w-100 mb-2"),
+      shiny::downloadButton(ns("vac14_png"), "PNG", class = "w-100 mb-2"),
+      shiny::downloadButton(ns("vac14_matches_csv"), "MATCHED IONS CSV", class = "w-100 mb-2"),
+      shiny::downloadButton(ns("vac14_theory_csv"), "THEORETICAL TABLE CSV", class = "w-100")
+    ),
+    bslib::navset_card_tab(
+      height = "760px",
+      bslib::nav_panel("Annotated spectrum",
+                       bslib::card_body(shiny::plotOutput(ns("vac14_plot"), height = "690px"))),
+      bslib::nav_panel("Validation summary", DT::DTOutput(ns("vac14_summary"))),
+      bslib::nav_panel("Matched ions", DT::DTOutput(ns("vac14_matches"))),
+      bslib::nav_panel("Ion coverage", DT::DTOutput(ns("vac14_key_ions"))),
+      bslib::nav_panel("Theoretical table", DT::DTOutput(ns("vac14_theory"))),
+      bslib::nav_panel("Selected PSM", DT::DTOutput(ns("vac14_psm")))
+    )
+  )
+}
+
+.protvis_vac14_server <- function(input, output, session) {
+  bundle <- shiny::reactiveVal(NULL)
+  result <- shiny::reactiveVal(NULL)
+  status <- shiny::reactiveVal(list(
+    type = "idle", message = "Load the mzIdentML and MGF files to list their peptide-spectrum matches."
+  ))
+  load_running <- shiny::reactiveVal(FALSE)
+  run_running <- shiny::reactiveVal(FALSE)
+  completed_signature <- shiny::reactiveVal(NULL)
+
+  clear_loaded_data <- function() {
+    bundle(NULL)
+    result(NULL)
+    completed_signature(NULL)
+    shiny::updateSelectizeInput(session, "vac14_psm_choice", choices = character(), selected = character())
+    status(list(type = "idle", message = "Input changed. Click LOAD PSM LIST."))
+  }
+  shiny::observeEvent(input$vac14_source, clear_loaded_data(), ignoreInit = TRUE)
+  shiny::observeEvent(input$vac14_mzid, clear_loaded_data(), ignoreInit = TRUE)
+  shiny::observeEvent(input$vac14_mgf, clear_loaded_data(), ignoreInit = TRUE)
+
+  output$vac14_status <- shiny::renderUI({
+    value <- status()
+    class <- switch(value$type, success = "alert alert-success",
+                    error = "alert alert-danger", running = "alert alert-warning",
+                    "alert alert-secondary")
+    shiny::div(class = paste(class, "mt-3 mb-0 py-2"), value$message)
+  })
+
+  shiny::observeEvent(input$vac14_load, {
+    if (isTRUE(load_running())) {
+      shiny::showNotification("PSM loading is already running; duplicate click ignored.", type = "warning")
+      return(invisible(NULL))
+    }
+    load_running(TRUE)
+    on.exit(load_running(FALSE), add = TRUE)
+    result(NULL)
+    completed_signature(NULL)
+    status(list(type = "running", message = "Reading mzIdentML and MGF files…"))
+    tryCatch({
+      loaded <- shiny::withProgress(message = "Loading peptide-spectrum matches", value = 0, {
+        shiny::incProgress(0.15, detail = "Preparing files")
+        selected <- if (identical(input$vac14_source, "upload")) {
+          .protvis_vac14_prepare_uploads(input$vac14_mzid, input$vac14_mgf)
+        } else {
+          .protvis_vac14_download_files()
+        }
+        shiny::incProgress(0.35, detail = "Reading all PSMs and spectra")
+        .protvis_ptm_load_bundle(selected$mzid, selected$mgf, selected$source)
+      })
+      bundle(loaded)
+      choices <- stats::setNames(as.character(loaded$catalog$psm_index), loaded$catalog$label)
+      target <- .protvis_vac14_target()
+      default_hit <- which(loaded$catalog$spectrum_id == target$spectrum_id &
+                             loaded$catalog$sequence == target$sequence)
+      selected_value <- if (length(default_hit)) {
+        as.character(loaded$catalog$psm_index[default_hit[[1L]]])
+      } else {
+        as.character(loaded$catalog$psm_index[[1L]])
+      }
+      shiny::updateSelectizeInput(
+        session, "vac14_psm_choice", choices = choices,
+        selected = selected_value, server = TRUE
+      )
+      status(list(
+        type = "success",
+        message = paste0(
+          "Loaded ", nrow(loaded$catalog), " selectable PSMs from ",
+          length(unique(loaded$catalog$modified_sequence)), " modified peptide forms."
+        )
+      ))
+    }, error = function(error) {
+      bundle(NULL)
+      status(list(type = "error", message = paste("PSM loading failed:", conditionMessage(error))))
+    })
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(input$vac14_run, {
+    if (isTRUE(run_running())) {
+      shiny::showNotification("Spectrum visualization is already running; duplicate click ignored.", type = "warning")
+      return(invisible(NULL))
+    }
+    loaded <- bundle()
+    if (is.null(loaded)) {
+      shiny::showNotification("Load the PSM list first.", type = "warning")
+      return(invisible(NULL))
+    }
+    shiny::req(input$vac14_psm_choice)
+    signature <- paste(input$vac14_psm_choice, input$vac14_tolerance, sep = "|")
+    if (!is.null(result()) && identical(signature, completed_signature())) {
+      shiny::showNotification("This peptide/PSM is already displayed.", type = "message")
+      return(invisible(NULL))
+    }
+    run_running(TRUE)
+    on.exit(run_running(FALSE), add = TRUE)
+    status(list(type = "running", message = "Calculating modified fragments and matching the selected spectrum…"))
+    tryCatch({
+      value <- shiny::withProgress(message = "Visualizing selected peptide", value = 0, {
+        shiny::incProgress(0.25, detail = "Calculating modified b/y ions")
+        answer <- .protvis_ptm_run_selected(
+          loaded, input$vac14_psm_choice, input$vac14_tolerance
+        )
+        shiny::incProgress(0.65, detail = "Matching experimental peaks")
+        answer
+      })
+      result(value)
+      completed_signature(signature)
+      status(list(
+        type = "success",
+        message = paste0(
+          "Displayed ", value$target$modified_sequence, ": ",
+          nrow(value$matched), " fragment ions matched; ",
+          sum(value$key_ions$matched), "/", nrow(value$key_ions),
+          " primary b/y ions covered."
+        )
+      ))
+    }, error = function(error) {
+      result(NULL)
+      status(list(type = "error", message = paste("Visualization failed:", conditionMessage(error))))
+    })
+  }, ignoreInit = TRUE)
+
+  output$vac14_plot <- shiny::renderPlot({
+    value <- result(); shiny::req(value)
+    .protvis_vac14_draw_figure(value, input$vac14_b_color, input$vac14_y_color)
+  }, res = 110)
+  output$vac14_summary <- DT::renderDT({
+    value <- result(); shiny::req(value)
+    DT::datatable(value$summary, rownames = FALSE, options = list(dom = "t", scrollX = TRUE))
+  })
+  output$vac14_matches <- DT::renderDT({
+    value <- result(); shiny::req(value)
+    DT::datatable(value$matched, rownames = FALSE, options = list(pageLength = 15, scrollX = TRUE))
+  })
+  output$vac14_key_ions <- DT::renderDT({
+    value <- result(); shiny::req(value)
+    DT::datatable(value$key_ions, rownames = FALSE, options = list(pageLength = 15, scrollX = TRUE))
+  })
+  output$vac14_theory <- DT::renderDT({
+    value <- result(); shiny::req(value)
+    DT::datatable(value$theoretical$fragment_table, rownames = FALSE,
+                  options = list(pageLength = 15, scrollX = TRUE))
+  })
+  output$vac14_psm <- DT::renderDT({
+    value <- result(); shiny::req(value)
+    DT::datatable(value$psm_table, rownames = FALSE, options = list(scrollX = TRUE))
+  })
+
+  safe_stem <- function() {
+    value <- result(); shiny::req(value)
+    gsub("[^A-Za-z0-9._-]+", "_", value$target$modified_sequence)
+  }
+  output$vac14_pdf <- shiny::downloadHandler(
+    filename = function() paste0("PTM_", safe_stem(), ".pdf"),
+    content = function(file) {
+      value <- result(); shiny::req(value)
+      grDevices::pdf(file, width = 14, height = 10)
+      on.exit(grDevices::dev.off(), add = TRUE)
+      .protvis_vac14_draw_figure(value, input$vac14_b_color, input$vac14_y_color)
+    }
+  )
+  output$vac14_png <- shiny::downloadHandler(
+    filename = function() paste0("PTM_", safe_stem(), ".png"),
+    content = function(file) {
+      value <- result(); shiny::req(value)
+      grDevices::png(file, width = 4200, height = 3000, res = 300)
+      on.exit(grDevices::dev.off(), add = TRUE)
+      .protvis_vac14_draw_figure(value, input$vac14_b_color, input$vac14_y_color)
+    }
+  )
+  output$vac14_matches_csv <- shiny::downloadHandler(
+    filename = function() paste0("PTM_", safe_stem(), "_matched_ions.csv"),
+    content = function(file) {
+      value <- result(); shiny::req(value)
+      utils::write.csv(value$matched, file, row.names = FALSE)
+    }
+  )
+  output$vac14_theory_csv <- shiny::downloadHandler(
+    filename = function() paste0("PTM_", safe_stem(), "_theoretical_table.csv"),
+    content = function(file) {
+      value <- result(); shiny::req(value)
+      utils::write.csv(value$theoretical$fragment_table, file, row.names = FALSE)
+    }
+  )
   invisible(shiny::reactive(result()))
 }

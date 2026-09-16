@@ -113,7 +113,7 @@ PTM_ui <- function(id) {
         )
       ),
       bslib::nav_panel(
-        "Vac14 / PXD001057",
+        "PTM spectrum",
         .protvis_vac14_ui(ns)
       )
     )

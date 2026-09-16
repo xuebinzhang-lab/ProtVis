@@ -83,7 +83,7 @@ help_ui <- function() {
               shiny::tags$li("Run Correct Noise, Data Transformation, Data Imputation, and Data Normalization in order."),
               shiny::tags$li("Continue with Overview, DEP, Enrichment, GSEA, and Pathview."),
               shiny::tags$li("Use Multi-omics, PTM, Protein Structure, and Toolkits for specialized exploration."),
-              shiny::tags$li("In PTM, use Vac14 / PXD001057 to reproduce the AT[pS]GVPFSQYK Ser3 benchmark from the article mzIdentML and MGF files.")
+              shiny::tags$li("In PTM spectrum, load mzIdentML and MGF files, select any peptide-spectrum match, and visualize its modified b/y ions; the Vac14 PXD001057 case is retained as the public benchmark.")
             )
           )
         )

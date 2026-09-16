@@ -1256,15 +1256,10 @@ app_ui <- function(request) {
         bslib::nav_panel("Venn", icon = bsicons::bs_icon("diagram-3-fill"), venn_ui("venn"))
       ),
 
-      bslib::nav_menu(
+      bslib::nav_panel(
         "PTM",
         icon = bsicons::bs_icon("layers"),
-        bslib::nav_panel("PTM", icon = bsicons::bs_icon("layers-half"), PTM_ui("PTM")),
-        bslib::nav_panel(
-          "PD Strict Spectrum",
-          icon = bsicons::bs_icon("activity"),
-          pd_strict_module_ui("pd_strict")
-        )
+        PTM_ui("PTM")
       ),
 
       bslib::nav_panel(
