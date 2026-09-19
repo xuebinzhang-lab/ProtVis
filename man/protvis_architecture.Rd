@@ -15,7 +15,7 @@
 \alias{protvis_sage_qc}
 \title{ProtVis dataset architecture, provenance, workflow state, and QC}
 \description{
-Utilities for the canonical ProtVis_dataset schema v3, assay access,
+Utilities for the canonical ProtVis_dataset schema v4, append-only analysis runs, assay access,
 structured provenance, dependency-aware workflow invalidation, project QC,
 Sage QC, and optional Bioconductor QFeatures interoperability.
 }
@@ -56,5 +56,5 @@ QC lists; conversion functions return ProtVis_dataset or QFeatures objects.
 \details{
 QFeatures conversion is optional and requires QFeatures,
 SummarizedExperiment, and S4Vectors. Legacy ProtVis_dataset objects are
-upgraded in memory without discarding their existing analysis state.
+upgraded in memory without discarding their existing analysis state. Schema v4 keeps expression_data as the active protein matrix and stores repeated module analyses as append-only run histories under analysis_results.
 }
