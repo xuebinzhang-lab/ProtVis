@@ -227,8 +227,8 @@ protein_workbench_ui <- function(id) {
   )
 }
 
-protein_workbench_server <- function(id) {
-  .protvis_pw_base_server(id)
+protein_workbench_server <- function(id, shared_state = NULL) {
+  .protvis_pw_base_server(id, shared_state = shared_state)
 
   shiny::moduleServer(id, function(input, output, session) {
     rv_context <- shiny::reactiveValues(

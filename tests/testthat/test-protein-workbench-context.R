@@ -88,3 +88,18 @@ test_that("Protein Workbench UI keeps existing content and adds context tabs", {
   expect_match(html, "Plant-mPLoc prediction", fixed = TRUE)
   expect_match(html, "STRING interaction network", fixed = TRUE)
 })
+
+test_that("Protein Workbench server accepts the application shared state", {
+  server_formals <- formals(ProtVis::protein_workbench_server)
+  expect_true("shared_state" %in% names(server_formals))
+  expect_identical(server_formals$shared_state, NULL)
+
+  app_server <- paste(
+    readLines(testthat::test_path("..", "..", "R", "app_server.R")),
+    collapse = "\n"
+  )
+  expect_match(
+    app_server,
+    'protein_workbench_server\\("protein_workbench", shared_state = shared_state\\)'
+  )
+})

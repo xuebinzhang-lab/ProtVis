@@ -6,10 +6,12 @@
 \usage{
 protein_workbench_ui(id)
 
-protein_workbench_server(id)
+protein_workbench_server(id, shared_state = NULL)
 }
 \arguments{
 \item{id}{A Shiny module namespace identifier.}
+
+\item{shared_state}{Optional shared ProtVis reactive state.}
 }
 \value{
 \code{protein_workbench_ui()} returns the user interface for the Protein Workbench. \code{protein_workbench_server()} registers the corresponding Shiny module server.
