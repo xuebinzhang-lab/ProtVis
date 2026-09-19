@@ -105,7 +105,7 @@ testthat::test_that("active ProtVis_dataset can seed metaproteomics inputs", {
 
   testthat::expect_equal(nrow(extracted$abundance), nrow(dat$abundance))
   testthat::expect_true("Genus" %in% names(extracted$taxonomy))
-  testthat::expect_true("Pathway" %in% names(extracted$function))
+  testthat::expect_true("Pathway" %in% names(extracted[["function"]]))
   testthat::expect_equal(nrow(extracted$peptide), nrow(dat$peptide))
 })
 
