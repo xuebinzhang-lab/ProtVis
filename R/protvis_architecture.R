@@ -2,7 +2,7 @@
 
 #' Return the current ProtVis_dataset schema version.
 #' @export
-protvis_schema_version <- function() "3.0.0"
+protvis_schema_version <- function() "4.0.0"
 
 #' Describe the canonical ProtVis_dataset schema.
 #' @export
@@ -19,6 +19,23 @@ protvis_schema <- function() {
     ),
     annotation_fields = c(
       "eggnog_output", "GO_annotation", "KEGG_annotation"
+    ),
+    analysis_contract = list(
+      mode = "append_only",
+      active_matrix = "expression_data",
+      module_runs = "analysis_results$<module>$runs",
+      latest_pointer = "analysis_results$<module>$latest_run_id",
+      preserve_core_matrix = TRUE
+    ),
+    metaproteomics = list(
+      protein_abundance = "expression_data",
+      relation_layers = c(
+        "psm", "peptide", "protein", "taxonomy", "function", "taxon_function"
+      ),
+      annotation_domains = c(
+        "taxonomy", "GO", "KEGG", "eggNOG", "CAZy", "COG", "EC"
+      ),
+      peptide_centric = TRUE
     )
   )
 }
@@ -274,6 +291,81 @@ register_protvis_assay <- function(object, level = c("psm", "peptide"),
     object, paste0("register_", level, "_assay"), status = "success",
     parameters = list(source = source, n_rows = nrow(data), n_columns = ncol(data))
   )
+  validate_protvis_dataset(object)
+  object
+}
+
+
+# Append one immutable analysis run to a module-specific run store.
+# The active expression_data matrix is deliberately untouched. The latest run
+# pointer can change, but all previous run payloads remain available.
+.protvis_append_analysis_run <- function(
+    object, module, run, run_id = NULL, parameters = list()) {
+  object <- protvis_standardize_dataset(object)
+  module <- trimws(as.character(module %||% "")[[1L]])
+  if (!nzchar(module)) {
+    stop("module must be a non-empty analysis name.", call. = FALSE)
+  }
+  if (!is.list(run)) {
+    stop("run must be a list.", call. = FALSE)
+  }
+
+  root <- object$analysis_results[[module]]
+  if (is.null(root)) {
+    root <- list()
+  } else if (!is.list(root) || is.data.frame(root)) {
+    root <- list(legacy = root)
+  }
+  runs <- root$runs %||% list()
+  if (!is.list(runs)) runs <- list(legacy = runs)
+
+  candidate <- as.character(
+    run_id %||% run$run_id %||%
+      paste0(module, "_", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  )[[1L]]
+  candidate <- gsub("[^A-Za-z0-9_.-]+", "_", candidate)
+  if (!nzchar(candidate)) candidate <- paste0(module, "_run")
+
+  final_id <- candidate
+  suffix <- 1L
+  while (final_id %in% names(runs)) {
+    suffix <- suffix + 1L
+    final_id <- paste0(candidate, "_v", suffix)
+  }
+
+  run$run_id <- final_id
+  run$created_at <- as.character(run$created_at %||% Sys.time())
+  run$schema_version <- protvis_schema_version()
+  runs[[final_id]] <- run
+
+  root$runs <- runs
+  root$latest_run_id <- final_id
+  root$n_runs <- length(runs)
+  root$updated_at <- as.character(Sys.time())
+  object$analysis_results[[module]] <- root
+
+  object <- .protvis_append_process(
+    object,
+    stage = module,
+    status = "success",
+    parameters = utils::modifyList(
+      list(run_id = final_id, storage = "append_only"),
+      parameters %||% list()
+    )
+  )
+  object <- .protvis_append_provenance_event(
+    object,
+    stage = module,
+    status = "success",
+    parameters = utils::modifyList(
+      list(run_id = final_id, storage = "append_only"),
+      parameters %||% list()
+    ),
+    message = paste0("Appended analysis run ", final_id, ".")
+  )
+  object$metadata$schema <- protvis_schema()
+  object$metadata$schema_version <- protvis_schema_version()
+  object$version <- protvis_schema_version()
   validate_protvis_dataset(object)
   object
 }
