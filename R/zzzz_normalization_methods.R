@@ -245,10 +245,15 @@ data_normalization_ui <- function(id) {
         ),
         shiny::selectInput(
           ns("normalization_method"), "Normalization method",
-          choices = .protvis_norm_methods, selected = "median"
+          choices = c(
+            "Auto (source recommended)" = "auto",
+            "MaxQuant recommended · median center + row shift" = "maxquant_recommended",
+            .protvis_norm_methods
+          ),
+          selected = "auto"
         ),
         shiny::p(
-          "VSN is fitted to raw intensities. When Auto detects log2/log10, ProtVis back-transforms only for the VSN fit. Cyclic Loess and RLR operate on the current transformed scale.",
+          "Auto uses the source-specific preset. For MaxQuant it reproduces the archived workflow: sample-wise median subtraction followed by the row-wise +abs(min)+5 shift (exact zeros become 1). Other normalization methods remain available for comparison.",
           class = "pv-norm-method-note"
         ),
         shiny::actionButton(ns("run_normalization"), "Run selected normalization", class = "btn btn-success fw-bold pv-load-button pv-run-button"),
@@ -320,7 +325,8 @@ data_normalization_server <- function(id, shared_state) {
       normalized_matrix = NULL,
       normalization_done = FALSE,
       comparison = NULL,
-      transformation_method = "Unknown"
+      transformation_method = "Unknown",
+      normalization_method = NULL
     )
 
     valid_workdir <- function() {
@@ -367,6 +373,7 @@ data_normalization_server <- function(id, shared_state) {
       rv$normalized_matrix <- NULL
       rv$comparison <- NULL
       rv$normalization_done <- FALSE
+      rv$normalization_method <- NULL
       rv$load_success <- TRUE
       shiny::showNotification(
         base::paste0("Data loaded. Upstream transformation: ", rv$transformation_method, "."),
@@ -382,8 +389,13 @@ data_normalization_server <- function(id, shared_state) {
 
     output$normalization_status_panel <- shiny::renderUI({
       if (isTRUE(rv$normalization_done)) {
-        label <- base::names(.protvis_norm_methods)[base::match(input$normalization_method, .protvis_norm_methods)]
-        shiny::div(class = "pv-status pv-status-ready", base::paste0("✓ ", label, " completed · scale: ", resolved_scale()))
+        shiny::div(
+          class = "pv-status pv-status-ready",
+          base::paste0(
+            "✓ ", rv$normalization_method %||% "normalization",
+            " completed · scale: ", resolved_scale()
+          )
+        )
       } else shiny::div(class = "pv-status pv-status-empty", "Normalization not run yet")
     })
 
@@ -398,34 +410,68 @@ data_normalization_server <- function(id, shared_state) {
       if (!.protvis_begin_run(shared_state, "normalization", session, "run_normalization")) return(invisible(NULL))
       on.exit(.protvis_end_run(shared_state, "normalization", session, "run_normalization"), add = TRUE)
       shiny::req(rv$load_success)
-      method <- input$normalization_method %||% "median"
-      result <- base::tryCatch(
-        .protvis_apply_normalization(original_matrix_numeric(), method, resolved_scale()),
-        error = function(e) e
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          original_matrix_numeric(), sample_info = rv$sample_info
+        )
+      }
+      requested_method <- input$normalization_method %||% "auto"
+      method <- .protvis_resolve_preprocessing_method(
+        dataset, "normalization", requested_method
       )
+      result <- base::tryCatch({
+        if (method %in% c("maxquant_recommended", "maxquant_default")) {
+          .protvis_maxquant_normalize_matrix(
+            original_matrix_numeric(), row_shift = 5, zero_value = 1
+          )
+        } else {
+          .protvis_apply_normalization(
+            original_matrix_numeric(), method, resolved_scale()
+          )
+        }
+      }, error = function(e) e)
       if (inherits(result, "error")) {
         shiny::showNotification(base::conditionMessage(result), type = "error", duration = 8)
         return(invisible(NULL))
       }
-      rv$normalized_matrix <- base::as.data.frame(result, stringsAsFactors = FALSE, check.names = FALSE)
+      rv$normalized_matrix <- base::as.data.frame(
+        result, stringsAsFactors = FALSE, check.names = FALSE
+      )
       rv$normalization_done <- TRUE
+      rv$normalization_method <- method
 
-      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) shared_state$dataset else
-        create_protvis_dataset(original_matrix_numeric(), sample_info = rv$sample_info)
       dataset <- .protvis_update_expression(dataset, rv$normalized_matrix)
       dataset <- .protvis_new_analysis_dataset(
         dataset, "normalization",
-        list(method = method, input_scale = resolved_scale(), comparison_methods = base::names(.protvis_norm_methods))
+        list(
+          method = method,
+          requested_method = requested_method,
+          input_scale = resolved_scale(),
+          row_shift = if (identical(method, "maxquant_recommended")) 5 else NULL,
+          zero_value = if (identical(method, "maxquant_recommended")) 1 else NULL,
+          comparison_methods = base::names(.protvis_norm_methods)
+        )
       )
       dataset <- .protvis_store_preprocessing_result(
         dataset,
         stage = "normalization",
         method = method,
-        extra = list(input_scale = resolved_scale())
+        extra = list(
+          input_scale = resolved_scale(),
+          requested_method = requested_method
+        )
       )
       dataset <- .protvis_append_process(
         dataset, "normalization", status = "success",
-        parameters = list(method = method, input_scale = resolved_scale())
+        parameters = list(
+          method = method,
+          requested_method = requested_method,
+          input_scale = resolved_scale(),
+          row_shift = if (identical(method, "maxquant_recommended")) 5 else NULL,
+          zero_value = if (identical(method, "maxquant_recommended")) 1 else NULL
+        )
       )
       .protvis_ui_sync_state(dataset, shared_state)
       workdir <- valid_workdir()
