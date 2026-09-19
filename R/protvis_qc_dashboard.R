@@ -304,7 +304,7 @@ protvis_dashboard_ui <- function(id) {
             shiny::div(
               shiny::h3("Project QC Dashboard", class = "mb-1"),
               shiny::p(
-                "Project-wide identification, completeness, workflow, provenance, and Sage search QC.",
+                "Project-wide identification, completeness, workflow, provenance, and Sage/FragPipe search QC.",
                 class = "text-muted mb-0"
               )
             ),
@@ -340,8 +340,8 @@ protvis_dashboard_ui <- function(id) {
             bslib::nav_panel("Workflow", DT::DTOutput(ns("workflow_table"))),
             bslib::nav_panel("Provenance", DT::DTOutput(ns("provenance"))),
             bslib::nav_panel("Input files", DT::DTOutput(ns("files"))),
-            bslib::nav_panel("Sage QC", DT::DTOutput(ns("sage_qc"))),
-            bslib::nav_panel("Sage runs", DT::DTOutput(ns("sage_runs")))
+            bslib::nav_panel("Search QC", DT::DTOutput(ns("sage_qc"))),
+            bslib::nav_panel("Search runs", DT::DTOutput(ns("sage_runs")))
           )
         )
       )
@@ -472,19 +472,21 @@ protvis_dashboard_server <- function(id, shared_state) {
     sage_qc <- shiny::reactive({
       object <- current_dataset()
       if (is.null(object)) return(NULL)
+      fragpipe <- object$analysis_results$FragPipe_database_search %||% NULL
+      if (is.list(fragpipe)) return(protvis_fragpipe_qc(fragpipe))
       psms <- protvis_assay(object, "psm")
       protvis_sage_qc(psms)
     })
 
     output$sage_qc <- DT::renderDT({
       value <- sage_qc()
-      if (is.null(value)) return(data.frame(Message = "No Sage PSMs available."))
+      if (is.null(value)) return(data.frame(Message = "No search QC available."))
       DT::datatable(value$summary, rownames = FALSE, options = list(dom = "t"))
     })
     output$sage_runs <- DT::renderDT({
       value <- sage_qc()
       if (is.null(value) || !nrow(value$per_run)) {
-        return(data.frame(Message = "No run-level Sage QC available."))
+        return(data.frame(Message = "No run-level search QC available."))
       }
       DT::datatable(
         value$per_run, rownames = FALSE,
@@ -498,10 +500,10 @@ protvis_dashboard_server <- function(id, shared_state) {
         shiny::showNotification("No active dataset to resume.", type = "warning")
         return(invisible(NULL))
       }
-      if (identical(object$metadata$workflow_stage, "Sage_staging") ||
+      if (object$metadata$workflow_stage %in% c("Sage_staging", "Search_staging") ||
           nrow(object$expression_data) == 0L) {
         shiny::showNotification(
-          "The project is waiting for Search. Complete Sage search before resuming downstream analysis.",
+          "The project is waiting for Search. Complete Sage or FragPipe search before resuming downstream analysis.",
           type = "warning"
         )
         return(invisible(NULL))

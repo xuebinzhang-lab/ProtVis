@@ -39,13 +39,19 @@ protvis_cli_help <- function() {
     "Table input:",
     "  Rscript -e \"ProtVis::run_protvis_cli()\" --args --input proteins.tsv --source DIA-NN --output results",
     "",
-    "Sage raw-data route:",
-    "  Rscript -e \"ProtVis::run_protvis_cli()\" --args --fasta proteins.fasta --mzml-dir ./mzML --sample-info samples.csv --output results",
+    "Raw-data search (Sage is the default engine):",
+    "  Rscript -e \"ProtVis::run_protvis_cli()\" --args --engine Sage --fasta proteins.fasta --mzml-dir ./mzML --sample-info samples.csv --output results",
+    "",
+    "FragPipe raw-data search:",
+    "  Rscript -e \"ProtVis::run_protvis_cli()\" --args --engine FragPipe --fasta proteins.fasta --spectra-dir ./spectra --sample-info samples.csv --fragpipe-workflow LFQ-MBR.workflow --output results",
     "",
     "Resume:",
     "  Rscript -e \"ProtVis::run_protvis_cli()\" --args --resume results --output results",
     "",
     "Options:",
+    "  --engine Sage|FragPipe",
+    "  --fragpipe-workflow LFQ-MBR.workflow",
+    "  --fragpipe-path /path/to/fragpipe",
     "  --stages noise_correction,transformation,imputation,normalization,...",
     "  --config analysis.json",
     "  --no-downstream",
@@ -62,8 +68,8 @@ protvis_cli_help <- function() {
 
 #' Run ProtVis without the Shiny interface.
 #'
-#' The CLI uses the same import, Sage, checkpoint, processing, provenance, and
-#' export functions as the GUI.
+#' The CLI uses the same import, Sage/FragPipe search, checkpoint, processing,
+#' provenance, and export functions as the GUI.
 #' @export
 run_protvis_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   options <- .protvis_cli_parse(args)
@@ -108,38 +114,95 @@ run_protvis_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
         kind = "sample metadata"
       )
     }
-  } else if (!is.null(options$fasta) && !is.null(options$mzml_dir)) {
+  } else if (!is.null(options$fasta) &&
+             (!is.null(options$mzml_dir) || !is.null(options$spectra_dir))) {
     fasta <- path.expand(as.character(options$fasta))
-    mzml_dir <- path.expand(as.character(options$mzml_dir))
+    input_dir <- path.expand(as.character(
+      options$spectra_dir %||% options$mzml_dir
+    ))
     sample_info_path <- options$sample_info %||% config$sample_info
     if (is.null(sample_info_path)) {
-      stop("--sample-info is required for the Sage headless route.",
+      stop("--sample-info is required for the raw-data search route.",
            call. = FALSE)
     }
     sample_info <- .protvis_cli_read_sample_info(
       path.expand(as.character(sample_info_path))
     )
-    validated <- .protvis_sage_paths(
-      fasta, mzml_dir, file.path(output, "Sage_search")
-    )
-    parameters <- utils::modifyList(
-      .protvis_sage_default_parameters(),
-      config$sage %||% list()
-    )
-    bundle <- run_sage_search(
-      validated$fasta, validated$mzml, validated$output, parameters
-    )
-    if (!identical(bundle$status, "success")) {
-      stop("Sage search failed. See Sage_search outputs.", call. = FALSE)
+    engine <- tolower(as.character(
+      options$engine %||% config$engine %||% "sage"
+    ))
+
+    if (engine %in% c("fragpipe", "frag-pipe")) {
+      fp <- config$fragpipe %||% list()
+      spectra <- .protvis_fragpipe_spectra(input_dir)
+      workflow <- as.character(
+        options$fragpipe_workflow %||% fp$workflow %||% "LFQ-MBR.workflow"
+      )
+      threads <- suppressWarnings(as.integer(
+        options$threads %||% fp$threads %||% .protvis_fragpipe_default_threads()
+      ))
+      if (length(threads) != 1L || is.na(threads) || threads < 1L) {
+        threads <- .protvis_fragpipe_default_threads()
+      }
+      ram <- suppressWarnings(as.integer(options$ram %||% fp$ram %||% 0L))
+      if (length(ram) != 1L || is.na(ram) || ram < 0L) ram <- 0L
+      dry_run <- tolower(as.character(
+        options$dry_run %||% fp$dry_run %||% "false"
+      )) %in% c("true", "1", "yes")
+      bundle <- run_fragpipe_search(
+        fasta = fasta,
+        spectra_paths = spectra,
+        output_directory = file.path(output, "FragPipe_search"),
+        workflow = workflow,
+        sample_info = sample_info,
+        data_type = as.character(
+          options$fragpipe_data_type %||% fp$data_type %||% "DDA"
+        ),
+        fragpipe_path = options$fragpipe_path %||% fp$path %||% NULL,
+        tools_folder = options$tools_folder %||% fp$tools_folder %||% NULL,
+        python = options$python %||% fp$python %||% NULL,
+        diann = options$diann %||% fp$diann %||% NULL,
+        threads = threads,
+        ram = ram,
+        dry_run = dry_run
+      )
+      if (!identical(bundle$status, "success")) {
+        stop("FragPipe search failed. See FragPipe_search outputs.",
+             call. = FALSE)
+      }
+      object <- .protvis_create_fragpipe_dataset(
+        bundle = bundle,
+        sample_info = sample_info,
+        fasta = fasta,
+        spectra_paths = spectra,
+        output_directory = bundle$output_directory
+      )
+    } else if (engine %in% c("sage", "sage-search")) {
+      validated <- .protvis_sage_paths(
+        fasta, input_dir, file.path(output, "Sage_search")
+      )
+      parameters <- utils::modifyList(
+        .protvis_sage_default_parameters(),
+        config$sage %||% list()
+      )
+      bundle <- run_sage_search(
+        validated$fasta, validated$mzml, validated$output, parameters
+      )
+      if (!identical(bundle$status, "success")) {
+        stop("Sage search failed. See Sage_search outputs.", call. = FALSE)
+      }
+      object <- .protvis_create_sage_dataset(
+        bundle, sample_info, validated$mzml, parameters,
+        validated$fasta, validated$output
+      )
+    } else {
+      stop("Unsupported search engine: ", engine,
+           ". Use Sage or FragPipe.", call. = FALSE)
     }
-    object <- .protvis_create_sage_dataset(
-      bundle, sample_info, validated$mzml, parameters,
-      validated$fasta, validated$output
-    )
   } else {
     protvis_cli_help()
     stop(
-      "Provide --input, --resume, or the Sage route (--fasta + --mzml-dir + --sample-info).",
+      "Provide --input, --resume, or a raw search route (--fasta + --mzml-dir/--spectra-dir + --sample-info).",
       call. = FALSE
     )
   }

@@ -1,6 +1,6 @@
 Package: ProtVis
 Title: ProtVis Shiny App
-Version: 0.8.0
+Version: 0.8.1
 Authors@R:
     person(given = "Fei",
            family = "Liang",
@@ -64,6 +64,7 @@ Imports:
     methods,
     missForest,
     openxlsx,
+    parallel,
     patchwork,
     pathview,
     pheatmap,

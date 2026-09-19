@@ -58,7 +58,7 @@
     stop("Sample information requires a sample_id column.", call. = FALSE)
   }
   if (is.null(file_col)) {
-    stop("Sample information requires an mzML file column named mzml_file.",
+    stop("Sample information requires a file column such as mzml_file or raw_file.",
          call. = FALSE)
   }
   sample_id <- trimws(as.character(sample_info[[sample_col]]))
@@ -69,10 +69,13 @@
   if (anyNA(file_name) || any(!nzchar(file_name)) || anyDuplicated(tolower(file_name))) {
     stop("mzML file names must be non-empty and unique.", call. = FALSE)
   }
-  extension_ok <- tolower(tools::file_ext(file_name)) == "mzml"
+  lower_name <- tolower(file_name)
+  extension <- tolower(tools::file_ext(file_name))
+  extension_ok <- extension %in% c("mzml", "mzxml", "raw", "mgf") |
+    grepl("[.]d$", lower_name)
   resolved <- normalizePath(file.path(directory, file_name),
                             winslash = "/", mustWork = FALSE)
-  exists <- file.exists(resolved) & !dir.exists(resolved)
+  exists <- file.exists(resolved)
   manifest <- data.frame(
     sample_id = sample_id,
     mzml_file = file_name,
@@ -85,14 +88,14 @@
     check.names = FALSE
   )
   errors <- c(
-    if (any(!extension_ok)) paste0("Non-mzML files: ",
+    if (any(!extension_ok)) paste0("Unsupported LC-MS files: ",
                                    paste(file_name[!extension_ok], collapse = ", ")),
     if (any(!exists)) paste0("Missing files: ",
                              paste(file_name[!exists], collapse = ", "))
   )
   list(valid = !length(errors), manifest = manifest,
        message = if (length(errors)) paste(errors, collapse = "; ")
-                 else paste(nrow(manifest), "mzML files found and matched."))
+                 else paste(nrow(manifest), "LC-MS files found and matched."))
 }
 
 project_init_ui <- function(id) {
@@ -115,18 +118,18 @@ project_init_ui <- function(id) {
         accept = c(".csv", ".xlsx", ".xls")
       ),
       tags$small(
-        "Confirm sample information; Sage requires an mzml_file column.",
+        "Confirm sample information; use mzml_file/raw_file/filename to map LC-MS files.",
         style = "color: #6c757d"
       ),
       bslib::accordion(
         id = ns("raw_input_accordion"),
         open = NULL,
         bslib::accordion_panel(
-          "Raw/mzML input (optional)",
+          "Raw / LC-MS input (optional)",
           icon = bsicons::bs_icon("file-earmark-binary"),
           tags$p(
-            "Use this section when sample_info contains an mzML file column. " ,
-            "The selected directory is checked against every sample before search.",
+            "Register LC-MS files for Search. Sage uses mzML; FragPipe can use " ,
+            "compatible mzML/mzXML, vendor RAW, MGF, or .d inputs.",
             class = "text-muted small"
           ),
           shiny::actionButton(
@@ -143,7 +146,7 @@ project_init_ui <- function(id) {
           shiny::uiOutput(ns("raw_fasta_status")),
           shiny::uiOutput(ns("raw_directory_ui")),
           shiny::actionButton(
-            ns("check_raw_files"), "Check mzML files",
+            ns("check_raw_files"), "Check LC-MS files",
             icon = bsicons::bs_icon("check2-circle"),
             class = "btn btn-outline-primary w-100"
           ),
@@ -203,7 +206,7 @@ project_init_ui <- function(id) {
                            shiny::htmlOutput(ns("matrix_check")),
                     DT::DTOutput(ns("tbl_expression_matrix"))
           ),
-          bslib::nav_panel("Raw/mzML Files",
+          bslib::nav_panel("Raw / LC-MS Files",
                            shiny::htmlOutput(ns("raw_check_summary")),
                            DT::DTOutput(ns("tbl_raw_manifest"))
           )
@@ -345,7 +348,7 @@ project_init_server <- function(id, shared_state) {
       if (is.null(info)) return(NULL)
       tags$small(
         paste("Sample information ready:", nrow(info), "samples;", 
-              "replace mzml_file names with the downloaded PRIDE filenames."),
+              "replace file names with the downloaded LC-MS filenames."),
         class = "text-success"
       )
     })
@@ -410,10 +413,11 @@ project_init_server <- function(id, shared_state) {
                 c("mzml_file", "mzml", "raw_file", "file", "filename"))) {
           shared_state$raw_sample_info <- sample_info
           shared_state$sage_workflow <- TRUE
+          shared_state$fragpipe_workflow <- FALSE
           shared_state$raw_manifest <- NULL
           shared_state$raw_check <- NULL
           shiny::showNotification(
-            "Sample info uploaded and registered for Sage mzML search.",
+            "Sample info uploaded and registered for raw database search.",
             type = "message"
           )
         } else {
@@ -494,6 +498,7 @@ project_init_server <- function(id, shared_state) {
       shared_state$data_source <- input$data_source
       if (nzchar(as.character(input$data_source %||% ""))) {
         shared_state$sage_workflow <- FALSE
+        shared_state$fragpipe_workflow <- FALSE
       }
     })
     # Load a bundled, source-specific example into the shared project state.
@@ -557,10 +562,51 @@ project_init_server <- function(id, shared_state) {
           !is.data.frame(shared_state$expression_matrix) ||
           nrow(shared_state$expression_matrix) < 1L ||
           ncol(shared_state$expression_matrix) < 2L
-        sage_mode <- isTRUE(shared_state$sage_workflow) ||
+        search_mode <- isTRUE(shared_state$sage_workflow) ||
+          isTRUE(shared_state$fragpipe_workflow) ||
           (is.list(shared_state$sage_search_bundle) &&
-           identical(shared_state$sage_search_bundle$status, "success"))
-        if (expression_missing && sage_mode) {
+           identical(shared_state$sage_search_bundle$status, "success")) ||
+          (is.list(shared_state$fragpipe_search_bundle) &&
+           identical(shared_state$fragpipe_search_bundle$status, "success"))
+        if (expression_missing && search_mode) {
+          fragpipe_bundle <- shared_state$fragpipe_search_bundle
+          if (is.list(fragpipe_bundle) &&
+              identical(fragpipe_bundle$status, "success")) {
+            fasta <- shared_state$raw_fasta$path %||%
+              fragpipe_bundle$fasta %||% ""
+            spectra_paths <- if (isTRUE(shared_state$raw_check$valid) &&
+                                  is.data.frame(shared_state$raw_manifest)) {
+              shared_state$raw_manifest$path
+            } else {
+              as.character(fragpipe_bundle$spectra_paths %||% character())
+            }
+            dataset <- .protvis_create_fragpipe_dataset(
+              bundle = fragpipe_bundle,
+              sample_info = shared_state$raw_sample_info %||%
+                shared_state$sample_info,
+              parent = if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+                shared_state$dataset
+              } else NULL,
+              fasta = fasta,
+              spectra_paths = spectra_paths,
+              output_directory = fragpipe_bundle$output_directory %||%
+                file.path(directory, "FragPipe_search")
+            )
+            dataset <- protvis_auto_export_dataset(
+              dataset, directory = directory, include_raw = FALSE
+            )
+            .protvis_ui_sync_state(dataset, shared_state)
+            .protvis_save_stage_dataset(
+              dataset, file.path(directory, "Step1_project_init.rda")
+            )
+            shared_state$fragpipe_search_bundle <- NULL
+            shared_state$fragpipe_search_parameters <- list()
+            init_status(list(
+              state = "success",
+              text = "PROJECT INIT completed — FragPipe ProtVis_dataset is ready."
+            ))
+            return(invisible(NULL))
+          }
           sage_bundle <- shared_state$sage_search_bundle
           raw_directory <- shared_state$raw_directory %||% ""
           sage_output <- file.path(raw_directory, "Sage_search")
@@ -618,9 +664,9 @@ project_init_server <- function(id, shared_state) {
           } else character()
           fasta <- shared_state$raw_fasta$path %||% ""
           shared_state$workdir <- directory
-          dataset <- .protvis_create_sage_staging_dataset(
+          dataset <- .protvis_create_search_staging_dataset(
             shared_state$raw_sample_info %||% shared_state$sample_info,
-            fasta, mzml_paths, file.path(directory, "Sage_search")
+            fasta, mzml_paths, directory
           )
           dataset <- protvis_auto_export_dataset(
             dataset, directory = directory, include_raw = FALSE

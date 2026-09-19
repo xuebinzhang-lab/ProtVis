@@ -1192,7 +1192,19 @@ app_ui <- function(request) {
         "Search",
         value = "sage_search",
         icon = bsicons::bs_icon("search"),
-        sage_search_ui("sage_search")
+        bslib::navset_card_tab(
+          id = "protvis_search_engines",
+          bslib::nav_panel(
+            "Sage",
+            icon = bsicons::bs_icon("lightning-charge"),
+            sage_search_ui("sage_search")
+          ),
+          bslib::nav_panel(
+            "FragPipe",
+            icon = bsicons::bs_icon("diagram-3"),
+            fragpipe_search_ui("fragpipe_search")
+          )
+        )
       ),
 
       bslib::nav_panel(

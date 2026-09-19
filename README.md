@@ -32,7 +32,8 @@ The application is designed for researchers who need publication-ready visual su
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
 -   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
--   **Optional RAW/mzML registration and Sage search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
+-   **Dual raw-data Search backends**: bundled Sage for lightweight FASTA + mzML searching, plus an integrated FragPipe headless backend with official runtime installation/detection, workflow and manifest generation, PSM/peptide/protein ingestion, and provenance. FragPipe companion binaries with separate licenses are not redistributed inside the ProtVis R package.
+-   **RAW/mzML registration and search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
 -   **Uploadable Sage sample metadata**: a sample table containing `sample_id`, `mzml_file`, and grouping fields automatically enters the Sage staging workflow and can be downloaded as [`PXD065315_sample_info_template.csv`](https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/PXD065315_sample_info_template.csv).
 
 ------------------------------------------------------------------------
@@ -74,7 +75,7 @@ same QC, transformation, imputation, normalization, dimensionality reduction,
 differential analysis, enrichment, network, checkpoint, and export functions.
 The full MaxQuant workbook remains available for a larger reproducible example.
 
-### RAW/mzML and Sage database-search preparation
+### Raw data and database-search preparation
 
 Project init contains an optional, collapsed **RAW/mzML input** panel. Select
 the directory containing converted mzML files, load the built-in PXD065315
@@ -85,14 +86,14 @@ The built-in table uses `B73_C1.mzML`–`B73_C3.mzML` and
 `EA2024_C1.mzML`–`EA2024_C3.mzML`.
 
 For database searching, upload a matching protein FASTA file (for example,
-`UP000007305_4577.fasta` for *Zea mays*). ProtVis selects the bundled Sage
-executable for the current platform: `windows/sage.exe` on Windows,
-`Linux/sage` on Linux, and `macOS/ARM64/sage` or `macOS/Intel/sage` on macOS.
-If no matching bundled executable is available, it falls back to `sage` on
-`PATH`. The helper `protvis_sage_executable()` reports the selected path. RAW,
-mzML, and FASTA bytes are not copied into `ProtVis_dataset`; only paths,
-filenames, checks, Sage parameters, and results are recorded for
-reproducibility.
+`UP000007305_4577.fasta` for *Zea mays*). The top-level **Search** page now
+contains two engines. **Sage** selects the bundled executable for the current
+platform and falls back to `sage` on `PATH`. **FragPipe** detects an existing
+official runtime or can obtain the official platform release at runtime, while
+keeping separately licensed companion tools outside the ProtVis R package.
+RAW/mzML/FASTA bytes are not copied into `ProtVis_dataset`; ProtVis records
+paths, fingerprints, search settings, generated workflow/manifest files, tool
+versions, logs, and parsed search results for reproducibility.
 
 ### Sage database search
 
@@ -116,6 +117,38 @@ matrix becomes the active input for the existing preprocessing,
 differential-abundance, enrichment, and other downstream modules. This
 staging/finalization behavior is exclusive to the Sage workflow; other data
 sources continue to use the existing Project init path.
+
+### FragPipe database search
+
+Open **Search → FragPipe** to use FragPipe as the comprehensive search backend.
+ProtVis checks the FragPipe executable, workflows, tools folder, MSFragger,
+IonQuant, diaTracer, DIA-NN, Java, and Python. **Install FragPipe** downloads the
+official release for the current supported platform; on Windows ProtVis launches
+the official installer, while Linux releases can be unpacked into
+`~/.protvis/tools/fragpipe/<version>`. A manually installed runtime can always
+be selected by path. ProtVis deliberately does not copy separately licensed
+FragPipe companion binaries into the package repository.
+
+The FragPipe backend prepares a no-header headless manifest, copies the selected
+official workflow into the project, writes the project FASTA as
+`database.db-path`, and launches FragPipe using its headless interface. Presets
+include **LFQ-MBR**, **Basic Search**, **LFQ phosphoproteomics**, **Open Search**,
+**TMT10 phosphoproteomics**, and DIA workflows; a custom `.workflow` file can
+also be supplied. Search outputs are retained in
+`analysis_results$FragPipe_database_search`; PSM and peptide tables are
+registered in schema-v3 assays and a compatible protein report is harmonized
+into the canonical protein abundance matrix. Runtime versions, input/output
+fingerprints, workflow, manifest, log, and parameters are recorded in
+provenance.
+
+Useful script entry points are:
+
+```r
+ProtVis::protvis_fragpipe_status()
+ProtVis::protvis_install_fragpipe()
+ProtVis::protvis_fragpipe_workflow_presets()
+ProtVis::run_fragpipe_search(...)
+```
 
 The PXD065315 metadata source is the [PRIDE project page](https://www.ebi.ac.uk/pride/archive/projects/PXD065315).
 Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
@@ -141,9 +174,10 @@ Sage run-level QC. The **Resume workflow** button continues from the most recent
 valid checkpoint/node; a project still in `Sage_staging` is intentionally sent
 back to Search instead of inventing downstream quantitative data.
 
-The Search page includes dedicated Sage QC views for run-level IDs, precursor
+The Search page includes engine-specific QC views. Sage reports run-level IDs, precursor
 charge, precursor mass error, q-values, peptide length, missed cleavages, and
-retention-time distributions. Open **PSM Explorer** for spectrum-level evidence:
+retention-time distributions; FragPipe contributes search status plus parsed
+PSM/peptide/protein counts and compatible PSM-level summaries. Open **PSM Explorer** for spectrum-level evidence:
 load mzIdentML + MGF files, search/select any PSM, and inspect the matched
 PTM-aware b/y fragment ions and annotated spectrum.
 
@@ -166,10 +200,24 @@ ProtVis::run_protvis_cli(c(
 ))
 ```
 
-For the raw-data route, pass `--fasta`, `--mzml-dir`, and `--sample-info`.
-A JSON file supplied with `--config` can provide Sage parameters and downstream
-stage parameters. Use `ProtVis::protvis_cli_help()` for the complete command
-summary.
+For raw-data searching, pass `--fasta`, `--mzml-dir` (or `--spectra-dir`),
+`--sample-info`, and optionally `--engine Sage|FragPipe`. Sage remains the CLI
+default. FragPipe accepts `--fragpipe-workflow` and `--fragpipe-path`; its
+settings can also be placed under `fragpipe` in the JSON configuration. For
+example:
+
+```r
+ProtVis::run_protvis_cli(c(
+  "--engine", "FragPipe",
+  "--fasta", "proteins.fasta",
+  "--spectra-dir", "./spectra",
+  "--sample-info", "samples.csv",
+  "--fragpipe-workflow", "LFQ-MBR.workflow",
+  "--output", "results"
+))
+```
+
+Use `ProtVis::protvis_cli_help()` for the complete command summary.
 
 ------------------------------------------------------------------------
 

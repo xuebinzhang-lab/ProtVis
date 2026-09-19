@@ -660,7 +660,8 @@ sage_search_server <- function(id, shared_state) {
         shiny::withProgress(message = "Running Sage database search", value = 0.1, {
           manifest <- shared_state$raw_manifest
           if (isTRUE(shared_state$raw_check$valid %||% FALSE) &&
-              is.data.frame(manifest) && nrow(manifest) > 0L) {
+              is.data.frame(manifest) && nrow(manifest) > 0L &&
+              all(tolower(tools::file_ext(manifest$path)) == "mzml")) {
             validated$mzml <- normalizePath(manifest$path, winslash = "/",
                                             mustWork = TRUE)
           }
@@ -677,7 +678,8 @@ sage_search_server <- function(id, shared_state) {
           shared_state$sage_search_parameters <- parameters
           dataset <- shared_state$dataset
           if (inherits(dataset, "ProtVis_dataset")) {
-            if (identical(dataset$metadata$workflow_stage, "Sage_staging")) {
+            if (dataset$metadata$workflow_stage %in%
+                c("Sage_staging", "Search_staging")) {
               dataset <- .protvis_finalize_sage_dataset(
                 dataset, bundle, parameters, validated$fasta, validated$mzml,
                 validated$output

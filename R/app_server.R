@@ -21,6 +21,9 @@ app_server <- function(input, output, session) {
     sage_search_bundle = NULL,
     sage_search_parameters = list(),
     sage_workflow = FALSE,
+    fragpipe_search_bundle = NULL,
+    fragpipe_search_parameters = list(),
+    fragpipe_workflow = FALSE,
     data_source = "Raw",
     dataset = NULL,
     dataset_history = list(),
@@ -48,6 +51,7 @@ app_server <- function(input, output, session) {
   })
   project_init_server("project_init", shared_state = shared_state)
   sage_search_server("sage_search", shared_state = shared_state)
+  fragpipe_search_server("fragpipe_search", shared_state = shared_state)
   protvis_dashboard_server("project_dashboard", shared_state = shared_state)
   data_input_server(
     "data_input",

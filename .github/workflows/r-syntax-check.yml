@@ -45,7 +45,8 @@ jobs:
             "man/protvis_architecture.Rd",
             "man/protvis_dashboard_ui.Rd",
             "man/psm_explorer_ui.Rd",
-            "man/run_protvis_cli.Rd"
+            "man/run_protvis_cli.Rd",
+            "man/fragpipe_search.Rd"
           )
           for (f in rd) tools::checkRd(f)
           cat("DESCRIPTION and new Rd files validated.\n")
