@@ -73,7 +73,7 @@ testthat::test_that("active ProtVis_dataset can seed metaproteomics inputs", {
 
   variable_info <- merge(
     dat$taxonomy,
-    dat$function,
+    dat[["function"]],
     by = "ProteinID",
     all = TRUE
   )
@@ -108,7 +108,7 @@ testthat::test_that("active ProtVis_dataset can seed metaproteomics inputs", {
 
 testthat::test_that("peptide sample columns are not offered as function levels", {
   dat <- metaproteomics_demo_data()
-  levels <- ProtVis:::.mp_function_levels(dat$function, dat$peptide)
+  levels <- ProtVis:::.mp_function_levels(dat[["function"]], dat$peptide)
 
   testthat::expect_true(all(c("Pathway", "KO", "COG", "CAZy") %in% levels))
   testthat::expect_false(any(grepl("Control_|Treatment_", levels)))
