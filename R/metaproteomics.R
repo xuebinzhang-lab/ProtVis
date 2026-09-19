@@ -203,6 +203,30 @@ utils::globalVariables(c(
 
 .mp_data_from_dataset <- function(dataset) {
   dataset <- as_protvis_dataset(dataset)
+  taxonomy <- .mp_taxonomy_from_dataset(dataset)
+  function_table <- .mp_function_from_dataset(dataset)
+  peptide <- .mp_peptide_from_dataset(dataset)
+
+  stored <- dataset$analysis_results$metaproteomics %||% list()
+  latest_id <- as.character(stored$latest_run_id %||% "")
+  latest <- NULL
+  if (nzchar(latest_id) && is.list(stored$runs) &&
+      latest_id %in% names(stored$runs)) {
+    latest <- stored$runs[[latest_id]]
+  }
+  if (is.list(latest) && is.list(latest$inputs)) {
+    if (!nrow(taxonomy) && is.data.frame(latest$inputs$taxonomy)) {
+      taxonomy <- latest$inputs$taxonomy
+    }
+    stored_function <- latest$inputs[["function"]]
+    if (!nrow(function_table) && is.data.frame(stored_function)) {
+      function_table <- stored_function
+    }
+    if (!nrow(peptide) && is.data.frame(latest$inputs$peptide)) {
+      peptide <- latest$inputs$peptide
+    }
+  }
+
   list(
     abundance = .mp_abundance_table_from_dataset(dataset),
     sample_info = as.data.frame(
@@ -210,9 +234,9 @@ utils::globalVariables(c(
       stringsAsFactors = FALSE,
       check.names = FALSE
     ),
-    taxonomy = .mp_taxonomy_from_dataset(dataset),
-    "function" = .mp_function_from_dataset(dataset),
-    peptide = .mp_peptide_from_dataset(dataset)
+    taxonomy = taxonomy,
+    "function" = function_table,
+    peptide = peptide
   )
 }
 
