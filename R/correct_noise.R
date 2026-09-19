@@ -6,7 +6,8 @@
 #'                samples in columns and IDs in the first column. Sample names
 #'                should contain "_1", "_2", "_3" suffixes to indicate replicates.
 #' @return A data frame with corrected values where zeros have been replaced
-#'         according to the correction rules. Rows with all zeros remain unchanged.
+#'   according to the correction rules. Protein rows with no positive intensity
+#'   in any replicate are removed, matching the archived MaxQuant workflow.
 #' @importFrom dplyr select rowwise filter ungroup full_join mutate if_else group_by
 #' @importFrom dplyr case_when across na_if contains c_across
 #' @importFrom tidyr pivot_longer replace_na pivot_wider
