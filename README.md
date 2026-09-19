@@ -21,7 +21,7 @@ The application is designed for researchers who need publication-ready visual su
 ## Key features
 
 -   **Multi-source proteomics import** for MaxQuant, Proteome Discoverer, DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, and user-defined matrices.
--   **ProtVis_dataset schema v3** with a canonical protein assay, PSM/peptide assay registry, aligned sample/protein metadata, annotations, analysis results, checkpoints, and backward-compatible migration. Optional `as_QFeatures()` / `from_QFeatures()` helpers connect ProtVis to the Bioconductor QFeatures ecosystem.
+-   **ProtVis_dataset schema v4** with a canonical active protein matrix, PSM/peptide assay registry, aligned sample/protein metadata, structured provenance, and append-only module run stores. Repeated analyses preserve prior tables, plot data, parameters, and inputs instead of replacing earlier results. Optional `as_QFeatures()` / `from_QFeatures()` helpers connect ProtVis to the Bioconductor QFeatures ecosystem.
 -   **Structured provenance** records R/ProtVis/package versions, Sage version and parameters, MD5 file fingerprints, timestamps, node status, errors, and parent/object lineage. Portable exports include `provenance.json`, `provenance.rds`, and `workflow_status.csv`.
 -   **Recoverable dependency-aware workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Re-running an upstream node explicitly invalidates downstream results; failed nodes can be retried or resumed from checkpoints.
 -   **Project QC Dashboard** with protein/sample counts, data completeness, median protein CV, sample-level missingness/identification QC, workflow state, input-file provenance, and Sage search QC.
@@ -29,8 +29,8 @@ The application is designed for researchers who need publication-ready visual su
 -   **Headless/CLI mode** via `ProtVis::run_protvis_cli()` or the installed `exec/protvis` script, using the same import, Sage, processing, checkpoint, provenance, and export backend as Shiny.
 -   **MaxQuant output preparation** as the first item in **Pre-processing** for MaxQuant-specific filtering and matrix handoff; other sources use their own parser-backed import path.
 -   **Protein-level downstream analysis** including the preserved DEP workflow plus limma/DEqMS/proDA/MSstats comparison. Each completed statistical engine keeps its own result table, volcano plot, significant-protein heatmap, and DEP-count plot, followed by enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
--   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
--   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
+-   **Metaproteomics workflow** that can start from the active `ProtVis_dataset` or uploaded protein abundance, sample metadata, taxonomy, function, and optional peptide tables. Taxonomic ranks and functional categories are detected dynamically.
+-   **Protein-, taxonomy-, function-, and peptide-centric interpretation** with abundance composition, taxon ranking, taxon × function Sankey/heatmap views, and pepFunk-inspired weighted peptide-to-function summaries. Each run is appended under `analysis_results$metaproteomics$runs` without changing the active protein matrix.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
 -   **Dual raw-data Search backends**: bundled Sage for lightweight FASTA + mzML searching, plus an integrated FragPipe headless backend with official runtime installation/detection, workflow and manifest generation, PSM/peptide/protein ingestion, and provenance. FragPipe companion binaries with separate licenses are not redistributed inside the ProtVis R package.
 -   **RAW/mzML registration and search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
@@ -287,15 +287,16 @@ run_ProtVis()
     -   Use DEP analysis, enrichment analysis, GSEA, Pathview, WGCNA, co-enrichment, Venn, and expression profile modules.
 
 5.  **Explore metaproteomics**
-    -   Open **Multi-omics → Metaproteomics**.
-    -   Use the built-in demo or upload abundance, taxonomy, and function annotation tables.
-    -   Generate taxonomy composition, function composition, taxon-function Sankey, and taxon-function heatmap visualizations.
+    -   Open **Multi-omics → Metaproteomics** and click **Use Active ProtVis_dataset** to reuse the current protein matrix, sample metadata, compatible annotations, and peptide assay when present.
+    -   Alternatively upload protein abundance, sample metadata, taxonomy, function annotation, and an optional peptide-centric table.
+    -   Generate taxonomy composition/ranking, function composition, taxon × function Sankey/heatmap views, and weighted peptide-centric functional abundance summaries.
+    -   Completed analyses are stored as immutable runs in `analysis_results$metaproteomics$runs`; `expression_data` remains the active protein matrix.
 
 ------------------------------------------------------------------------
 
 ## Metaproteomics input format
 
-The metaproteomics module accepts three CSV files, all joined by `ProteinID`:
+The metaproteomics module can use the active `ProtVis_dataset` directly. For file-based analysis, protein-level tables are joined by `ProteinID`; sample metadata and peptide-level input are optional:
 
 ### 1. Abundance table
 
@@ -321,7 +322,21 @@ MP001,K01689,Butanoate metabolism,Energy production
 MP002,K01810,Glycolysis / Gluconeogenesis,Carbohydrate transport
 ```
 
-The module also includes downloadable demo CSV files from the UI.
+### 4. Optional sample metadata
+
+``` text
+sample_id,group
+Control_1,Control
+Control_2,Control
+Treatment_1,Treatment
+Treatment_2,Treatment
+```
+
+### 5. Optional peptide-centric table
+
+The peptide table accepts a peptide sequence column such as `Peptide` or `Sequence`, sample intensity columns (or long-form `Sample` + `Intensity`), and either a direct functional assignment such as `Pathway` / `KO` or a `ProteinID` that can be joined to the function table. Shared peptide intensity is divided across multiple semicolon-delimited functional assignments before aggregation.
+
+The built-in demo contains all five layers. Protein-level, taxonomic, functional, taxon × function, peptide-function score, and peptide-function differential tables are retained in the stored run.
 
 ------------------------------------------------------------------------
 
