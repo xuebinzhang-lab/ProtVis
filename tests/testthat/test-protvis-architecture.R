@@ -1,12 +1,14 @@
-test_that("ProtVis schema v3 standardizes assays and provenance", {
+test_that("ProtVis schema v4 standardizes assays, provenance, and append-only analysis", {
   object <- create_protvis_dataset(
     data.frame(ID = c("P1", "P2"), S1 = c(1, 2), S2 = c(2, 4),
                check.names = FALSE)
   )
   object <- protvis_standardize_dataset(object)
-  expect_identical(object$version, "3.0.0")
-  expect_identical(object$metadata$schema_version, "3.0.0")
+  expect_identical(object$version, "4.0.0")
+  expect_identical(object$metadata$schema_version, "4.0.0")
   expect_identical(protvis_schema()$primary_assay, "protein")
+  expect_identical(protvis_schema()$analysis_contract$mode, "append_only")
+  expect_true(isTRUE(protvis_schema()$analysis_contract$preserve_core_matrix))
   expect_identical(protvis_assay(object, "protein"), object$expression_data)
   provenance <- protvis_provenance(object)
   expect_true(is.list(provenance$environment))
