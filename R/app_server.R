@@ -82,7 +82,7 @@ app_server <- function(input, output, session) {
   protein_links_server("prot_links")
   Expression_profile_server("Expression_profile")
   wgcna_server("wgcna", shared_state)
-  metaproteomics_server("metaproteomics")
+  metaproteomics_server("metaproteomics", shared_state = shared_state)
   co_enrichment_server("co_enrichment")
   nine_quadrant_server("nine")
   venn_server("venn")
