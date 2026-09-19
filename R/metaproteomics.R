@@ -221,23 +221,39 @@ utils::globalVariables(c(
     "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus",
     "Species", "Strain", "Taxon", "Organism"
   )
-  intersect(preferred, names(taxonomy))
+  current <- names(taxonomy)
+  idx <- match(tolower(preferred), tolower(current))
+  current[idx[!is.na(idx)]]
 }
 
 .mp_function_levels <- function(function_table, peptide = NULL) {
   ignore <- c(
-    "ProteinID", "protein_id", "Protein", "Peptide", "Sequence", "Sample",
-    "sample_id", "Group", "Intensity"
+    "ProteinID", "protein_id", "Protein", "Proteins", "Peptide", "Sequence",
+    "peptide", "sequence", "Sample", "sample_id", "Group", "Intensity"
   )
   cols <- setdiff(names(function_table), ignore)
   if (!is.null(peptide) && NROW(peptide)) {
-    cols <- unique(c(
-      cols,
-      setdiff(names(peptide), c(ignore, grep(
-        "intensity|abundance|quantity|area|lfq",
-        names(peptide), ignore.case = TRUE, value = TRUE
-      )))
-    ))
+    peptide <- as.data.frame(peptide, stringsAsFactors = FALSE, check.names = FALSE)
+    extra <- setdiff(
+      names(peptide),
+      c(
+        ignore,
+        grep(
+          "intensity|abundance|quantity|area|lfq",
+          names(peptide), ignore.case = TRUE, value = TRUE
+        )
+      )
+    )
+    numeric_like <- vapply(
+      peptide[extra],
+      function(x) {
+        value <- suppressWarnings(as.numeric(as.character(x)))
+        mean(is.finite(value)) >= 0.8
+      },
+      logical(1)
+    )
+    extra <- extra[!numeric_like]
+    cols <- unique(c(cols, extra))
   }
   cols[nzchar(cols)]
 }
@@ -875,15 +891,29 @@ metaproteomics_server <- function(id, shared_state = NULL) {
     refresh_choices <- function() {
       tax_levels <- .mp_tax_levels(rv$data$taxonomy)
       fun_levels <- .mp_function_levels(rv$data$function, rv$data$peptide)
+      tax_selected <- if ("Genus" %in% tax_levels) {
+        "Genus"
+      } else if (length(tax_levels)) {
+        tax_levels[[1L]]
+      } else {
+        character()
+      }
+      fun_selected <- if ("Pathway" %in% fun_levels) {
+        "Pathway"
+      } else if (length(fun_levels)) {
+        fun_levels[[1L]]
+      } else {
+        character()
+      }
       shiny::updateSelectInput(
         session, "tax_level",
         choices = tax_levels,
-        selected = if ("Genus" %in% tax_levels) "Genus" else tax_levels[[1L]] %||% NULL
+        selected = tax_selected
       )
       shiny::updateSelectInput(
         session, "function_level",
         choices = fun_levels,
-        selected = if ("Pathway" %in% fun_levels) "Pathway" else fun_levels[[1L]] %||% NULL
+        selected = fun_selected
       )
     }
 
