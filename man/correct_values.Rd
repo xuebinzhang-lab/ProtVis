@@ -12,8 +12,9 @@ samples in columns and IDs in the first column. Sample names
 should contain "_1", "_2", "_3" suffixes to indicate replicates.}
 }
 \value{
-A data frame with corrected values where zeros have been replaced
-        according to the correction rules. Rows with all zeros remain unchanged.
+A data frame with corrected values where zeros have been replaced according
+to the correction rules. Protein rows with no positive intensity in any
+replicate are removed, matching the archived MaxQuant workflow.
 }
 \description{
 Correct zero values in replicate measurements
