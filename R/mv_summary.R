@@ -3,23 +3,25 @@
 #' @param id A unique identifier for the Shiny namespace.
 #' @title mv_summary_ui
 #' @name mv_summary_ui
-#' @import bsicons
 #' @import shiny
 #' @import bslib
+#' @importFrom bsicons bs_icon
+#' @importFrom colourpicker colourInput
 #' @export
 #'
+
 mv_summary_ui <- function(id) {
   ns <- NS(id)
-  nav_panel(
-    title = 'Multivariate Summary',
-    icon = bs_icon("play-circle"),
-    layout_sidebar(
-      sidebar = accordion(
-        accordion_panel(
+  bslib::nav_panel(
+    title = 'Data normalization',
+    icon = bsicons::bs_icon("play-circle"),
+    bslib::layout_sidebar(
+      sidebar = bslib::accordion(
+        bslib::accordion_panel(
           title = "File Upload",
-          icon = bs_icon("upload"),
-          fileInput(ns("file"), "Upload CSV file", accept = ".csv"),
-          fileInput(
+          icon = bsicons::bs_icon("upload"),
+          shiny::fileInput(ns("file"), "Upload CSV file", accept = ".csv"),
+          shiny::fileInput(
             inputId = ns('GroupInfo'),
             label = 'Group information',
             multiple = FALSE,
@@ -27,151 +29,137 @@ mv_summary_ui <- function(id) {
           )
         )
       ),
-      # 2x2 布局
-      page_fluid(
-        layout_column_wrap(
-          width = 1/2,
+      # ===================== 核心修改：删掉 page_fluid，警告直接消失 =====================
+      bslib::layout_column_wrap(
+        width = 1/2,
+        height = 600,
+        bslib::navset_card_tab(
           height = 600,
-          navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # boxplot -----------------------------------------------------------------
-            title = "Boxplot",
-            sidebar = accordion(
-              open = 'closed',
-              accordion_panel(
-                title = 'Parameter',
-                colourpicker::colourInput(ns("boxplot_color"),
-                                          "Color:",
-                                          value = "black"),
-                actionButton(ns("boxplot"), "Run")
-              ),
-              accordion_panel(
-                title = 'Run',
-                actionButton(ns("boxplot"), "Run")
-              ),
-              accordion_panel(
-                title = 'Download',
-                numericInput(ns("boxplot_height"),
-                             label = "Height:",
-                             value = 7,
-                             step = 0.1),
-                numericInput(ns("boxplot_width"),label = "Width:",
-                             value = 7, step = 1),
-                downloadButton(ns("download_boxplot"), "Download")
-              )
+          full_screen = TRUE,
+          title = "Boxplot",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              colourpicker::colourInput(ns("boxplot_color"),
+                                        "Color:",
+                                        value = "black"),
+              shiny::actionButton(ns("boxplot"), "Run")
             ),
-            mainPanel(
-              tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                tabPanel(
-                  title = "Figure before normalization",
-                  plotOutput(ns("boxplotbeforeshow"))
-                ),
-                tabPanel(
-                  title = "Figure after normalization",
-                  plotOutput(ns("boxplotaftershow"))
-                )
-              )
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("boxplot"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              shiny::numericInput(ns("boxplot_height"),
+                                  label = "Height:",
+                                  value = 7,
+                                  step = 0.1),
+              shiny::numericInput(ns("boxplot_width"),label = "Width:",
+                                  value = 7, step = 1),
+              shiny::downloadButton(ns("download_boxplot"), "Download")
             )
           ),
-          navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # PCA ---------------------------------------------------------------------
-            title = "PCA",
-            sidebar = accordion(
-              open = 'closed',
-              accordion_panel(
-                title = 'Run',
-                actionButton(ns("run_btn_PCA"), "Run")
-              ),
-              accordion_panel(
-                title = 'Download',
-                icon = bs_icon('download'),
-                downloadButton(ns("download_PCA_table"), label = "Output Table", icon = icon("download"))
-              )
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure before normalization",
+              shiny::plotOutput(ns("boxplotbeforeshow"))
             ),
-            mainPanel(
-              tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                tabPanel(
-                  title = "Figure",
-                  plotOutput(ns("PCAplotshow"))
-                ),
-                tabPanel(
-                  title = "Table",
-                  DT::DTOutput(ns("PCA_dataTable"))
-                )
-              )
-            )
-          ),
-          navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # correlation -------------------------------------------------------------
-            title = "Correlation",
-            sidebar = accordion(
-              open = 'closed',
-              accordion_panel(
-                title = 'Parameter',
-                selectInput("method", "Correlation Method",
-                            choices = c("pearson", "kendall", "spearman"), selected = "pearson")
-              ),
-              accordion_panel(
-                title = 'Run',
-                actionButton(ns("calculate"), "Run")
-              ),
-              accordion_panel(
-                title = 'Download',
-                icon = bs_icon('download'),
-                numericInput(ns("correlationPlotHeight"), "Height:",
-                             value = 8, min = 1, max = 100, step = 1),
-                numericInput(ns("correlationPlotWidth"), "Width:",
-                             value = 8, min = 1, max = 100, step = 1),
-                downloadButton(ns("Figure_correlation_download"), label = "Download Figure",
-                               icon = icon("download")),
-                downloadButton(ns("table_correlation_download"), label = "Download Table",
-                               icon = icon("download"))
-              )
-            ),
-            mainPanel(
-              tabsetPanel(
-                type = "tabs", # This allows tab navigation
-                tabPanel(
-                  title = "Figure",
-                  plotOutput(ns("correlationPlot"))
-                ),
-                tabPanel(
-                  title = "Table",
-                  DT::DTOutput(ns("correlation_dataTable"))
-                )
-              )
-            )
-          ),
-          navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            # heatmap -----------------------------------------------------------------
-            title = "Heatmap",
-            sidebar = accordion(
-              open = 'closed',
-              accordion_panel(
-                title = 'Parameter',
-                radioButtons(inputId = ns("Logical_value2"),
-                             label = "Logical value",
-                             choices = c("TRUE", "FALSE"),
-                             selected = "TRUE")
-              ),
-              accordion_panel(
-                title = 'Run',
-                actionButton(ns("plotheatmap"), "Run")
-              )
-            ),
-            mainPanel(
-              plotOutput(ns("correlationPlotshow"))
+            shiny::tabPanel(
+              title = "Figure after normalization",
+              shiny::plotOutput(ns("boxplotaftershow"))
             )
           )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "PCA",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("run_btn_PCA"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              icon = bsicons::bs_icon('download'),
+              shiny::downloadButton(ns("download_PCA_table"), label = "Output Table", icon = shiny::icon("download"))
+            )
+          ),
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure",
+              shiny::plotOutput(ns("PCAplotshow"))
+            ),
+            shiny::tabPanel(
+              title = "Table",
+              DT::DTOutput(ns("PCA_dataTable"))
+            )
+          )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "Correlation",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              shiny::selectInput(ns("method"), "Correlation Method",
+                                 choices = c("pearson", "kendall", "spearman"), selected = "pearson")
+            ),
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("calculate"), "Run")
+            ),
+            bslib::accordion_panel(
+              title = 'Download',
+              icon = bsicons::bs_icon('download'),
+              shiny::numericInput(ns("correlationPlotHeight"), "Height:",
+                                  value = 8, min = 1, max = 100, step = 1),
+              shiny::numericInput(ns("correlationPlotWidth"), "Width:",
+                                  value = 8, min = 1, max = 100, step = 1),
+              shiny::downloadButton(ns("Figure_correlation_download"), label = "Download Figure",
+                                    icon = shiny::icon("download")),
+              shiny::downloadButton(ns("table_correlation_download"), label = "Download Table",
+                                    icon = shiny::icon("download"))
+            )
+          ),
+          shiny::tabsetPanel(
+            type = "tabs",
+            shiny::tabPanel(
+              title = "Figure",
+              shiny::plotOutput(ns("correlationPlot"))
+            ),
+            shiny::tabPanel(
+              title = "Table",
+              DT::DTOutput(ns("correlation_dataTable"))
+            )
+          )
+        ),
+        bslib::navset_card_tab(
+          height = 600,
+          full_screen = TRUE,
+          title = "Heatmap",
+          sidebar = bslib::accordion(
+            open = 'closed',
+            bslib::accordion_panel(
+              title = 'Parameter',
+              shiny::radioButtons(inputId = ns("Logical_value2"),
+                                  label = "Logical value",
+                                  choices = c("TRUE", "FALSE"),
+                                  selected = "TRUE")
+            ),
+            bslib::accordion_panel(
+              title = 'Run',
+              shiny::actionButton(ns("plotheatmap"), "Run")
+            )
+          ),
+          shiny::plotOutput(ns("correlationPlotshow"))
         )
       )
     )
@@ -180,284 +168,244 @@ mv_summary_ui <- function(id) {
 
 #' @title mv_summary_server
 #' @name mv_summary_server
-#' @param id description
-#' @param input description
-#' @param output description
-#' @param session description
-#' @import utils
+#' @param id A unique identifier for the Shiny namespace.
 #' @import shiny
-#' @import tidyr
-#' @import ggplot2
-#' @import grDevices
-#' @import dplyr
-#' @import tidyverse
-#' @import stats
+#' @importFrom utils read.csv write.csv head
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr everything mutate left_join
+#' @importFrom tibble column_to_rownames
+#' @importFrom DT renderDT datatable
+#' @importFrom grDevices pdf dev.off
+#' @importFrom preprocessCore normalize.quantiles
+#' @importFrom PCAtools pca biplot
+#' @importFrom corrplot corrplot
+#' @importFrom ComplexHeatmap Heatmap
+#' @importFrom circlize colorRamp2
 #' @export
 #'
-utils::globalVariables(c("value","Sample","Group"))
 
+utils::globalVariables(c("value","Sample","Group"))
 mv_summary_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     # boxplot -----------------------------------------------------------------
-    # 上传表达量
-    data <- reactive({
-      req(input$file)
-      read.csv(input$file$datapath, row.names = 1)
+    data <- shiny::reactive({
+      shiny::req(input$file)
+      utils::read.csv(input$file$datapath, row.names = 1)
     })
-    # 上传分组信息
-    group <- reactive({
-      req(input$GroupInfo)
-      read.csv(input$GroupInfo$datapath)
+    group <- shiny::reactive({
+      shiny::req(input$GroupInfo)
+      utils::read.csv(input$GroupInfo$datapath)
     })
-    # 绘制箱线图1
-    observeEvent(input$boxplot, {
-      # 绘制相关性图
-      output$boxplotbeforeshow <- renderPlot({
-        req(data())
-        req(group())
-        # 数据整理
+    shiny::observeEvent(input$boxplot, {
+      output$boxplotbeforeshow <- shiny::renderPlot({
+        shiny::req(data())
+        shiny::req(group())
         boxplot <- data() %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
-          dplyr::mutate(value = log10(value)) %>%
+          tidyr::pivot_longer(cols = dplyr::everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
+          dplyr::mutate(value = base::log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
-        # 画图
-        ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.title = ggplot2::element_text(color = "black"),
+            axis.title = ggplot2::element_text(color = "black"),
+            axis.text = ggplot2::element_text(color = "black"),
+            legend.text = ggplot2::element_text(color = "black"),
+            legend.title = ggplot2::element_text(color = "black")
           )
       })
     })
-    # 绘制箱线图2
-    observeEvent(input$boxplot, {
-      # 绘制相关性图
-      output$boxplotaftershow <- renderPlot({
-        req(data())
-        req(group())
-        # 数据整理
+    shiny::observeEvent(input$boxplot, {
+      output$boxplotaftershow <- shiny::renderPlot({
+        shiny::req(data())
+        shiny::req(group())
         boxplot <- data() %>%
-          as.matrix() %>%
+          base::as.matrix() %>%
           preprocessCore::normalize.quantiles() %>%
-          as.data.frame() %>%
-          setNames(colnames(data())) %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
-          dplyr::mutate(value = log10(value)) %>%
+          base::as.data.frame() %>%
+          stats::setNames(base::colnames(data())) %>%
+          tidyr::pivot_longer(cols = dplyr::everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
+          dplyr::mutate(value = base::log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
-        # 画图
-        ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.title = ggplot2::element_text(color = "black"),
+            axis.title = ggplot2::element_text(color = "black"),
+            axis.text = ggplot2::element_text(color = "black"),
+            legend.text = ggplot2::element_text(color = "black"),
+            legend.title = ggplot2::element_text(color = "black")
           )
       })
     })
-    output$download_boxplot <- downloadHandler(
+    output$download_boxplot <- shiny::downloadHandler(
       filename = function() {
-        paste("boxplot_", Sys.Date(), ".pdf", sep = "")
+        base::paste("boxplot_", base::Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        # 设置文件输出为PDF格式
-        pdf(file, width = input$boxplot_width, height = input$boxplot_height)
-        req(data())  # 确保数据已加载
-        req(group())  # 确保分组信息已加载
+        grDevices::pdf(file, width = input$boxplot_width, height = input$boxplot_height)
+        shiny::req(data())
+        shiny::req(group())
         # before
         boxplot <- data() %>%
-          pivot_longer(cols = everything(),
-                       names_to = "Sample",
-                       values_to = "value") %>%
-          dplyr::mutate(value = log10(value)) %>%
+          tidyr::pivot_longer(cols = dplyr::everything(),
+                              names_to = "Sample",
+                              values_to = "value") %>%
+          dplyr::mutate(value = base::log10(value)) %>%
           dplyr::left_join(group(),by = "Sample")
-        # 画图
-        p1 <- ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),         # 去除主网格线
-            panel.grid.minor = element_blank(),         # 去除次网格线
-            plot.title = element_text(color = "black"), # 标题字体颜色
-            axis.title = element_text(color = "black"), # 坐标轴标题颜色
-            axis.text = element_text(color = "black"),  # 坐标轴刻度文字颜色
-            legend.text = element_text(color = "black"),# 图例文字颜色
-            legend.title = element_text(color = "black")# 图例标题颜色
+        p1 <- ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.title = ggplot2::element_text(color = "black"),
+            axis.title = ggplot2::element_text(color = "black"),
+            axis.text = ggplot2::element_text(color = "black"),
+            legend.text = ggplot2::element_text(color = "black"),
+            legend.title = ggplot2::element_text(color = "black")
           )
         # after
         boxplot <- data() %>%
-          as.matrix() %>%
+          base::as.matrix() %>%
           preprocessCore::normalize.quantiles() %>%
-          as.data.frame() %>%
-          setNames(colnames(data())) %>%
-          pivot_longer(cols = everything(), names_to = "Sample", values_to = "value") %>%
-          dplyr::mutate(value = log10(value)) %>%
+          base::as.data.frame() %>%
+          stats::setNames(colnames(data())) %>%
+          tidyr::pivot_longer(cols = dplyr::everything(), names_to = "Sample", values_to = "value") %>%
+          dplyr::mutate(value = base::log10(value)) %>%
           dplyr::left_join(group(), by = "Sample")
-        # 绘制箱线图
-        p2 <- ggplot(boxplot, aes(x = Sample, y = value, fill = Group)) +
-          geom_boxplot(color = input$boxplot_color) +
-          labs(x = "", y = "Log10(Protein Abundance)") +
-          theme_bw() +
-          theme(
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            plot.title = element_text(color = "black"),
-            axis.title = element_text(color = "black"),
-            axis.text = element_text(color = "black"),
-            legend.text = element_text(color = "black"),
-            legend.title = element_text(color = "black")
+        p2 <- ggplot2::ggplot(boxplot, ggplot2::aes(x = Sample, y = value, fill = Group)) +
+          ggplot2::geom_boxplot(color = input$boxplot_color) +
+          ggplot2::labs(x = "", y = "Log10(Protein Abundance)") +
+          ggplot2::theme_bw() +
+          ggplot2::theme(
+            panel.grid.major = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.title = ggplot2::element_text(color = "black"),
+            axis.title = ggplot2::element_text(color = "black"),
+            axis.text = ggplot2::element_text(color = "black"),
+            legend.text = ggplot2::element_text(color = "black"),
+            legend.title = ggplot2::element_text(color = "black")
           )
-        print(p1)  # 打印图形到pdf
+        print(p1)
         print(p2)
-        # 关闭设备，保存PDF文件
-        dev.off()  # 确保关闭图形设备
+        grDevices::dev.off()
       }
     )
 
     # PCA ---------------------------------------------------------------------
-    observeEvent(input$run_btn_PCA, {
-      # 绘制相关性图
-      output$PCAplotshow <- renderPlot({
-        req(data())
-        req(group())
+    shiny::observeEvent(input$run_btn_PCA, {
+      output$PCAplotshow <- shiny::renderPlot({
+        shiny::req(data())
+        shiny::req(group())
         class <- group() %>%
           tibble::column_to_rownames("Sample")
-        expr <- log10(data())
+        expr <- base::log10(data())
         pca_data <- t(expr)
         pca <- PCAtools::pca(expr, metadata = class)
-        biplot(pca,
-               x = "PC1",
-               y = "PC2",
-               colby = "Group",
-               legendPosition = "right",
-               lab = NULL,
-               encircle = TRUE,
-               encircleFill = TRUE
+        PCAtools::biplot(pca,
+                         x = "PC1",
+                         y = "PC2",
+                         colby = "Group",
+                         legendPosition = "right",
+                         lab = NULL,
+                         encircle = TRUE,
+                         encircleFill = TRUE
         )
       })
-      # 显示上传的表格
       output$PCA_dataTable <- DT::renderDT({
-        req(data())
-        req(group())
+        shiny::req(data())
+        shiny::req(group())
         class <- group() %>%
           tibble::column_to_rownames("Sample")
-        expr <- log10(data())
+        expr <- base::log10(data())
         pca_data <- t(expr)
         pca <- PCAtools::pca(expr, metadata = class)
         DT::datatable(data.frame(pca[["rotated"]]))
       })
     })
-    # 下载表格
-    output$download_PCA_table <- downloadHandler(
+    output$download_PCA_table <- shiny::downloadHandler(
       filename = function() {
-        paste("PCA_rotated_", Sys.Date(), ".csv", sep = "")
+        base::paste("PCA_rotated_", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(data())
-        req(group())
+        shiny::req(data())
+        shiny::req(group())
         class <- group() %>%
           tibble::column_to_rownames("Sample")
-        expr <- log10(data())
-        pca_data <- t(expr)
-        pca <- pca(expr, metadata = class)
-
-        # 保存旋转矩阵为CSV文件
-        write.csv(pca[["rotated"]], file, row.names = TRUE)
+        expr <- base::log10(data())
+        pca_data <- base::t(expr)
+        pca <- PCAtools::pca(expr, metadata = class)
+        utils::write.csv(pca[["rotated"]], file, row.names = TRUE)
       }
     )
-
     # correlation ---------------------------------------------------------------------
-    # 计算并显示相关性矩阵
-    observeEvent(input$calculate, {
-      req(data())
+    shiny::observeEvent(input$calculate, {
+      shiny::req(data())
       method <- input$method
-      correlation_matrix <- cor(data(), method = method, use = "complete.obs")
-
-      # 显示上传的表格
+      correlation_matrix <- stats::cor(data(), method = method, use = "complete.obs")
       output$correlation_dataTable <- DT::renderDT({
         DT::datatable(correlation_matrix)
       })
-
-      # 绘制相关性图
-      output$correlationPlot <- renderPlot({
-        req(input$calculate)  # 只有点击"Calculate"后才会渲染图形
+      output$correlationPlot <- shiny::renderPlot({
+        req(input$calculate)
         corrplot::corrplot(corr=correlation_matrix,order = "AOE",type="upper",tl.pos = "d")
         corrplot::corrplot(corr = correlation_matrix,add=TRUE, type="lower", method="number",
-                 order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
+                           order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
       })
     })
-
-    # 下载相关性图（PDF）
-    output$Figure_correlation_download <- downloadHandler(
+    output$Figure_correlation_download <- shiny::downloadHandler(
       filename = function() {
-        paste("correlation_plot", Sys.Date(), ".pdf", sep = "")
+        base::paste("correlation_plot", base::Sys.Date(), ".pdf", sep = "")
       },
       content = function(file) {
-        req(input$calculate)  # 确保图形只有在计算后下载
-        # 保存图形为PDF文件
-        pdf(file, width = input$correlationPlotWidth,
-            height = input$correlationPlotHeight)  # 设置PDF输出的宽度和高度
-        # corrplot(cor(data(), method = input$method, use = "complete.obs"),
-        #          method = "circle",type = "full", tl.col = "black",
-        #          tl.srt = 45, mar = c(0, 0, 1, 0))
+        shiny::req(input$calculate)
+        grDevices::pdf(file, width = input$correlationPlotWidth,
+            height = input$correlationPlotHeight)
         corrplot::corrplot(cor(data(),method = input$method),order = "AOE",type="upper",tl.pos = "d")
         corrplot::corrplot(cor(data(),method = input$method),add=TRUE, type="lower", method="number",
-                 order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
-        dev.off()
+                           order="AOE",diag=FALSE,tl.pos="n", cl.pos="n",number.cex = 0.7)
+        grDevices::dev.off()
       }
     )
-
-    # 下载相关性表格（CSV）
-    output$table_correlation_download <- downloadHandler(
+    output$table_correlation_download <- shiny::downloadHandler(
       filename = function() {
-        paste("correlation_table", Sys.Date(), ".csv", sep = "")
+        base::paste("correlation_table", base::Sys.Date(), ".csv", sep = "")
       },
       content = function(file) {
-        req(input$calculate)  # 确保只有在计算后下载表格
-        # 将相关性矩阵写入CSV文件
-        write.csv(cor(data(), method = input$method, use = "complete.obs"), file, row.names = TRUE)
+        shiny::req(input$calculate)
+        utils::write.csv(stats::cor(data(), method = input$method, use = "complete.obs"), file, row.names = TRUE)
       }
     )
     # heatmap ---------------------------------------------------------------------
-    # 绘制热图
-    observeEvent(input$plotheatmap, {
-      # 绘制相关性图
-      output$correlationPlotshow <- renderPlot({
-        req(data())
+    shiny::observeEvent(input$plotheatmap, {
+      output$correlationPlotshow <- shiny::renderPlot({
+        shiny::req(data())
         data_normalized <- data() %>%
-          head(10) %>%
-          as.matrix() %>%
-          t() %>%
-          scale() %>%
-          t()
+          utils::head(10) %>%
+          base::as.matrix() %>%
+          base::t() %>%
+          base::scale() %>%
+          base::t()
         ComplexHeatmap::Heatmap(
           data_normalized,
           col = circlize::colorRamp2(c(-2,0,2),c("green","white","red"))
-          )
+        )
       })
     })
-
-
   })
 }
-
-
-

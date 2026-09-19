@@ -1,94 +1,165 @@
+#' DEP Analysis UI Module
+#'
+#' @param id The namespace identifier for the module
+#' @return A Shiny UI tagList containing all UI elements for the DEP analysis module
 #' @import shiny
 #' @import bslib
-#' @import bsicons
+#' @importFrom shinyWidgets switchInput progressBar
+#' @importFrom rhandsontable rHandsontableOutput
+#' @importFrom colourpicker colourInput
+#' @importFrom bsicons bs_icon
+#' @importFrom DT DTOutput
+#' @name DEP_analysis_ui
 #' @export
 #'
-options(shiny.maxRequestSize = 300 * 1024^2)
-# UI
 DEP_analysis_ui <- function(id) {
-  ns <- NS(id)
-  nav_panel(
-    title = 'DEP analysis',
-    icon = bs_icon("play-circle"),
-    layout_sidebar(
-      sidebar = accordion(
-        accordion_panel(
-          title = "File Upload",
-          icon = bs_icon("upload"),
-          fileInput(
-            inputId = ns('file'),
-            label = 'Expression matrix',
-            multiple = FALSE,
-            accept = '.csv'
-          ),
-          fileInput(
-            inputId = ns('GroupInfo'),
-            label = 'Group information',
-            multiple = FALSE,
-            accept = '.csv'
-          ),
-          fileInput(
-            inputId = ns('CompareGroup'),
-            label = 'Compare Group information',
-            multiple = FALSE,
-            accept = '.csv'
+  ns <- shiny::NS(id)
+
+  shiny::tagList(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
+        width = 350,
+
+        shiny::div(
+          style = "margin-bottom: 12px;",
+          shiny::actionButton(
+            ns("load_data"),
+            "LOAD DATA",
+            class = "btn btn-light fw-bold pv-run-button"
           )
+        ),
+
+        shiny::uiOutput(ns("load_status_panel")),
+
+        shinyWidgets::progressBar(
+          id = ns("load_progress"),
+          value = 0,
+          total = 100,
+          display_pct = TRUE,
+          striped = TRUE,
+          status = "success",
+          title = "Load progress"
+        ),
+
+        shiny::hr(),
+
+        shiny::h5("Demo CompareGroup"),
+        shiny::tags$small(
+          "Built-in comparisons use the tissue column (Root vs Shoot). Uploaded CompareGroup files with Group1 and Group2 remain supported.",
+          style = "color: #6c757d;"
+        ),
+        shiny::div(
+          style = "margin-top: 8px; margin-bottom: 8px;",
+          DT::DTOutput(ns("demo_compare_table"))
+        ),
+        shiny::actionButton(
+          ns("use_demo_data"),
+          "Use demo data",
+          class = "btn btn-light fw-bold"
+        ),
+
+        shiny::hr(),
+
+        shiny::tags$small(
+          "CompareGroup requires two columns (Group1 & Group2) with different content.",
+          style = "color: #6c757d"
+        ),
+
+        shinyWidgets::switchInput(
+          inputId = ns("input_mode"),
+          label = "CompareGroup",
+          value = TRUE,
+          onLabel = "Upload",
+          offLabel = "Paste",
+          width = "100%"
+        ),
+
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == true"),
+          shiny::tags$small("Upload CompareGroup", style = "color: #6c757d"),
+          shiny::fileInput(
+            inputId = ns("compare_file"),
+            label = NULL,
+            multiple = FALSE,
+            accept = c(".csv", ".xlsx")
+          )
+        ),
+
+        shiny::conditionalPanel(
+          condition = base::paste0("input['", ns("input_mode"), "'] == false"),
+          shiny::div(
+            shiny::tags$small("Edit CompareGroup", style = "color: #6c757d"),
+            rhandsontable::rHandsontableOutput(ns("hot_compare")),
+            shiny::br(),
+            shiny::tags$small("Paste CompareGroup", style = "color: #6c757d"),
+            shiny::textAreaInput(
+              inputId = ns("paste_data"),
+              label = NULL,
+              placeholder = "Copy and paste Excel data here.",
+              rows = 5
+            ),
+            shiny::actionButton(
+              ns("apply_paste"),
+              "Apply paste data",
+              class = "btn btn-light fw-bold")
+          )
+        ),
+
+        shiny::hr(),
+
+        shiny::actionButton(
+          ns("run_dep"),
+          "RUN DEP",
+          class = "btn btn-light fw-bold pv-run-button"
+        ),
+        shiny::br(),
+        shiny::br(),
+
+        shiny::h5("DEP Analysis Progress"),
+        shinyWidgets::progressBar(
+          id = ns("dep_progress"),
+          value = 0,
+          total = 100,
+          display_pct = TRUE,
+          striped = TRUE,
+          status = "warning",
+          title = "DEP progress"
         )
       ),
-      page_fluid(
-        layout_column_wrap(
-          width = 1,
-          height = 600,
-          navset_card_tab(
-            height = 600,
-            full_screen = TRUE,
-            title = "Result",
-            sidebar = accordion(
-              open = 'closed',
-              accordion_panel(
-                title = 'Parameter',
-                textInput(
-                  inputId = "LogFC",
-                  label = "LogFC:",
-                  value = "1"
-                ),
-                textInput(
-                  inputId = "Pvalue",
-                  label = "Pvalue:",
-                  value = "0.05"
-                ),
-              ),
-              accordion_panel(
-                title = "Run",
-                actionButton(ns("run_button"), "Run")
-              ),
-              accordion_panel(
-                title = 'Download',
-                icon = bs_icon('download'),
-                downloadButton(ns("download"), label = "Download Table", icon = icon("download"))
-              )
-            ),
-            mainPanel(
-              tabsetPanel(
-                type = "tabs",
-                tabPanel(
-                  title = "Expression matrix",
-                  DT::DTOutput(ns("Expression_dataTable"))
-                ),
-                tabPanel(
-                  title = "Group information",
-                  DT::DTOutput(ns("Group_dataTable"))
-                ),
-                tabPanel(
-                  title = "Compare Group information",
-                  DT::DTOutput(ns("Compare_Group_dataTable"))
-                ),
-                tabPanel(
-                  title = "Result",
-                  uiOutput(ns("dynamic_tabs"))  # 动态生成的标签栏
-                )
-              )
+
+      bslib::card(
+        height = "600px",
+        bslib::card_header("Data Preview"),
+        bslib::navset_card_tab(
+          full_screen = TRUE,
+
+          bslib::nav_panel(
+            "Sample Info",
+            shiny::div(
+              style = "height: 500px; overflow: auto;",
+              DT::DTOutput(ns("sample_info"))
             )
+          ),
+
+          bslib::nav_panel(
+            "Normalized Data",
+            shiny::div(
+              style = "height: 500px; overflow: auto;",
+              DT::DTOutput(ns("normalized_data"))
+            )
+          ),
+
+          bslib::nav_panel(
+            "Group Comparison",
+            shiny::div(
+              style = "height: 500px; overflow: auto;",
+              DT::DTOutput(ns("group_comparison"))
+            )
+          ),
+
+          bslib::nav_panel(
+            "DEP result",
+            shiny::uiOutput(ns("dynamic_dep_tabs"))
           )
         )
       )
@@ -96,159 +167,1528 @@ DEP_analysis_ui <- function(id) {
   )
 }
 
-# Server
-#' @import limma
+#' DEP Analysis Server Module
+#'
+#' @param id The namespace identifier for the module
+#' @param shared_state A reactive list containing shared state variables across modules
+#' @return A reactive list containing comparison data, normalized matrix, sample info, and DEP results
+#' @import shiny
+#' @importFrom dplyr filter pull select all_of mutate case_when count
+#' @importFrom tibble rownames_to_column
+#' @importFrom rhandsontable renderRHandsontable rhandsontable hot_table hot_to_r
+#' @importFrom readxl read_excel
+#' @importFrom tools file_ext
+#' @importFrom DT renderDT datatable DTOutput
+#' @importFrom limma lmFit makeContrasts contrasts.fit eBayes topTable
+#' @importFrom pheatmap pheatmap
+#' @importFrom colourpicker colourInput
+#' @importFrom ggplot2 ggsave
+#' @importFrom shinyWidgets updateProgressBar
+#' @name DEP_analysis_server
+#' @export
+#'
+utils::globalVariables(c(
+  "P.Value", "regulation", "logFC", "Cluster", "Var2", "Var1", "group", "sample_id"
+))
 
-utils::globalVariables(c("Accession", "judge", "sample_name",
-                         "value2"))
-DEP_analysis_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+DEP_analysis_server <- function(id, shared_state) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # 上传表达矩阵
-    data <- reactive({
-      req(input$file)
-      utils::read.csv(input$file$datapath)
+    coalesce_input <- function(x, default) {
+      if (base::is.null(x) || base::length(x) == 0 || base::identical(x, "")) {
+        default
+      } else {
+        x
+      }
+    }
+
+    normalize_tissue <- function(x) {
+      values <- trimws(tolower(as.character(x)))
+      dplyr::case_when(
+        grepl("shoot|leaf|above", values) ~ "Shoot",
+        grepl("root|below", values) ~ "Root",
+        TRUE ~ trimws(as.character(x))
+      )
+    }
+
+    numeric_expression_matrix <- function(x) {
+      df <- base::as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+      values <- base::lapply(df, function(column) {
+        suppressWarnings(base::as.numeric(base::as.character(column)))
+      })
+      matrix <- base::as.matrix(
+        base::as.data.frame(values, stringsAsFactors = FALSE, check.names = FALSE)
+      )
+      storage.mode(matrix) <- "numeric"
+      if (!base::is.null(base::rownames(df))) {
+        base::rownames(matrix) <- base::rownames(df)
+      }
+      matrix
+    }
+
+    reset_dep_state <- function() {
+      rv$dep_ready <- FALSE
+      rv$dep_has_run <- FALSE
+      rv$dep_results <- base::list()
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "dep_progress",
+        value = 0,
+        total = 100
+      )
+    }
+
+    rv <- shiny::reactiveValues(
+      sample_info = NULL,
+      load_success = FALSE,
+      normalized_matrix = NULL,
+      compare_data = NULL,
+      dep_results = base::list(),
+      dep_ready = FALSE,
+      dep_has_run = FALSE
+    )
+
+    demo_compare_data <- shiny::reactive({
+      if (!base::is.null(rv$sample_info) &&
+          "tissue" %in% base::colnames(rv$sample_info)) {
+        tissues <- unique(as.character(rv$sample_info$tissue))
+        tissues <- tissues[!is.na(tissues) & nzchar(tissues) & tissues != "Unassigned"]
+        if (base::all(c("Root", "Shoot") %in% tissues)) {
+          return(base::data.frame(
+            Group1 = "Root",
+            Group2 = "Shoot",
+            stringsAsFactors = FALSE
+          ))
+        }
+      }
+
+      groups <- if (!base::is.null(rv$sample_info) &&
+                    "group" %in% base::colnames(rv$sample_info)) {
+        unique(as.character(rv$sample_info$group))
+      } else {
+        character()
+      }
+      groups <- groups[!is.na(groups) & nzchar(groups) & groups != "Unassigned"]
+      b73 <- groups[grepl("^B73", groups)]
+      y12 <- groups[grepl("^Y12", groups)]
+      matched <- b73[paste0("Y12", substring(b73, 4L)) %in% y12]
+      if (length(matched) > 0L) {
+        return(base::data.frame(
+          Group1 = matched,
+          Group2 = paste0("Y12", substring(matched, 4L)),
+          stringsAsFactors = FALSE
+        ))
+      }
+      if (length(groups) >= 2L) {
+        return(base::data.frame(
+          Group1 = groups[[1L]], Group2 = groups[[2L]],
+          stringsAsFactors = FALSE
+        ))
+      }
+      base::data.frame(
+        Group1 = c("B73_Root_VE", "B73_Root_V2"),
+        Group2 = c("Y12_Root_VE", "Y12_Root_V2"),
+        stringsAsFactors = FALSE
+      )
     })
 
-    # 上传分组信息
-    group <- reactive({
-      req(input$GroupInfo)
-      utils::read.csv(input$GroupInfo$datapath)
+    template_df <- shiny::reactive({
+      demo_compare_data()
     })
 
-    # 上传Compare Group信息
-    compare_group <- reactive({
-      req(input$CompareGroup)
-      utils::read.csv(input$CompareGroup$datapath)
+    shiny::observe({
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "load_progress",
+        value = 0,
+        total = 100
+      )
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "dep_progress",
+        value = 0,
+        total = 100
+      )
     })
 
-    # 显示上传的表格
-    output$Expression_dataTable <- DT::renderDT({
-      req(data())
-      DT::datatable(data())
+    output$demo_compare_table <- DT::renderDT({
+      DT::datatable(
+        demo_compare_data(),
+        options = base::list(
+          dom = "t",
+          paging = FALSE,
+          searching = FALSE,
+          ordering = FALSE,
+          info = FALSE,
+          scrollX = TRUE
+        ),
+        rownames = FALSE
+      )
     })
 
-    output$Group_dataTable <- DT::renderDT({
-      req(group())
-      DT::datatable(group())
+    shiny::observeEvent(input$use_demo_data, {
+      rv$compare_data <- demo_compare_data()
+      reset_dep_state()
+      shiny::showNotification("✅ Demo CompareGroup loaded.", type = "message")
     })
 
-    output$Compare_Group_dataTable <- DT::renderDT({
-      req(compare_group())
-      DT::datatable(compare_group())
-    })
-
-    # 动态生成标签栏
-    output$dynamic_tabs <- renderUI({
-      req(compare_group())
-
-      # 获取 CompareGroup 数据的行数
-      num_groups <- nrow(compare_group())
-
-      # 创建动态的 tabPanel，标题为 compare_group[i,1] vs compare_group[i,2]
-      tab_panels <- lapply(1:num_groups, function(i) {
-        group_name <- paste0(compare_group()[i, 1], "_vs_", compare_group()[i, 2])
-
-        tabPanel(
-          title = group_name,
-          DT::DTOutput(ns(paste0("DEP_dataTable_", i)))  # 每个标签栏有独立的 DT 输出
+    shiny::observeEvent(input$load_data, {
+      if (!.protvis_begin_run(shared_state, "dep_load", session, "load_data")) {
+        shiny::showNotification("DEP data loading is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "dep_load", session, "load_data"),
+              add = TRUE)
+      if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        matrix <- numeric_expression_matrix(shared_state$dataset$expression_data)
+        rv$sample_info <- shared_state$dataset$sample_info
+        if ("tissue" %in% base::colnames(rv$sample_info)) {
+          rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue)
+        } else if ("tissue2" %in% base::colnames(rv$sample_info)) {
+          rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue2)
+        }
+        rv$normalized_matrix <- matrix
+        rv$compare_data <- demo_compare_data()
+        rv$load_success <- TRUE
+        reset_dep_state()
+        shinyWidgets::updateProgressBar(
+          session = session, id = "load_progress", value = 100, total = 100
         )
+        shiny::showNotification(
+          "✅ ProtVis_dataset loaded; demo comparison groups are ready.",
+          type = "message"
+        )
+        return(invisible(NULL))
+      }
+      shiny::req(shared_state$workdir)
+
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "load_progress",
+        value = 10,
+        total = 100
+      )
+
+      rda_path <- base::file.path(shared_state$workdir, "Step6_data_normalization.rda")
+
+      if (base::file.exists(rda_path)) {
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "load_progress",
+          value = 35,
+          total = 100
+        )
+
+        dataset <- .protvis_load_stage_dataset(
+          rda_path, expression_names = "normalized_data"
+        )
+
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "load_progress",
+          value = 70,
+          total = 100
+        )
+
+        if (!base::is.null(dataset)) {
+          shared_state$dataset <- dataset
+          rv$sample_info <- dataset$sample_info
+          if ("tissue" %in% base::colnames(rv$sample_info)) {
+            rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue)
+          } else if ("tissue2" %in% base::colnames(rv$sample_info)) {
+            rv$sample_info$tissue <- normalize_tissue(rv$sample_info$tissue2)
+          }
+        } else {
+          rv$sample_info <- NULL
+        }
+
+        if (!base::is.null(dataset)) {
+          rv$normalized_matrix <- numeric_expression_matrix(
+            dataset$expression_data
+          )
+        } else {
+          rv$normalized_matrix <- NULL
+          shiny::showNotification(
+            "Step6_data_normalization.rda does not contain normalized data.",
+            type = "warning"
+          )
+        }
+
+        rv$load_success <- !base::is.null(rv$normalized_matrix) &&
+          !base::is.null(rv$sample_info)
+        if (isTRUE(rv$load_success) && base::is.null(rv$compare_data)) {
+          rv$compare_data <- demo_compare_data()
+        }
+        reset_dep_state()
+
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "load_progress",
+          value = 100,
+          total = 100
+        )
+
+        shiny::showNotification("✅ Data loaded successfully.", type = "message")
+      } else {
+        rv$load_success <- FALSE
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "load_progress",
+          value = 0,
+          total = 100
+        )
+        shiny::showNotification("Step6_data_normalization.rda not found.", type = "error")
+      }
+    })
+
+    output$load_status_panel <- shiny::renderUI({
+      if (rv$load_success) {
+        shiny::span("✅ Data loaded", style = "color: green;")
+      } else {
+        shiny::span("❌ Data not loaded", style = "color: red;")
+      }
+    })
+
+    output$hot_compare <- rhandsontable::renderRHandsontable({
+      df <- if (!base::is.null(rv$compare_data)) rv$compare_data else template_df()
+
+      rhandsontable::rhandsontable(df, stretchH = "all") %>%
+        rhandsontable::hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    shiny::observeEvent(input$compare_file, {
+      shiny::req(input$compare_file)
+
+      ext <- tools::file_ext(input$compare_file$name)
+
+      df <- tryCatch({
+        if (ext == "csv") {
+          utils::read.csv(
+            input$compare_file$datapath,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+          )
+        } else if (ext %in% c("xls", "xlsx")) {
+          as.data.frame(readxl::read_excel(input$compare_file$datapath))
+        } else {
+          NULL
+        }
+      }, error = function(e) {
+        shiny::showNotification(
+          base::paste("Failed to read file:", e$message),
+          type = "error"
+        )
+        NULL
       })
 
-      # 返回动态生成的标签栏
-      base::do.call(tabsetPanel, c(list(type = "tabs"), tab_panels))
+      if (!base::is.null(df)) {
+        rv$compare_data <- df
+        reset_dep_state()
+        shiny::showNotification("✅ Comparison group file loaded.", type = "message")
+      }
     })
 
-    # 运行差异表达分析
-    observeEvent(input$run_button, {
-      req(data(), group(), compare_group())
+    shiny::observeEvent(input$apply_paste, {
+      shiny::req(input$paste_data)
 
-      # 获取表达矩阵，分组信息，和比较组信息
-      exp_mat <- data() %>%
-        dplyr::mutate(across(everything(), ~ ifelse(is.na(.),0,.))) %>%
-        tidyr::pivot_longer(!Accession,names_to = 'sample_name',values_to = 'value') %>%
-        dplyr::left_join(group(), by = c("sample_name" = "Sample")) %>%
-        dplyr::group_by(Accession,Group) %>%
-        dplyr::mutate(judge = case_when(
-          value == 0 ~ 0, # 没有表达量的统计为0
-          TRUE ~ 1# 有表达量的统计为1
-        ),
-        judge2 = sum(judge) # 计算一下3个重复中有几个有表达量
-        ) %>%
-        dplyr::mutate(value2 = case_when(
-          judge == 0 & judge2 == 2 ~ sum(value)/2, # 如果这个值是0，但是3个重复中有2个有表达量，那么就给他去平均值替换0
-          judge == 0 & judge2 == 1 ~ 0, # 如果这个值是0，但是3个重复中只有1个有表达量，那么认为是噪音，仍旧给他取0
-          judge == 1 & judge2 == 1 ~ 0, # 如果这个值是1（有表达量），三个重复只有一个有表达量，那么认为是噪音，把他原始的值替换成0
-          TRUE ~ value # 其他情况一律保留原始的值
-        )) %>%
-        dplyr::ungroup() %>%
-        dplyr::select(Accession,sample_name,value2) %>%
-        tidyr::pivot_wider(names_from = sample_name,values_from = value2)
-      group_info <- group()
-      compare_info <- compare_group()
+      tryCatch({
+        df <- utils::read.table(
+          text = input$paste_data,
+          sep = "\t",
+          header = TRUE,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        )
+        rv$compare_data <- df
+        reset_dep_state()
+        shiny::showNotification("✅ Pasted data applied.", type = "message")
+      }, error = function(e) {
+        shiny::showNotification("Invalid paste data format.", type = "error")
+      })
+    })
 
-      # 根据用户输入的LogFC和P值设置阈值
-      logFC_threshold <- as.numeric(input$LogFC)
-      pvalue_threshold <- as.numeric(input$Pvalue)
+    shiny::observeEvent(input$hot_compare, {
+      rv$compare_data <- rhandsontable::hot_to_r(input$hot_compare)
+      reset_dep_state()
+    })
 
-      # 处理每个比较组
-      lapply(1:nrow(compare_info), function(i) {
-        group1 <- compare_info[i, 1]
-        group2 <- compare_info[i, 2]
-        select_sample <- group() %>%
-          filter(Group == group1 | Group == group2) %>%
-          pull(Sample)
-        # 选择对应的样本数据
-        select_data <- exp_mat %>%
-          dplyr::select(Accession,all_of(select_sample)) %>%
-          tibble::column_to_rownames("Accession")
-        print(select_data)
-        # 创建设计矩阵
-        group_list <- factor(c(rep(group1, ncol(select_data) / 2), rep(group2, ncol(select_data) / 2)))
-        design <- stats::model.matrix(~ group_list + 0)
-        colnames(design) <- c(group1, group2)
+    output$dynamic_dep_tabs <- shiny::renderUI({
+      if (!isTRUE(rv$load_success)) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#6c757d;",
+            "Please click LOAD DATA first."
+          )
+        )
+      }
 
-        # 构建线性模型并计算对比
-        fit <- limma::lmFit(select_data,design)
-        contrast_matrix <- limma::makeContrasts(contrasts = paste0(group1, "-", group2), levels = design)
-        fit2 <- limma::contrasts.fit(fit, contrast_matrix)
-        fit2 <- limma::eBayes(fit2)
+      if (base::is.null(rv$compare_data)) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#6c757d;",
+            "Please upload, paste, or use demo CompareGroup."
+          )
+        )
+      }
 
-        # 获取差异表达分析的结果
-        results <- limma::topTable(fit2, coef = 1, number = Inf, adjust.method = "BH", sort.by = "logFC")
-        print(results)
-        # # 筛选差异表达基因
-        # dif <- results %>%
-        #   filter(adj.P.Val <= pvalue_threshold & abs(logFC) > log2(logFC_threshold))
+      compare_data <- rv$compare_data
 
-        # 渲染数据表
-        output[[paste0("DEP_dataTable_", i)]] <- DT::renderDT({
-          DT::datatable(
-            results,
-            extensions = 'Buttons',
-            options = list(
-              dom = 'Bfrtip',
-              buttons = list(
-                list(
-                  extend = 'csv',
-                  text = 'Download CSV',
-                  filename = paste('DEP_data_',
-                                   compare_group()[i, 1],
-                                   "_vs_",
-                                   compare_group()[i, 2]), # 可以设置你想要的文件名
-                  exportOptions = list(
-                    modifier = list(
-                      page = 'all'))
+      if (!base::all(c("Group1", "Group2") %in% base::colnames(compare_data))) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#dc3545;",
+            "CompareGroup must contain two columns: Group1 and Group2."
+          )
+        )
+      }
+
+      compare_data <- compare_data[
+        stats::complete.cases(compare_data[, c("Group1", "Group2"), drop = FALSE]),
+        ,
+        drop = FALSE
+      ]
+
+      if (base::nrow(compare_data) == 0) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#6c757d;",
+            "No valid comparison groups found."
+          )
+        )
+      }
+
+      if (!isTRUE(rv$dep_has_run)) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#6c757d;",
+            "Please click RUN DEP after the data and CompareGroup are ready."
+          )
+        )
+      }
+
+      if (!isTRUE(rv$dep_ready)) {
+        return(
+          shiny::div(
+            style = "padding:20px; color:#6c757d;",
+            "DEP analysis is running or no valid result is available yet."
+          )
+        )
+      }
+
+      tabs <- base::lapply(seq_len(base::nrow(compare_data)), function(i) {
+        group1 <- compare_data[i, "Group1"]
+        group2 <- compare_data[i, "Group2"]
+        tab_name <- base::paste(group1, "vs", group2)
+
+        bslib::nav_panel(
+          tab_name,
+          bslib::layout_column_wrap(
+            width = 1/2,
+            gap = "1.25rem",
+
+            bslib::card(
+              class = "pv-dep-card",
+              height = "560px",
+              bslib::card_header(base::paste("DEP table -", tab_name)),
+              bslib::card_body(DT::DTOutput(ns(base::paste0("dep_table_", i))))
+            ),
+
+            bslib::card(
+              class = "pv-dep-card",
+              height = "560px",
+              bslib::card_header(base::paste("Volcano plot -", tab_name)),
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("volcano_sidebar_", i)),
+                    position = "left",
+                    open = "open",
+                    width = 250,
+                    bslib::accordion(
+                      bslib::accordion_panel(
+                        title = "Parameter",
+                        icon = shiny::icon("correlation"),
+                        shiny::numericInput(
+                          ns(base::paste0("volcano_logfc_", i)),
+                          "logFC threshold",
+                          value = 0.27,
+                          min = 0,
+                          max = 5,
+                          step = 0.1
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("volcano_pval_", i)),
+                          "P-value threshold",
+                          value = 0.05,
+                          min = 0,
+                          max = 1,
+                          step = 0.01
+                        ),
+                        colourpicker::colourInput(
+                          ns(base::paste0("color_up_", i)),
+                          "Upregulated colour",
+                          value = "#d62728"
+                        ),
+                        colourpicker::colourInput(
+                          ns(base::paste0("color_down_", i)),
+                          "Downregulated colour",
+                          value = "#1f77b4"
+                        ),
+                        colourpicker::colourInput(
+                          ns(base::paste0("color_ns_", i)),
+                          "Not significant colour",
+                          value = "#7f7f7f"
+                        )
+                      ),
+                      bslib::accordion_panel(
+                        title = "Download",
+                        icon = bsicons::bs_icon("download"),
+                        shiny::numericInput(
+                          ns(base::paste0("go_width_", i)),
+                          "Plot width (inch)",
+                          value = 8,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("go_height_", i)),
+                          "Plot height (inch)",
+                          value = 6,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::downloadButton(
+                          ns(base::paste0("download_volcano_", i)),
+                          "Download Plot"
+                        )
+                      )
+                    )
+                  ),
+                  shiny::plotOutput(ns(base::paste0("volcano_plot_", i)),
+                                    height = "420px")
+                )
+              )
+            ),
+
+            bslib::card(
+              class = "pv-dep-card",
+              height = "560px",
+              bslib::card_header(base::paste("Heatmap -", tab_name)),
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("heatmap_sidebar_", i)),
+                    position = "left",
+                    open = "open",
+                    width = 250,
+                    bslib::accordion(
+                      bslib::accordion_panel(
+                        title = "Parameter",
+                        icon = shiny::icon("sliders"),
+                        shiny::checkboxInput(
+                          ns(base::paste0("heatmap_show_colnames_", i)),
+                          "Show sample names",
+                          value = TRUE
+                        )
+                      ),
+                      bslib::accordion_panel(
+                        title = "Download",
+                        icon = bsicons::bs_icon("download"),
+                        shiny::numericInput(
+                          ns(base::paste0("heatmap_width_", i)),
+                          "Plot width (inch)",
+                          value = 8,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("heatmap_height_", i)),
+                          "Plot height (inch)",
+                          value = 6,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::downloadButton(
+                          ns(base::paste0("download_heatmap_", i)),
+                          "Download Heatmap"
+                        )
+                      )
+                    )
+                  ),
+                  shiny::plotOutput(ns(base::paste0("heatmap_", i)), height = "420px")
+                )
+              )
+            ),
+
+            bslib::card(
+              class = "pv-dep-card",
+              height = "560px",
+              bslib::card_header(base::paste("Bar of DEP -", tab_name)),
+              bslib::card_body(
+                bslib::layout_sidebar(
+                  sidebar = bslib::sidebar(
+                    id = ns(base::paste0("bar_sidebar_", i)),
+                    position = "left",
+                    open = "open",
+                    width = 250,
+                    bslib::accordion(
+                      bslib::accordion_panel(
+                        title = "Parameter",
+                        icon = shiny::icon("correlation"),
+                        colourpicker::colourInput(
+                          ns(base::paste0("bar_color_up_", i)),
+                          "Upregulated colour",
+                          value = "#d62728"
+                        ),
+                        colourpicker::colourInput(
+                          ns(base::paste0("bar_color_down_", i)),
+                          "Downregulated colour",
+                          value = "#1f77b4"
+                        )
+                      ),
+                      bslib::accordion_panel(
+                        title = "Download",
+                        icon = bsicons::bs_icon("download"),
+                        shiny::numericInput(
+                          ns(base::paste0("bar_width_", i)),
+                          "Plot width (inch)",
+                          value = 8,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::numericInput(
+                          ns(base::paste0("bar_height_", i)),
+                          "Plot height (inch)",
+                          value = 6,
+                          min = 4,
+                          max = 20
+                        ),
+                        shiny::downloadButton(
+                          ns(base::paste0("download_bar_", i)),
+                          "Download Plot"
+                        )
+                      )
+                    )
+                  ),
+                  shiny::plotOutput(ns(base::paste0("bar_dep_", i)),
+                                    height = "420px")
                 )
               )
             )
           )
-        })
+        )
       })
+
+      bslib::navset_card_tab(full_screen = TRUE, !!!tabs)
     })
 
+    shiny::observeEvent(input$run_dep, {
+      if (!.protvis_begin_run(shared_state, "dep", session, "run_dep")) {
+        shiny::showNotification("DEP analysis is already running; duplicate click ignored.",
+                                type = "warning")
+        return(invisible(NULL))
+      }
+      on.exit(.protvis_end_run(shared_state, "dep", session, "run_dep"),
+              add = TRUE)
+      shiny::req(rv$load_success, rv$compare_data, rv$normalized_matrix, rv$sample_info)
 
+      if (!base::all(c("Group1", "Group2") %in% base::colnames(rv$compare_data))) {
+        shiny::showNotification(
+          "CompareGroup must contain Group1 and Group2 columns.",
+          type = "error"
+        )
+        return(NULL)
+      }
 
+      compare_data <- rv$compare_data
+      compare_data <- compare_data[
+        stats::complete.cases(compare_data[, c("Group1", "Group2"), drop = FALSE]),
+        ,
+        drop = FALSE
+      ]
+
+      if (base::nrow(compare_data) == 0) {
+        shiny::showNotification("No valid comparison groups found.", type = "error")
+        return(NULL)
+      }
+
+      rv$dep_ready <- FALSE
+      rv$dep_has_run <- FALSE
+      rv$dep_results <- base::list()
+
+      shinyWidgets::updateProgressBar(
+        session = session,
+        id = "dep_progress",
+        value = 5,
+        total = 100
+      )
+
+      total_n <- base::nrow(compare_data)
+      valid_result_n <- 0
+
+      for (i in seq_len(total_n)) {
+        group1 <- as.character(compare_data[i, "Group1"])
+        group2 <- as.character(compare_data[i, "Group2"])
+
+        progress_value <- max(5, base::round((i - 1) / total_n * 100))
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "dep_progress",
+          value = progress_value,
+          total = 100
+        )
+
+        if (base::is.null(rv$sample_info) ||
+            !"sample_id" %in% base::colnames(rv$sample_info)) {
+          next
+        }
+
+        grouping_column <- if (
+          "tissue" %in% base::colnames(rv$sample_info) &&
+          base::all(c(group1, group2) %in% as.character(rv$sample_info$tissue))
+        ) {
+          "tissue"
+        } else if ("group" %in% base::colnames(rv$sample_info)) {
+          "group"
+        } else {
+          NULL
+        }
+        if (base::is.null(grouping_column)) {
+          next
+        }
+
+        grouping_values <- as.character(rv$sample_info[[grouping_column]])
+        samples_group1 <- as.character(
+          rv$sample_info[grouping_values == group1, "sample_id", drop = TRUE]
+        )
+        samples_group2 <- as.character(
+          rv$sample_info[grouping_values == group2, "sample_id", drop = TRUE]
+        )
+
+        req_cols <- c(samples_group1, samples_group2)
+
+        if (base::length(samples_group1) == 0 || base::length(samples_group2) == 0) {
+          next
+        }
+
+        if (!base::all(req_cols %in% base::colnames(rv$normalized_matrix))) {
+          next
+        }
+
+        exp_matrix <- numeric_expression_matrix(
+          rv$normalized_matrix[, req_cols, drop = FALSE]
+        )
+
+        if (base::ncol(exp_matrix) < 2 || base::nrow(exp_matrix) == 0) {
+          next
+        }
+
+        local({
+          i_local <- i
+          g1 <- group1
+          g2 <- group2
+          exp_mat_local <- exp_matrix
+
+          group_list <- base::rep(
+            c(g1, g2),
+            c(base::length(samples_group1), base::length(samples_group2))
+          ) %>% factor(levels = c(g1, g2))
+
+          design <- stats::model.matrix(~ factor(group_list) + 0)
+          base::colnames(design) <- c(g1, g2)
+
+          df.fit <- limma::lmFit(exp_mat_local, design)
+          contrast <- limma::makeContrasts(
+            contrasts = base::paste(g1, g2, sep = " - "),
+            levels = design
+          )
+          fit <- limma::contrasts.fit(df.fit, contrast) %>% limma::eBayes()
+          result <- limma::topTable(fit, n = Inf, adjust = "fdr")
+
+          logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+          pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+
+          new_result <- result %>%
+            dplyr::mutate(
+              regulation = dplyr::case_when(
+                logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                TRUE ~ "Not significant"
+              )
+            ) %>%
+            tibble::rownames_to_column("ID") %>%
+            dplyr::mutate(FC = 2 ^ logFC)
+
+          rv$dep_results[[base::paste0(g1, "_vs_", g2)]] <- new_result
+
+          output[[base::paste0("dep_table_", i_local)]] <- DT::renderDT({
+            DT::datatable(
+              new_result,
+              options = base::list(
+                scrollX = TRUE,
+                pageLength = 10,
+                dom = "Bfrtip",
+                buttons = c("copy", "csv", "excel")
+              ),
+              extensions = "Buttons",
+              rownames = FALSE
+            )
+          })
+
+          output[[base::paste0("volcano_plot_", i_local)]] <- shiny::renderPlot({
+            df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+            shiny::req(df)
+
+            logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)
+            pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+            color_up <- coalesce_input(input[[base::paste0("color_up_", i_local)]], "#d62728")
+            color_down <- coalesce_input(input[[base::paste0("color_down_", i_local)]], "#1f77b4")
+            color_ns <- coalesce_input(input[[base::paste0("color_ns_", i_local)]], "#7f7f7f")
+
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+
+            ggplot2::ggplot(df, ggplot2::aes(x = logFC, y = -base::log10(P.Value), color = regulation)) +
+              ggplot2::geom_point(alpha = 0.8, size = 3) +
+              ggplot2::scale_color_manual(values = c(
+                "Upregulated" = color_up,
+                "Downregulated" = color_down,
+                "Not significant" = color_ns
+              )) +
+              ggplot2::theme_bw() +
+              ggplot2::labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+              ggplot2::theme(
+                plot.title = ggplot2::element_text(hjust = 0.5),
+                legend.position = "top"
+              ) +
+              ggplot2::geom_hline(
+                yintercept = -base::log10(pval_thresh),
+                linetype = "dashed",
+                color = "black"
+              ) +
+              ggplot2::geom_vline(
+                xintercept = c(-logfc_thresh, logfc_thresh),
+                linetype = "dashed",
+                color = "black"
+              )
+          })
+
+          output[[base::paste0("download_volcano_", i_local)]] <- shiny::downloadHandler(
+            filename = function() {
+              base::paste0("Volcano_", g1, "_vs_", g2, ".pdf")
+            },
+            content = function(file) {
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+
+              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+              pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              color_up <- coalesce_input(input[[base::paste0("color_up_", i_local)]], "#d62728")
+              color_down <- coalesce_input(input[[base::paste0("color_down_", i_local)]], "#1f77b4")
+              color_ns <- coalesce_input(input[[base::paste0("color_ns_", i_local)]], "#7f7f7f")
+
+              df <- df %>%
+                dplyr::mutate(
+                  regulation = dplyr::case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+
+              g <- ggplot2::ggplot(df, ggplot2::aes(x = logFC, y = -base::log10(P.Value), color = regulation)) +
+                ggplot2::geom_point(alpha = 0.8, size = 3) +
+                ggplot2::scale_color_manual(values = c(
+                  "Upregulated" = color_up,
+                  "Downregulated" = color_down,
+                  "Not significant" = color_ns
+                )) +
+                ggplot2::theme_bw() +
+                ggplot2::labs(x = "Log2 Fold Change", y = "-Log10(pvalue)", color = "") +
+                ggplot2::theme(
+                  plot.title = ggplot2::element_text(hjust = 0.5),
+                  legend.position = "top"
+                ) +
+                ggplot2::geom_hline(
+                  yintercept = -base::log10(pval_thresh),
+                  linetype = "dashed",
+                  color = "black"
+                ) +
+                ggplot2::geom_vline(
+                  xintercept = c(-logfc_thresh, logfc_thresh),
+                  linetype = "dashed",
+                  color = "black"
+                )
+
+              ggplot2::ggsave(
+                file,
+                g,
+                width = coalesce_input(input[[base::paste0("go_width_", i_local)]], 8),
+                height = coalesce_input(input[[base::paste0("go_height_", i_local)]], 6)
+              )
+            }
+          )
+
+          output[[base::paste0("heatmap_", i_local)]] <- shiny::renderPlot({
+            df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+            shiny::req(df)
+
+            # Recalculate significance from the current Volcano plot
+            # controls. This keeps the heatmap synchronized with threshold
+            # changes without requiring DEP to be rerun.
+            logfc_thresh <- coalesce_input(
+              input[[base::paste0("volcano_logfc_", i_local)]],
+              0.5
+            )
+            pval_thresh <- coalesce_input(
+              input[[base::paste0("volcano_pval_", i_local)]],
+              0.05
+            )
+            # Explicitly touch both controls in the render expression so a
+            # Volcano threshold change invalidates this heatmap immediately.
+            logfc_thresh <- as.numeric(logfc_thresh)
+            pval_thresh <- as.numeric(pval_thresh)
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+
+            sig_proteins <- df %>%
+              dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+              dplyr::pull(ID)
+
+            if (base::length(sig_proteins) > 0) {
+              heatmap_data <- exp_mat_local[
+                base::rownames(exp_mat_local) %in% sig_proteins,
+                ,
+                drop = FALSE
+              ]
+              # Heatmap rendering must never receive NA/NaN/Inf. Keep the
+              # DEP statistics unchanged and sanitize only this display copy.
+              heatmap_data <- base::as.data.frame(
+                base::lapply(heatmap_data, function(x) {
+                  suppressWarnings(base::as.numeric(base::as.character(x)))
+                }),
+                stringsAsFactors = FALSE,
+                check.names = FALSE
+              )
+              heatmap_data <- base::as.matrix(heatmap_data)
+              storage.mode(heatmap_data) <- "numeric"
+              finite_rows <- apply(
+                heatmap_data, 1, function(x) any(is.finite(x))
+              )
+              heatmap_data <- heatmap_data[finite_rows, , drop = FALSE]
+              if (base::nrow(heatmap_data) > 0L) {
+                for (row_index in seq_len(base::nrow(heatmap_data))) {
+                  missing <- !is.finite(heatmap_data[row_index, ])
+                  if (any(missing)) {
+                    observed <- heatmap_data[row_index, !missing]
+                    heatmap_data[row_index, missing] <- stats::median(observed)
+                  }
+                }
+              }
+              variable_rows <- if (base::nrow(heatmap_data) > 0L) {
+                apply(heatmap_data, 1, function(x) {
+                  all(is.finite(x)) && length(unique(x)) > 1L
+                })
+              } else {
+                logical()
+              }
+              # Row scaling is undefined for constant proteins.  Do not
+              # discard the entire heatmap when a small demo/replicate set
+              # contains constant rows; retain the data and use raw values.
+              variable_count <- sum(variable_rows)
+              if (variable_count >= 2L) {
+                heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
+              }
+
+              # Always label columns with the samples used in this contrast.
+              # Imported matrices can carry numeric/abundance values as
+              # column names, which makes the heatmap appear misleading.
+              sample_labels <- base::colnames(exp_mat_local)
+              if (base::is.null(sample_labels) ||
+                  base::length(sample_labels) != base::ncol(heatmap_data) ||
+                  base::anyNA(sample_labels) ||
+                  base::any(!base::nzchar(sample_labels))) {
+                sample_labels <- req_cols[base::seq_len(base::ncol(heatmap_data))]
+              }
+              base::colnames(heatmap_data) <- base::make.unique(as.character(sample_labels))
+
+              if (base::nrow(heatmap_data) > 0L &&
+                  base::ncol(heatmap_data) > 0L) {
+                can_cluster_rows <- base::nrow(heatmap_data) >= 2L
+                can_cluster_cols <- base::ncol(heatmap_data) >= 2L
+                if (can_cluster_rows && can_cluster_cols) {
+                  pheatmap::pheatmap(
+                    heatmap_data,
+                    scale = if (variable_count >= 2L) "row" else "none",
+                    cluster_rows = TRUE,
+                    cluster_cols = TRUE,
+                    clustering_distance_rows = "euclidean",
+                    clustering_distance_cols = "euclidean",
+                    clustering_method = "complete",
+                    show_rownames = FALSE,
+                    show_colnames = isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]]),
+                    main = base::paste("Heatmap:", g1, "vs", g2)
+                  )
+                } else {
+                  # pheatmap delegates to hclust, which rejects a singleton
+                  # dimension. Draw those small matrices directly instead of
+                  # returning a blank plot or an uncaught clustering error.
+                  tile_data <- base::expand.grid(
+                    protein = base::seq_len(base::nrow(heatmap_data)),
+                    sample = base::seq_len(base::ncol(heatmap_data))
+                  )
+                  tile_data$value <- base::as.vector(heatmap_data)
+                  tile_data$sample_label <- base::colnames(heatmap_data)[tile_data$sample]
+                  ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+                  ggplot2::geom_tile(color = "white", size = 0.2) +
+                    ggplot2::scale_x_continuous(
+                      breaks = base::seq_len(base::ncol(heatmap_data)),
+                      labels = if (isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])) {
+                        base::colnames(heatmap_data)
+                      } else NULL,
+                      expand = c(0, 0)
+                    ) +
+                    ggplot2::scale_y_continuous(
+                      breaks = base::seq_len(base::nrow(heatmap_data)),
+                      labels = NULL,
+                      expand = c(0, 0)
+                    ) +
+                    ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+                    ggplot2::labs(
+                      x = NULL, y = NULL,
+                      title = base::paste("Heatmap:", g1, "vs", g2),
+                      fill = "Value"
+                    ) +
+                    ggplot2::theme_minimal(base_size = 11) +
+                    ggplot2::theme(
+                      panel.grid = ggplot2::element_blank(),
+                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+                      axis.text.y = ggplot2::element_blank()
+                    )
+                }
+              } else {
+                ggplot2::ggplot() +
+                  ggplot2::annotate(
+                    "text",
+                    x = 0.5,
+                    y = 0.5,
+                    label = "Not enough significant proteins for heatmap",
+                    size = 6
+                  ) +
+                  ggplot2::theme_void()
+              }
+            } else {
+              ggplot2::ggplot() +
+                ggplot2::annotate(
+                  "text",
+                  x = 0.5,
+                  y = 0.5,
+                  label = "No significant proteins",
+                  size = 8
+                ) +
+                ggplot2::theme_void()
+            }
+          })
+
+          output[[base::paste0("download_heatmap_", i_local)]] <- shiny::downloadHandler(
+            filename = function() {
+              base::paste0("Heatmap_", g1, "_vs_", g2, ".pdf")
+            },
+            content = function(file) {
+              width <- coalesce_input(input[[base::paste0("heatmap_width_", i_local)]], 8)
+              height <- coalesce_input(input[[base::paste0("heatmap_height_", i_local)]], 6)
+              width <- as.numeric(width)
+              height <- as.numeric(height)
+              show_colnames <- isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+              logfc_thresh <- as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5))
+              pval_thresh <- as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05))
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]] %>%
+                dplyr::mutate(
+                  regulation = dplyr::case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+              sig_proteins <- df %>%
+                dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                dplyr::pull(ID)
+
+              grDevices::pdf(file, width = width, height = height, useDingbats = FALSE)
+              on.exit(grDevices::dev.off(), add = TRUE)
+
+              if (base::length(sig_proteins) == 0L) {
+                graphics::plot.new()
+                graphics::text(0.5, 0.5, "No significant proteins")
+                return(invisible(NULL))
+              }
+              heatmap_data <- exp_mat_local[
+                base::rownames(exp_mat_local) %in% sig_proteins, , drop = FALSE
+              ]
+              heatmap_data <- base::as.matrix(base::as.data.frame(
+                base::lapply(heatmap_data, function(x) {
+                  suppressWarnings(base::as.numeric(base::as.character(x)))
+                }), stringsAsFactors = FALSE, check.names = FALSE
+              ))
+              storage.mode(heatmap_data) <- "numeric"
+              heatmap_data <- heatmap_data[apply(heatmap_data, 1, function(x) any(is.finite(x))), , drop = FALSE]
+              for (row_index in seq_len(base::nrow(heatmap_data))) {
+                missing <- !is.finite(heatmap_data[row_index, ])
+                if (any(missing)) {
+                  observed <- heatmap_data[row_index, !missing]
+                  heatmap_data[row_index, missing] <- stats::median(observed)
+                }
+              }
+              variable_rows <- if (base::nrow(heatmap_data) > 0L) {
+                apply(heatmap_data, 1, function(x) all(is.finite(x) && length(unique(x)) > 1L))
+              } else logical()
+              variable_count <- sum(variable_rows)
+              if (variable_count >= 2L) {
+                heatmap_data <- heatmap_data[variable_rows, , drop = FALSE]
+              }
+              if (base::nrow(heatmap_data) == 0L || base::ncol(heatmap_data) == 0L) {
+                graphics::plot.new()
+                graphics::text(0.5, 0.5, "No finite values for heatmap")
+                return(invisible(NULL))
+              }
+              base::colnames(heatmap_data) <- base::make.unique(as.character(req_cols))
+              if (base::nrow(heatmap_data) >= 2L && base::ncol(heatmap_data) >= 2L) {
+                pheatmap::pheatmap(
+                  heatmap_data, scale = if (variable_count >= 2L) "row" else "none",
+                  cluster_rows = TRUE, cluster_cols = TRUE,
+                  show_rownames = FALSE, show_colnames = show_colnames,
+                  main = base::paste("Heatmap:", g1, "vs", g2)
+                )
+              } else {
+                tile_data <- base::expand.grid(
+                  protein = base::seq_len(base::nrow(heatmap_data)),
+                  sample = base::seq_len(base::ncol(heatmap_data))
+                )
+                tile_data$value <- base::as.vector(heatmap_data)
+                singleton_plot <- ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+                  ggplot2::geom_tile(color = "white", size = 0.2) +
+                  ggplot2::scale_x_continuous(
+                    breaks = base::seq_len(base::ncol(heatmap_data)),
+                    labels = if (show_colnames) base::colnames(heatmap_data) else NULL,
+                    expand = c(0, 0)
+                  ) +
+                  ggplot2::scale_y_continuous(expand = c(0, 0)) +
+                  ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+                  ggplot2::labs(x = NULL, y = NULL, title = base::paste("Heatmap:", g1, "vs", g2), fill = "Value") +
+                  ggplot2::theme_minimal(base_size = 11) +
+                  ggplot2::theme(panel.grid = ggplot2::element_blank())
+                print(singleton_plot)
+              }
+            }
+          )
+
+          # Use one ggplot object for both the on-screen heatmap and PDF
+          # export. This avoids device-specific pheatmap download failures.
+          make_dep_heatmap <- function(df, logfc_thresh, pval_thresh, show_colnames = TRUE) {
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+            sig_proteins <- df %>%
+              dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+              dplyr::pull(ID)
+            if (base::length(sig_proteins) == 0L) {
+              return(ggplot2::ggplot() + ggplot2::annotate(
+                "text", x = 0.5, y = 0.5, label = "No significant proteins", size = 6
+              ) + ggplot2::theme_void())
+            }
+            mat <- exp_mat_local[base::rownames(exp_mat_local) %in% sig_proteins, , drop = FALSE]
+            mat <- base::as.matrix(base::as.data.frame(
+              base::lapply(mat, function(x) suppressWarnings(base::as.numeric(base::as.character(x)))),
+              stringsAsFactors = FALSE, check.names = FALSE
+            ))
+            storage.mode(mat) <- "numeric"
+            keep <- apply(mat, 1, function(x) any(is.finite(x)))
+            mat <- mat[keep, , drop = FALSE]
+            if (base::nrow(mat) == 0L || base::ncol(mat) == 0L) {
+              return(ggplot2::ggplot() + ggplot2::annotate(
+                "text", x = 0.5, y = 0.5, label = "No finite values for heatmap", size = 6
+              ) + ggplot2::theme_void())
+            }
+            for (j in base::seq_len(base::nrow(mat))) {
+              missing <- !is.finite(mat[j, ])
+              if (any(missing)) {
+                observed <- mat[j, !missing]
+                mat[j, missing] <- if (base::length(observed)) stats::median(observed) else 0
+              }
+            }
+            sample_labels <- base::colnames(exp_mat_local)
+            if (base::is.null(sample_labels) || base::length(sample_labels) != base::ncol(mat) ||
+                base::anyNA(sample_labels) || base::any(!base::nzchar(sample_labels))) {
+              sample_labels <- req_cols[base::seq_len(base::ncol(mat))]
+            }
+            base::colnames(mat) <- base::make.unique(as.character(sample_labels))
+            if (base::nrow(mat) >= 2L) mat <- mat[stats::hclust(stats::dist(mat))$order, , drop = FALSE]
+            if (base::ncol(mat) >= 2L) mat <- mat[, stats::hclust(stats::dist(base::t(mat)))$order, drop = FALSE]
+            tile_data <- base::expand.grid(
+              protein = base::seq_len(base::nrow(mat)),
+              sample = base::seq_len(base::ncol(mat))
+            )
+            tile_data$value <- base::as.vector(mat)
+            ggplot2::ggplot(tile_data, ggplot2::aes(sample, protein, fill = value)) +
+              ggplot2::geom_tile(color = "white", size = 0.2) +
+              ggplot2::scale_x_continuous(
+                breaks = base::seq_len(base::ncol(mat)),
+                labels = if (isTRUE(show_colnames)) base::colnames(mat) else NULL,
+                expand = c(0, 0)
+              ) +
+              ggplot2::scale_y_continuous(breaks = NULL, expand = c(0, 0)) +
+              ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B") +
+              ggplot2::labs(x = NULL, y = NULL, title = base::paste("Heatmap:", g1, "vs", g2), fill = "Value") +
+              ggplot2::theme_minimal(base_size = 11) +
+              ggplot2::theme(
+                panel.grid = ggplot2::element_blank(),
+                axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+              )
+          }
+
+          # Override the legacy renderer/download handler with the shared
+          # ggplot implementation above.
+          output[[base::paste0("heatmap_", i_local)]] <- shiny::renderPlot({
+            df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+            shiny::req(df)
+            plot <- make_dep_heatmap(
+              df,
+              as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)),
+              as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)),
+              isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+            )
+            print(plot)
+          }, res = 96)
+
+          output[[base::paste0("download_heatmap_", i_local)]] <- shiny::downloadHandler(
+            filename = function() base::paste0("Heatmap_", g1, "_vs_", g2, ".pdf"),
+            content = function(file) {
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+              shiny::req(df)
+              plot <- make_dep_heatmap(
+                df,
+                as.numeric(coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 0.5)),
+                as.numeric(coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)),
+                isTRUE(input[[base::paste0("heatmap_show_colnames_", i_local)]])
+              )
+              ggplot2::ggsave(file, plot = plot,
+                              device = grDevices::pdf,
+                              width = as.numeric(coalesce_input(input[[base::paste0("heatmap_width_", i_local)]], 8)),
+                              height = as.numeric(coalesce_input(input[[base::paste0("heatmap_height_", i_local)]], 6)),
+                              units = "in", limitsize = FALSE)
+            }
+          )
+
+          output[[base::paste0("bar_dep_", i_local)]] <- shiny::renderPlot({
+            df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+            shiny::req(df)
+
+            logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+            pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+            bar_color_up <- coalesce_input(input[[base::paste0("bar_color_up_", i_local)]], "#d62728")
+            bar_color_down <- coalesce_input(input[[base::paste0("bar_color_down_", i_local)]], "#1f77b4")
+
+            df <- df %>%
+              dplyr::mutate(
+                regulation = dplyr::case_when(
+                  logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                  logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                  TRUE ~ "Not significant"
+                )
+              )
+
+            dep_counts <- df %>%
+              dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+              dplyr::count(regulation)
+
+            if (base::nrow(dep_counts) == 0) {
+              ggplot2::ggplot() +
+                ggplot2::annotate(
+                  "text",
+                  x = 0.5,
+                  y = 0.5,
+                  label = "No DEPs found",
+                  size = 8
+                ) +
+                ggplot2::theme_void()
+            } else {
+              ggplot2::ggplot(dep_counts, ggplot2::aes(x = regulation, y = n, fill = regulation)) +
+                ggplot2::geom_bar(stat = "identity") +
+                ggplot2::scale_fill_manual(values = c(
+                  "Upregulated" = bar_color_up,
+                  "Downregulated" = bar_color_down
+                )) +
+                ggplot2::labs(
+                  title = base::paste("Number of DEPs:", g1, "vs", g2),
+                  x = "Regulation",
+                  y = "Count"
+                ) +
+                ggplot2::theme_bw() +
+                ggplot2::theme(legend.position = "none")
+            }
+          })
+
+          output[[base::paste0("download_bar_", i_local)]] <- shiny::downloadHandler(
+            filename = function() {
+              base::paste0("Bar_DEP_", g1, "_vs_", g2, ".pdf")
+            },
+            content = function(file) {
+              df <- rv$dep_results[[base::paste0(g1, "_vs_", g2)]]
+
+              logfc_thresh <- coalesce_input(input[[base::paste0("volcano_logfc_", i_local)]], 1.0)
+              pval_thresh <- coalesce_input(input[[base::paste0("volcano_pval_", i_local)]], 0.05)
+              bar_color_up <- coalesce_input(input[[base::paste0("bar_color_up_", i_local)]], "#d62728")
+              bar_color_down <- coalesce_input(input[[base::paste0("bar_color_down_", i_local)]], "#1f77b4")
+
+              df <- df %>%
+                dplyr::mutate(
+                  regulation = dplyr::case_when(
+                    logFC > logfc_thresh & P.Value <= pval_thresh ~ "Upregulated",
+                    logFC < -logfc_thresh & P.Value <= pval_thresh ~ "Downregulated",
+                    TRUE ~ "Not significant"
+                  )
+                )
+
+              dep_counts <- df %>%
+                dplyr::filter(regulation %in% c("Upregulated", "Downregulated")) %>%
+                dplyr::count(regulation)
+
+              if (base::nrow(dep_counts) == 0) {
+                g <- ggplot2::ggplot() +
+                  ggplot2::annotate(
+                    "text",
+                    x = 0.5,
+                    y = 0.5,
+                    label = "No DEPs found",
+                    size = 8
+                  ) +
+                  ggplot2::theme_void()
+              } else {
+                g <- ggplot2::ggplot(dep_counts, ggplot2::aes(x = regulation, y = n, fill = regulation)) +
+                  ggplot2::geom_bar(stat = "identity") +
+                  ggplot2::scale_fill_manual(values = c(
+                    "Upregulated" = bar_color_up,
+                    "Downregulated" = bar_color_down
+                  )) +
+                  ggplot2::labs(
+                    title = base::paste("Number of DEPs:", g1, "vs", g2),
+                    x = "Regulation",
+                    y = "Count"
+                  ) +
+                  ggplot2::theme_bw() +
+                  ggplot2::theme(legend.position = "none")
+              }
+
+              ggplot2::ggsave(
+                file,
+                g,
+                width = coalesce_input(input[[base::paste0("bar_width_", i_local)]], 8),
+                height = coalesce_input(input[[base::paste0("bar_height_", i_local)]], 6)
+              )
+            }
+          )
+
+          valid_result_n <<- valid_result_n + 1
+        })
+      }
+
+      if (valid_result_n > 0) {
+        rv$dep_ready <- TRUE
+        rv$dep_has_run <- TRUE
+        shared_state$dep_results <- rv$dep_results
+        differential_analysis_path <- NULL
+
+        # Keep the DEP result in the user-selected working directory.  The
+        # downstream modules historically read `dep_results2` from an RDA;
+        # write that compatibility object here instead of creating a new
+        # timestamped ProtVis_dataset export directory for every run.
+        if (!base::is.null(shared_state$workdir) &&
+            base::dir.exists(shared_state$workdir)) {
+          differential_analysis_path <- base::file.path(
+            shared_state$workdir, "differential_analysis.rda"
+          )
+          dep_results2 <- rv$dep_results
+          compare_data2 <- rv$compare_data
+          ProtVis_dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+            shared_state$dataset
+          } else {
+            NULL
+          }
+          temporary <- tempfile(
+            pattern = ".differential_analysis_",
+            tmpdir = shared_state$workdir,
+            fileext = ".rda"
+          )
+          saved_file <- tryCatch({
+            save(
+              dep_results2, compare_data2, ProtVis_dataset,
+              file = temporary, compress = TRUE, version = 3
+            )
+            if (!base::file.rename(temporary, differential_analysis_path)) {
+              base::file.copy(
+                temporary, differential_analysis_path, overwrite = TRUE
+              )
+              base::unlink(temporary, force = TRUE)
+            }
+            base::file.exists(differential_analysis_path)
+          }, error = function(e) {
+            base::unlink(temporary, force = TRUE)
+            shiny::showNotification(
+              paste("DEP results could not be saved:", e$message),
+              type = "warning"
+            )
+            FALSE
+          })
+          if (!saved_file) {
+            shared_state$dep_results <- rv$dep_results
+          }
+        }
+
+        # Persist the complete DEP result in the canonical ProtVis_dataset so
+        # enrichment and other downstream modules can consume it directly.
+        if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+          dep_payload <- list(
+            status = "success",
+            comparisons = rv$dep_results,
+            parameters = list(
+              comparisons = base::names(rv$dep_results),
+              generated_at = as.character(Sys.time())
+            )
+          )
+          saved_dataset <- tryCatch({
+            dataset <- add_protvis_result(
+              shared_state$dataset,
+              name = "differential_analysis",
+              value = dep_payload,
+              stage = "differential_analysis",
+              parameters = dep_payload$parameters
+            )
+            .protvis_ui_sync_state(dataset, shared_state)
+            TRUE
+          }, error = function(e) {
+            shiny::showNotification(
+              paste("DEP completed, but the ProtVis_dataset could not be updated:", e$message),
+              type = "warning", duration = NULL
+            )
+            FALSE
+          })
+          if (!saved_dataset) shared_state$dep_results <- rv$dep_results
+        }
+
+        # The canonical dataset now contains the differential-analysis
+        # payload. Refresh the same file in place so it is persisted together
+        # with the compatibility objects (without creating another folder).
+        if (!base::is.null(differential_analysis_path) &&
+            inherits(shared_state$dataset, "ProtVis_dataset")) {
+          ProtVis_dataset <- shared_state$dataset
+          temporary <- tempfile(
+            pattern = ".differential_analysis_",
+            tmpdir = shared_state$workdir,
+            fileext = ".rda"
+          )
+          tryCatch({
+            save(
+              dep_results2, compare_data2, ProtVis_dataset,
+              file = temporary, compress = TRUE, version = 3
+            )
+            if (!base::file.rename(temporary, differential_analysis_path)) {
+              base::file.copy(
+                temporary, differential_analysis_path, overwrite = TRUE
+              )
+              base::unlink(temporary, force = TRUE)
+            }
+          }, error = function(e) {
+            base::unlink(temporary, force = TRUE)
+            shiny::showNotification(
+              paste("Updated ProtVis_dataset could not be saved:", e$message),
+              type = "warning"
+            )
+          })
+        }
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "dep_progress",
+          value = 100,
+          total = 100
+        )
+        shiny::showNotification("✅ DEP analysis completed.", type = "message")
+      } else {
+        rv$dep_ready <- FALSE
+        rv$dep_has_run <- FALSE
+        rv$dep_results <- base::list()
+        shinyWidgets::updateProgressBar(
+          session = session,
+          id = "dep_progress",
+          value = 0,
+          total = 100
+        )
+        shiny::showNotification(
+          "❌ No valid DEP result was generated. Please check CompareGroup and sample names.",
+          type = "error"
+        )
+      }
+    })
+
+    output$sample_info <- DT::renderDT({
+      if (base::is.null(rv$sample_info)) {
+        return(NULL)
+      }
+      DT::datatable(
+        rv$sample_info,
+        options = base::list(scrollX = TRUE, dom = "t"),
+        rownames = FALSE
+      )
+    })
+
+    output$normalized_data <- DT::renderDT({
+      if (base::is.null(rv$normalized_matrix)) {
+        return(NULL)
+      }
+      DT::datatable(
+        rv$normalized_matrix,
+        options = base::list(scrollX = TRUE, dom = "t"),
+        rownames = FALSE
+      )
+    })
+
+    output$group_comparison <- DT::renderDT({
+      if (base::is.null(rv$compare_data)) {
+        return(NULL)
+      }
+      DT::datatable(
+        rv$compare_data,
+        options = base::list(scrollX = TRUE, dom = "t"),
+        rownames = FALSE
+      )
+    })
+
+    return(
+      shiny::reactive({
+        base::list(
+          compare_data = rv$compare_data,
+          normalized_matrix = rv$normalized_matrix,
+          sample_info = rv$sample_info,
+          dep_results = rv$dep_results
+        )
+      })
+    )
   })
 }

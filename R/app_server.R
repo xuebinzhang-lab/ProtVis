@@ -1,21 +1,89 @@
 #' The application server-side
 #'
 #' @param input,output,session Internal parameters for {shiny}.
-#'     DO NOT REMOVE.
+#'   DO NOT REMOVE.
+#'
 #' @import shiny
-#' @noRd
+#' @name app_server
+#' @export
+#'
 app_server <- function(input, output, session) {
-  bslib::bs_themer()
-  TMT_server(id = "TMT_ui")
-  DEP_visualize_server(id = "DEP_visualize")
-  mv_noise_server(id = "mv_noise")
-  mv_imputation_server(id = "mv_imputation")
-  mv_summary_server(id = "mv_summary")
-  DEP_analysis_server(id = "DEP_analysis")
-  veen_server(id = "veen")
-  protein_structure_server(id = "protein_structure")
-  GO_and_KEGG_server(id = "GO_and_KEGG")
-  # # PPI_network_server(id = "PPI_network")
-  DR_analysis_server(id = "DR_analysis")
-  Expression_profile_server(id = "Expression_profile")
+  shared_state <- reactiveValues(
+    workdir = NULL,
+    sample_info = NULL,
+    expression_matrix = NULL,
+    expression_matrix_filtered = NULL,
+    raw_directory = NULL,
+    raw_sample_info = NULL,
+    raw_fasta = NULL,
+    raw_manifest = NULL,
+    raw_check = NULL,
+    sage_search_bundle = NULL,
+    sage_search_parameters = list(),
+    sage_workflow = FALSE,
+    data_source = "Raw",
+    dataset = NULL,
+    dataset_history = list(),
+    dataset_name = NULL,
+    # Per-session operation locks prevent duplicate Shiny events from starting
+    # the same long-running or state-changing task twice.
+    run_locks = list(),
+    # Keep the current DEP results available to downstream modules without
+    # requiring a legacy Step7_DEP_result.rda file on disk.
+    dep_results = list()
+  )
+  # Search is the Raw-data workflow. FASTA and mzML are validated when the
+  # search is run, while the navigation item follows the selected source.
+  shiny::observe({
+    source <- as.character(shared_state$data_source %||% "Raw")
+    visible <- identical(source, "Raw")
+    session$sendCustomMessage("protvis-sage-nav", list(visible = visible))
+  })
+  shiny::observe({
+    source <- as.character(shared_state$data_source %||% "Raw")
+    session$sendCustomMessage(
+      "protvis-data-input-nav",
+      list(visible = identical(source, "MaxQuant"))
+    )
+  })
+  project_init_server("project_init", shared_state = shared_state)
+  sage_search_server("sage_search", shared_state = shared_state)
+  data_input_server(
+    "data_input",
+    data_source_reactive = reactive(shared_state$data_source),
+    shared_state = shared_state
+  )
+  data_imputation_server("data_imputation", shared_state = shared_state)
+  correct_noise_server("correct_noise", shared_state = shared_state)
+  data_transformed_server("data_transformed", shared_state = shared_state)
+  missing_value_server("missing_value", shared_state = shared_state)
+  data_normalization_server("data_normalization", shared_state = shared_state)
+  # -------------------------------------------------------------------------
+  overview_server("overview", shared_state)
+  DEP_analysis_server("DEP_analysis", shared_state = shared_state)
+  enrichment_analysis_server("enrichment_analysis", shared_state = shared_state)
+  gsea_server("gsea")
+  pathview_server("pathview")
+  PTM_server("PTM")
+  # protein_fun_server("protein_fun", shared_state)
+  release_data_server("release_data1", shared_state)
+  stringdb_ppi_server("stringdb_ppi")
+  # -------------------------------------------------------------------------
+  protein_workbench_server("protein_workbench")
+  protein_extract_server("protein_extract")
+  plant_mploc_server("plant_mploc")
+  background_make_server("background_make")
+  protein_links_server("prot_links")
+  Expression_profile_server("Expression_profile")
+  wgcna_server("wgcna", shared_state)
+  metaproteomics_server("metaproteomics")
+  co_enrichment_server("co_enrichment")
+  nine_quadrant_server("nine")
+  venn_server("venn")
+  protein_structure_server("protein_structure")
+  boxplot_module_server("box1")
+  swissmodel_server("swissmodel")
+  stacked_column_chart_server("stacked_column_chart")
+  correlation_chord_server("correlation_chord")
+  DEG_server("DEG")
 }

@@ -11,7 +11,5 @@ Expression_profile_ui(id)
 }
 \description{
 Expression Profile User Interface
-}
-\details{
 Creates a user interface for displaying expression profiles in a Shiny application.
 }

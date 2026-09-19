@@ -11,8 +11,6 @@ DEP_visualize_ui(id)
 }
 \description{
 DEP Visualization User Interface
-}
-\details{
 Creates a user interface for visualizing DEP (Differentially Expressed Proteins)
 in a Shiny application.
 }

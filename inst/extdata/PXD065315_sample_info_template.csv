@@ -1,0 +1,7 @@
+sample_id,mzml_file,genotype,treatment,group,condition,replicate,batch,tissue,organism,accession,source_url
+B73_C1,B73_C1.mzML,B73,Control,B73,Control,1,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315
+B73_C2,B73_C2.mzML,B73,Control,B73,Control,2,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315
+B73_C3,B73_C3.mzML,B73,Control,B73,Control,3,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315
+EA2024_C1,EA2024_C1.mzML,EA2024,Control,EA2024,Control,1,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315
+EA2024_C2,EA2024_C2.mzML,EA2024,Control,EA2024,Control,2,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315
+EA2024_C3,EA2024_C3.mzML,EA2024,Control,EA2024,Control,3,Batch1,leaf,Zea mays,PXD065315,https://www.ebi.ac.uk/pride/archive/projects/PXD065315

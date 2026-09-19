@@ -2,13 +2,17 @@
 % Please edit documentation in R/protein_structure.R
 \name{protein_structure_ui}
 \alias{protein_structure_ui}
-\title{protein_structure_ui}
+\title{Protein Structure UI}
 \usage{
 protein_structure_ui(id)
 }
 \arguments{
-\item{id}{A unique identifier for the Shiny namespace.}
+\item{id}{A unique identifier for the Shiny namespace}
 }
 \description{
-protein_structure
+Protein Structure Analysis UI Module
+}
+\details{
+Creates a user interface for protein secondary structure analysis using
+bio3d package to perform Normal Mode Analysis (NMA) on PDB files.
 }

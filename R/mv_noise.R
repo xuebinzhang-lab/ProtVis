@@ -3,36 +3,33 @@
 #' @param id A unique identifier for the Shiny namespace
 #' @title mv_noise_ui
 #' @name mv_noise_ui
-#' @import bsicons
 #' @import shiny
 #' @import bslib
-#' @import DT
-#' @import ggplot2
+#' @importFrom bsicons bs_icon
 #' @export
 #'
 mv_noise_ui <- function(id) {
   ns <- NS(id)
-
-  nav_panel(
-    title = 'Remove Noise',
-    icon = bs_icon("c-square"),
-    layout_sidebar(
-      sidebar = accordion(
-        accordion_panel(
+  bslib::nav_panel(
+    title = 'Missing value interpolation',
+    icon = bsicons::bs_icon("c-square"),
+    bslib::layout_sidebar(
+      sidebar = bslib::accordion(
+        bslib::accordion_panel(
           title = "File Upload",
-          icon = bs_icon("upload"),
-          fileInput(
+          icon = bsicons::bs_icon("upload"),
+          shiny::fileInput(
             inputId = ns('file'),
             label = 'Upload Expression Matrix',
             multiple = FALSE,
             accept = c('.csv', '.tsv', '.txt')
           ),
-          helpText("First column should contain protein IDs")
+          shiny::helpText("First column should contain protein IDs")
         ),
-        accordion_panel(
+        bslib::accordion_panel(
           title = "Filter Settings",
-          icon = bs_icon("sliders"),
-          numericInput(
+          icon = bsicons::bs_icon("sliders"),
+          shiny::numericInput(
             ns("na_threshold"),
             "Missing Value Threshold (%)",
             value = 50,
@@ -40,68 +37,68 @@ mv_noise_ui <- function(id) {
             max = 100,
             step = 5
           ),
-          helpText("Rows with higher % of missing values will be removed")
+          shiny::helpText("Rows with higher % of missing values will be removed")
         ),
-        accordion_panel(
+        bslib::accordion_panel(
           title = "Actions",
-          icon = bs_icon("gear"),
-          actionButton(
+          icon = bsicons::bs_icon("gear"),
+          shiny::actionButton(
             ns("runButton"),
             "Run",
-            icon = icon("play"),
+            icon = shiny::icon("play"),
             class = "btn-primary"
           ),
-          downloadButton(
+          shiny::downloadButton(
             ns("downloadData"),
             "Download",
             class = "btn-success"
           )
         )
       ),
-      page_fluid(
-        h3("Proteomics Data Quality Control"),
-        layout_column_wrap(
+      bslib::page_fluid(
+        shiny::h3("Proteomics Data Quality Control"),
+        bslib::layout_column_wrap(
           width = 1/2,
-          navset_card_tab(
+          bslib::navset_card_tab(
             height = "500px",
             full_screen = TRUE,
             title = "Raw Data",
-            nav_panel(
+            bslib::nav_panel(
               "Table",
               DT::DTOutput(ns("rawTable"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Statistics",
-              verbatimTextOutput(ns("rawStats"))
+              shiny::verbatimTextOutput(ns("rawStats"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Distribution",
-              plotOutput(ns("rawPlot"))
+              shiny::plotOutput(ns("rawPlot"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Missing Values",
-              plotOutput(ns("rawMissingPlot"))
+              shiny::plotOutput(ns("rawMissingPlot"))
             )
           ),
-          navset_card_tab(
+          bslib::navset_card_tab(
             height = "500px",
             full_screen = TRUE,
             title = "Processed Data",
-            nav_panel(
+            bslib::nav_panel(
               "Table",
               DT::DTOutput(ns("cleanTable"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Statistics",
-              verbatimTextOutput(ns("cleanStats"))
+              shiny::verbatimTextOutput(ns("cleanStats"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Distribution",
-              plotOutput(ns("cleanPlot"))
+              shiny::plotOutput(ns("cleanPlot"))
             ),
-            nav_panel(
+            bslib::nav_panel(
               "Missing Values",
-              plotOutput(ns("cleanMissingPlot"))
+              shiny::plotOutput(ns("cleanMissingPlot"))
             )
           )
         )
@@ -115,52 +112,47 @@ mv_noise_ui <- function(id) {
 #' @param id A unique identifier for the Shiny namespace
 #' @title mv_noise_server
 #' @name mv_noise_server
-#' @import bsicons
 #' @import shiny
-#' @import bslib
-#' @import DT
-#' @import ggplot2
+#' @importFrom utils read.csv write.csv
+#' @importFrom DT renderDT datatable
+#' @importFrom reshape2 melt
 #' @export
 #'
 mv_noise_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     # Reactive value for raw data
-    raw_data <- reactive({
-      req(input$file)
+    raw_data <- shiny::reactive({
+      shiny::req(input$file)
       tryCatch({
-        df <- read.csv(input$file$datapath, row.names = 1, check.names = FALSE)
-        validate(
-          need(is.matrix(df) || is.data.frame(df), "Invalid data format"),
-          need(nrow(df) > 0 && ncol(df) > 0, "Empty dataset")
+        df <- utils::read.csv(input$file$datapath, row.names = 1, check.names = FALSE)
+        shiny::validate(
+          shiny::need(base::is.matrix(df) || base::is.data.frame(df), "Invalid data format"),
+          shiny::need(base::nrow(df) > 0 && base::ncol(df) > 0, "Empty dataset")
         )
-        as.matrix(df)
+        base::as.matrix(df)
       }, error = function(e) {
-        showNotification(paste("Error:", e$message), type = "error")
+        shiny::showNotification(paste("Error:", e$message), type = "error")
         NULL
       })
     })
-
     # Reactive value for cleaned data
-    cleaned_data <- eventReactive(input$runButton, {
-      req(raw_data())
-      withProgress({
-        setProgress(message = "Processing data...")
-
+    cleaned_data <- shiny::eventReactive(input$runButton, {
+      shiny::req(raw_data())
+      shiny::withProgress({
+        shiny::setProgress(message = "Processing data...")
         data <- raw_data()
-        na_percent <- rowSums(is.na(data)) / ncol(data) * 100
+        na_percent <- base::rowSums(is.na(data)) / base::ncol(data) * 100
         threshold <- input$na_threshold
         data[na_percent <= threshold, ]
       })
     })
-
     # Raw data table
     output$rawTable <- DT::renderDT({
-      req(raw_data())
+      shiny::req(raw_data())
       DT::datatable(
         raw_data(),
-        options = list(
+        options = base::list(
           scrollX = TRUE,
           pageLength = 5,
           dom = 'Bfrtip',
@@ -171,10 +163,9 @@ mv_noise_server <- function(id) {
         caption = "Raw expression data"
       )
     })
-
     # Cleaned data table
     output$cleanTable <- DT::renderDT({
-      req(cleaned_data())
+      shiny::req(cleaned_data())
       DT::datatable(
         cleaned_data(),
         options = list(
@@ -188,117 +179,101 @@ mv_noise_server <- function(id) {
         caption = "Processed expression data"
       )
     })
-
     # Raw data statistics
-    output$rawStats <- renderPrint({
-      req(raw_data())
+    output$rawStats <- shiny::renderPrint({
+      shiny::req(raw_data())
       data <- raw_data()
-
       cat("=== Raw Data Summary ===\n")
       cat("Proteins:", nrow(data), "\n")
       cat("Samples:", ncol(data), "\n")
-      cat("Total missing values:", sum(is.na(data)), "\n")
+      cat("Total missing values:", base::sum(base::is.na(data)), "\n")
       cat("Missing value percentage:",
-          round(sum(is.na(data))/length(data)*100, 2), "%\n")
+          round(base::sum(base::is.na(data))/base::length(data)*100, 2), "%\n")
       cat("\nMissing values per sample:\n")
-      print(summary(colSums(is.na(data))))
+      print(base::summary(base::colSums(base::is.na(data))))
     })
 
     # Cleaned data statistics
-    output$cleanStats <- renderPrint({
-      req(cleaned_data())
+    output$cleanStats <- shiny::renderPrint({
+      shiny::req(cleaned_data())
       data <- cleaned_data()
-
       cat("=== Processed Data Summary ===\n")
       cat("Proteins remaining:", nrow(data), "\n")
       cat("Samples:", ncol(data), "\n")
-      cat("Total missing values:", sum(is.na(data)), "\n")
+      cat("Total missing values:", base::sum(base::is.na(data)), "\n")
       cat("Missing value percentage:",
-          round(sum(is.na(data))/length(data)*100, 2), "%\n")
+          base::round(base::sum(base::is.na(data))/length(data)*100, 2), "%\n")
       cat("\nMissing values per sample:\n")
-      print(summary(colSums(is.na(data))))
+      print(base::summary(base::colSums(base::is.na(data))))
     })
-
     # Raw data distribution plot
-    output$rawPlot <- renderPlot({
-      req(raw_data())
+    output$rawPlot <- shiny::renderPlot({
+      shiny::req(raw_data())
       data <- raw_data()
-
       plot_data <- reshape2::melt(data)
-      colnames(plot_data) <- c("Protein", "Sample", "Value")
-
-      ggplot(plot_data, aes(x = Value)) +
-        geom_histogram(fill = "steelblue", bins = 30) +
-        facet_wrap(~Sample, scales = "free") +
-        labs(title = "Raw Data Distribution",
+      base::colnames(plot_data) <- c("Protein", "Sample", "Value")
+      ggplot2::ggplot(plot_data, ggplot2::aes(x = Value)) +
+        ggplot2::geom_histogram(fill = "steelblue", bins = 30) +
+        ggplot2::facet_wrap(~Sample, scales = "free") +
+        ggplot2::labs(title = "Raw Data Distribution",
              x = "Expression Value",
              y = "Count") +
-        theme_minimal()
+        ggplot2::theme_minimal()
     })
-
     # Cleaned data distribution plot
-    output$cleanPlot <- renderPlot({
-      req(cleaned_data())
+    output$cleanPlot <- shiny::renderPlot({
+      shiny::req(cleaned_data())
       data <- cleaned_data()
-
       plot_data <- reshape2::melt(data)
-      colnames(plot_data) <- c("Protein", "Sample", "Value")
-
-      ggplot(plot_data, aes(x = Value)) +
-        geom_histogram(fill = "darkgreen", bins = 30) +
-        facet_wrap(~Sample, scales = "free") +
-        labs(title = "Processed Data Distribution",
+      base::colnames(plot_data) <- c("Protein", "Sample", "Value")
+      ggplot2::ggplot(plot_data, ggplot2::aes(x = Value)) +
+        ggplot2::geom_histogram(fill = "darkgreen", bins = 30) +
+        ggplot2::facet_wrap(~Sample, scales = "free") +
+        ggplot2::labs(title = "Processed Data Distribution",
              x = "Expression Value",
              y = "Count") +
-        theme_minimal()
+        ggplot2::theme_minimal()
     })
-
     # Raw data missing value heatmap
-    output$rawMissingPlot <- renderPlot({
-      req(raw_data())
+    output$rawMissingPlot <- shiny::renderPlot({
+      shiny::req(raw_data())
       data <- raw_data()
-
-      heatmap_data <- is.na(data) * 1
-
-      par(mar = c(5, 4, 4, 2) + 0.1)
-      image(
-        x = 1:ncol(heatmap_data),
-        y = 1:nrow(heatmap_data),
-        z = t(heatmap_data),
+      heatmap_data <- base::is.na(data) * 1
+      graphics::par(mar = c(5, 4, 4, 2) + 0.1)
+      graphics::image(
+        x = 1:base::ncol(heatmap_data),
+        y = 1:base::nrow(heatmap_data),
+        z = base::t(heatmap_data),
         col = c("white", "red"),
         xlab = "Samples",
         ylab = "Proteins",
         main = "Missing Values in Raw Data (Red = Missing)"
       )
     })
-
     # Cleaned data missing value heatmap
-    output$cleanMissingPlot <- renderPlot({
-      req(cleaned_data())
+    output$cleanMissingPlot <- shiny::renderPlot({
+      shiny::req(cleaned_data())
       data <- cleaned_data()
-
-      heatmap_data <- is.na(data) * 1
-
-      par(mar = c(5, 4, 4, 2) + 0.1)
+      heatmap_data <- base::is.na(data) * 1
+      graphics::par(mar = c(5, 4, 4, 2) + 0.1)
       image(
-        x = 1:ncol(heatmap_data),
-        y = 1:nrow(heatmap_data),
-        z = t(heatmap_data),
+        x = 1:base::ncol(heatmap_data),
+        y = 1:base::nrow(heatmap_data),
+        z = base::t(heatmap_data),
         col = c("white", "red"),
         xlab = "Samples",
         ylab = "Proteins",
         main = "Missing Values in Processed Data (Red = Missing)"
       )
     })
-
     # Download handler
-    output$downloadData <- downloadHandler(
+    output$downloadData <- shiny::downloadHandler(
       filename = function() {
-        paste0("processed_data_", Sys.Date(), ".csv")
+        base::paste0("processed_data_", base::Sys.Date(), ".csv")
       },
       content = function(file) {
-        req(cleaned_data())
-        write.csv(cleaned_data(), file)
+        shiny::req(cleaned_data())
+        utils::write.csv(cleaned_data(), file)
       }
     )
   })

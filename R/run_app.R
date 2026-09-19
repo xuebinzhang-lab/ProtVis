@@ -1,25 +1,36 @@
 #' Run the Shiny Application
-#'
-#' @param ... arguments to pass to golem_opts.
-#' See `?golem::get_golem_options` for more details.
-#' @inheritParams shiny::shinyApp
-#'
-#' @export
-#' @importFrom shiny shinyApp
+#' @description Launches the ProtVis Shiny application for proteomics data analysis.
+#' @param onStart A function that will be called before the app is actually run.
+#' @param options Named list of values passed to `shiny::shinyOptions`.
+#' @param enableBookmarking Can be "url", "server", or "disable".
+#' @param uiPattern A regular expression used to determine which requests should be handled by the UI.
+#' @param ... Arguments to pass to `golem_opts`. See `?golem::get_golem_options` for more details.
+#' @return An object that represents the app.
+#' @import shiny
 #' @importFrom golem with_golem_options
+#' @importFrom utils modifyList
+#' @name run_ProtVis
+#' @export
+
 run_ProtVis <- function(
-  onStart = NULL,
-  options = list(),
-  enableBookmarking = NULL,
-  uiPattern = "/",
-  ...
+    onStart = NULL,
+    options = list(),
+    enableBookmarking = NULL,
+    uiPattern = "/",
+    ...
 ) {
-  with_golem_options(
-    app = shinyApp(
+
+  # Set a generous default for large proteomics/background workbooks.
+  # modifyList ensures that user-defined options are preserved
+  default_options <- list(shiny.maxRequestSize = 2 * 1024^3)
+  combined_options <- utils::modifyList(default_options, options)
+
+  golem::with_golem_options(
+    app = shiny::shinyApp(
       ui = app_ui,
       server = app_server,
       onStart = onStart,
-      options = options,
+      options = combined_options,
       enableBookmarking = enableBookmarking,
       uiPattern = uiPattern
     ),

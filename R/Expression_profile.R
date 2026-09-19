@@ -1,250 +1,426 @@
+.protvis_kmeans_builtin_path <- function() {
+  candidates <- c(
+    system.file("extdata", "kmeans.csv", package = "ProtVis"),
+    file.path(getwd(), "inst", "extdata", "kmeans.csv"),
+    file.path(getwd(), "..", "inst", "extdata", "kmeans.csv"),
+    file.path(getwd(), "..", "..", "inst", "extdata", "kmeans.csv")
+  )
+  candidates <- unique(candidates[nzchar(candidates) & file.exists(candidates)])
+  if (!length(candidates)) {
+    stop("The bundled Kmeans example (inst/extdata/kmeans.csv) is missing.",
+         call. = FALSE)
+  }
+  normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE)
+}
+
+.protvis_read_expression_profile <- function(path) {
+  result <- utils::read.csv(
+    path, row.names = 1, check.names = FALSE, stringsAsFactors = FALSE
+  )
+  if (!nrow(result) || ncol(result) < 2L) {
+    stop("The expression matrix must contain feature rows and at least two samples.",
+         call. = FALSE)
+  }
+  numeric_columns <- vapply(result, is.numeric, logical(1))
+  if (!all(numeric_columns)) {
+    stop("All expression-matrix sample columns must be numeric.", call. = FALSE)
+  }
+  result
+}
+
 #' Expression Profile User Interface
-#'
 #' Creates a user interface for displaying expression profiles in a Shiny application.
-#'
 #' @param id A unique identifier for the Shiny namespace.
 #' @title Expression_profile_ui
 #' @name Expression_profile_ui
 #' @import shiny
 #' @import bslib
-#' @import bsicons
+#' @importFrom bsicons bs_icon
+#' @importFrom colourpicker colourInput
 #' @export
 #'
 Expression_profile_ui <- function(id) {
   ns <- NS(id)
-  # UI 结构
-  nav_panel(
-    title = 'Expression profile',
-    icon = bs_icon("alexa"),
-    layout_sidebar(
-      sidebar = accordion(
-        accordion_panel(
-          title = "File Upload",
-          icon = bs_icon("upload"),
-          fileInput(
-            inputId = ns('file'),
-            label = 'Expression matrix',
-            multiple = FALSE,
-            accept = '.csv'
-          )
-        ),
-        accordion_panel(
-          title = "Method",
-          icon = bs_icon("view-stacked"),
-          open = TRUE,
-          selectInput(ns("dropdown"), "Choose a Method:",
-                      choices = c("Kmeans","Heatmap"))
-        )
+
+  sidebar_ui <- bslib::accordion(
+    bslib::accordion_panel(
+      title = "File Upload",
+      icon = bsicons::bs_icon("upload"),
+      shiny::fileInput(
+        inputId = ns("file"),
+        label = "Upload expression matrix (.csv)",
+        multiple = FALSE,
+        accept = c(".csv", "text/csv", "text/comma-separated-values")
       ),
-      # Kmeans ---------------------------------------------------------------------
-      # 使用 conditionalPanel，仅在选择 "Kmeans" 时显示右侧面板
-      conditionalPanel(
-        condition = "input.dropdown == 'Kmeans'",
-        ns = ns,  # 确保为该模块设置命名空间
-        page_fluid(
-          layout_column_wrap(
-            width = 1,
-            height = 600,
-            navset_card_tab(
-              height = 600,
-              full_screen = TRUE,
-              title = "Kmeans",
-              sidebar = accordion(
-                open = 'closed',
-                accordion_panel(
-                  title = 'Parameter',
-                  colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
-                  numericInput(ns("centers"), "centers:", value = 6, min = 0)
-                ),
-                accordion_panel(
-                  title = 'Run',
-                  actionButton(ns("run_btn_Kmeans"), "Run")
-                ),
-                accordion_panel(
-                  title = 'Download',
-                  icon = bs_icon('download'),
-                  numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
-                  numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
-                  downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = icon("download")),
-                  br(),
-                  downloadButton(ns("download_Kmeans_table"), label = "Table", icon = icon("download"))
-                )
-              ),
-              mainPanel(
-                tabsetPanel(
-                  type = "tabs", # 允许标签页切换
-                  tabPanel(
-                    title = "Figure",
-                    plotOutput(ns("Kmeansplotshow"))
-                  ),
-                  tabPanel(
-                    title = "Table",
-                    DT::DTOutput(ns("Kmeans_dataTable"))
-                  )
-                )
-              )
-            )
-          )
-        )
+      shiny::actionButton(
+        ns("load_builtin"), "LOAD DEMO DATA",
+        icon = shiny::icon("table"), class = "btn btn-primary w-100"
+      ),
+      shiny::downloadButton(
+        ns("download_builtin"), "Download example CSV",
+        icon = shiny::icon("download"), class = "btn btn-outline-primary w-100 mt-2"
+      ),
+      shiny::uiOutput(ns("expression_data_status"))
+    ),
+    bslib::accordion_panel(
+      title = "Method",
+      icon = bsicons::bs_icon("view-stacked"),
+      open = TRUE,
+      shiny::selectInput(
+        ns("dropdown"),
+        "Choose a Method:",
+        choices = c("Kmeans", "Heatmap")
       )
     )
+  )
+
+  kmeans_ui <- shiny::conditionalPanel(
+    condition = "input.dropdown == 'Kmeans'",
+    ns = ns,
+    bslib::layout_column_wrap(
+      width = 1,
+      height = 800,
+      bslib::navset_card_tab(
+        id = ns("kmeans_tabs"),
+        selected = "Input Data",
+        height = 800,
+        full_screen = TRUE,
+        title = "Kmeans",
+        sidebar = bslib::accordion(
+          open = "closed",
+          bslib::accordion_panel(
+            title = "Parameter",
+            colourpicker::colourInput(ns("color_select"), "select color", value = "#FF5733"),
+            shiny::numericInput(ns("centers"), "centers:", value = 6, min = 0)
+          ),
+          bslib::accordion_panel(
+            title = "Run",
+            shiny::actionButton(ns("run_btn_Kmeans"), "Run")
+          ),
+          bslib::accordion_panel(
+            title = "Download",
+            icon = bsicons::bs_icon("download"),
+            shiny::numericInput(ns("Kmeans_width"), "width:", value = 8, min = 0),
+            shiny::numericInput(ns("Kmeans_height"), "height:", value = 6, min = 0),
+            shiny::downloadButton(ns("download_Kmeans_Figure"), label = "Figure", icon = shiny::icon("download")),
+            shiny::br(),
+            shiny::downloadButton(ns("download_Kmeans_table"), label = "Table", icon = shiny::icon("download"))
+          )
+        ),
+        bslib::nav_panel("Figure", shiny::plotOutput(ns("Kmeansplotshow"))),
+        bslib::nav_panel("Table", DT::DTOutput(ns("Kmeans_dataTable"))),
+        bslib::nav_panel("Input Data", DT::DTOutput(ns("expression_data_preview")))
+      )
+    )
+  )
+
+  heatmap_ui <- shiny::conditionalPanel(
+    condition = "input.dropdown == 'Heatmap'",
+    ns = ns,
+    bslib::layout_column_wrap(
+      width = 1,
+      height = 800,
+      bslib::navset_card_tab(
+        height = 800,
+        full_screen = TRUE,
+        title = "Heatmap trend analysis (K-means)",
+        sidebar = bslib::accordion(
+          open = "Parameter",
+          bslib::accordion_panel(
+            title = "Parameter",
+            shiny::numericInput(ns("heatmap_centers"), "K-means clusters:", value = 6, min = 2),
+            shiny::selectInput(
+              ns("heatmap_scale"),
+              "Scale:",
+              choices = c("Row (trend)" = "row", "Column" = "column", "None" = "none"),
+              selected = "row"
+            )
+          ),
+          bslib::accordion_panel(
+            title = "Run",
+            shiny::actionButton(ns("run_btn_heatmap"), "Run heatmap", class = "btn btn-primary")
+          ),
+          bslib::accordion_panel(
+            title = "Download",
+            icon = bsicons::bs_icon("download"),
+            shiny::downloadButton(ns("download_heatmap_table"), label = "Cluster table", icon = shiny::icon("download"))
+          )
+        ),
+        bslib::nav_panel("Figure", shiny::plotOutput(ns("heatmap_plot"), height = "680px")),
+        bslib::nav_panel("Table", DT::DTOutput(ns("heatmap_table")))
+      )
+    )
+  )
+
+  bslib::layout_sidebar(
+    sidebar = sidebar_ui,
+    shiny::tagList(kmeans_ui, heatmap_ui)
   )
 }
 
 
-# server ------------------------------------------------------------------
-# Server
 #' @import shiny
-#' @import ggplot2
-#' @import bslib
-#' @import bsicons
+#' @importFrom utils read.csv write.csv
+#' @importFrom dplyr as_tibble mutate count rename right_join select
+#' @importFrom reshape2 melt
+#' @importFrom purrr map2
+#' @importFrom patchwork wrap_plots
+#' @importFrom ggplot2 ggsave
+#' @importFrom ggprism theme_prism
 #' @name Expression_profile_server
 #' @title Expression_profile_server
 #' @export
+#'
 
-utils::globalVariables(c("Cluster", "Cluster_Count", "variable",
+utils::globalVariables(c("Cluster_Count", "variable",
                          "index","Cluster","Var2","Var1"))
-
 Expression_profile_server <- function(id) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    data <- reactive({
-      req(input$file)
-      read.csv(input$file$datapath, row.names = 1)
+    builtin_loaded <- shiny::reactiveVal(FALSE)
+    shiny::observeEvent(input$load_builtin, {
+      builtin_loaded(TRUE)
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Input Data")
     })
-    # Kmeans ---------------------------------------------------------------------
-    # Kmeans 绘图
-    observeEvent(input$run_btn_Kmeans, {
-      req(input$dropdown == "Kmeans")
+    shiny::observeEvent(input$file, {
+      shiny::req(input$file)
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Input Data")
+    })
+    data <- shiny::reactive({
+      if (!is.null(input$file)) {
+        return(.protvis_read_expression_profile(input$file$datapath))
+      }
+      shiny::req(isTRUE(builtin_loaded()))
+      .protvis_read_expression_profile(.protvis_kmeans_builtin_path())
+    })
+    output$expression_data_status <- shiny::renderUI({
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        return(shiny::tags$div(
+          class = "alert alert-secondary py-2 mt-2 mb-0",
+          shiny::tags$strong("No data loaded"),
+          shiny::tags$br(),
+          shiny::tags$small("Upload a CSV or click LOAD DEMO DATA.")
+        ))
+      }
+      matrix <- data()
+      source <- if (is.null(input$file)) {
+        "Built-in data loaded: kmeans.csv"
+      } else {
+        paste0("Uploaded data loaded: ", input$file$name)
+      }
+      shiny::tags$div(
+        class = "alert alert-success py-2 mt-2 mb-0",
+        shiny::tags$strong(paste0("\u2713 ", source)),
+        shiny::tags$br(),
+        shiny::tags$small(
+          paste0(nrow(matrix), " features \u00d7 ", ncol(matrix), " samples")
+        )
+      )
+    })
+    output$expression_data_preview <- DT::renderDT({
+      shiny::validate(shiny::need(
+        !is.null(input$file) || isTRUE(builtin_loaded()),
+        "Upload an expression matrix or click LOAD DEMO DATA."
+      ))
+      matrix <- data()
+      preview <- data.frame(
+        id = rownames(matrix), matrix, check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      DT::datatable(
+        preview, rownames = FALSE,
+        options = list(pageLength = 10, scrollX = TRUE)
+      )
+    })
+    output$download_builtin <- shiny::downloadHandler(
+      filename = function() "kmeans.csv",
+      content = function(file) {
+        copied <- file.copy(.protvis_kmeans_builtin_path(), file,
+                            overwrite = TRUE)
+        if (!isTRUE(copied)) {
+          stop("Unable to copy the built-in Kmeans example.", call. = FALSE)
+        }
+      },
+      contentType = "text/csv"
+    )
+    shiny::observeEvent(input$run_btn_Kmeans, {
+      shiny::req(input$dropdown == "Kmeans")
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        shiny::showNotification(
+          "Upload a CSV or click LOAD DEMO DATA before running Kmeans.",
+          type = "error"
+        )
+        return(invisible(NULL))
+      }
       data <- data()
-      data_scale <- data.frame(round(t(apply(data, 1, scale)), 2))
-      colnames(data_scale) <- colnames(data)
-      cl <- kmeans(data_scale, centers = input$centers)
+      data_scale <- base::data.frame(base::round(base::t(base::apply(data, 1, scale)), 2))
+      base::colnames(data_scale) <- base::colnames(data)
+      cl <- stats::kmeans(data_scale, centers = input$centers)
       data_new <- data.frame("index" = rownames(data_scale), "Cluster" = cl$cluster, data_scale) %>%
-        as_tibble() %>%
-        dplyr::mutate("Cluster" = paste0("Cluster", Cluster))
-      # print(data_new)
-      output$Kmeansplotshow <- renderPlot({
-        req(data_scale)
-        req(cl)
-        data_new <- data.frame("index" = rownames(data_scale), Cluster = cl$cluster, data_scale) %>%
-          as_tibble() %>%
-          dplyr::mutate(Cluster = paste0("Cluster", Cluster)) %>%
+        dplyr::as_tibble() %>%
+        dplyr::mutate("Cluster" = base::paste0("Cluster", Cluster))
+      output$Kmeansplotshow <- shiny::renderPlot({
+        shiny::req(data_scale)
+        shiny::req(cl)
+        data_new <- data.frame("index" = base::rownames(data_scale), Cluster = cl$cluster, data_scale) %>%
+          dplyr::as_tibble() %>%
+          dplyr::mutate(Cluster = base::paste0("Cluster", Cluster)) %>%
           dplyr::count(Cluster) %>%
           dplyr::rename(Cluster_Count = n) %>%
           dplyr::right_join(data_new, by = "Cluster") %>%
-          dplyr::mutate(Cluster = paste0(Cluster,":",Cluster_Count)) %>%
+          dplyr::mutate(Cluster = base::paste0(Cluster,":",Cluster_Count)) %>%
           dplyr::select(-Cluster_Count)
-        # print(data_new)
-        data_new = reshape2::melt(data_new) %>% as_tibble()
+        data_new = reshape2::melt(data_new) %>% dplyr::as_tibble()
         centers_line <- reshape2::melt(cl$centers)
-        centers_line <- split(centers_line, centers_line$Var1)
-        # 定义绘图数据
-        plot_data <- split(data_new, data_new$Cluster)
+        centers_line <- base::split(centers_line, centers_line$Var1)
+        plot_data <- base::split(data_new, data_new$Cluster)
         # Generate a palette of distinct colors
-        num_clusters <- length(unique(data_new$Cluster))  # 获取聚类集群的数量
-        colors <- rainbow(num_clusters)  # 使用RColorBrewer生成一组颜色
+        num_clusters <- base::length(base::unique(data_new$Cluster))
+        colors <- grDevices::rainbow(num_clusters)
         # Create a named vector of colors
-        color_vector <- setNames(colors, unique(data_new$Cluster))
+        color_vector <- stats::setNames(colors, base::unique(data_new$Cluster))
         # Modify the plotting code to use the color_vector
         plots <- purrr::map2(plot_data, centers_line, function(df, centers) {
-          ggplot2::ggplot(df, aes(x = variable, y = value, group = index, color = Cluster)) +
-            geom_line(show.legend = FALSE) +
-            labs(x = "", y = "Standardised value") +
-            labs(title = df$Cluster)+
-            # scale_color_manual(values = color_vector) +  # 使用自定义的颜色向量
-            scale_color_manual(values = input$color_select) +  # 使用自定义的颜色向量
-            theme_bw() +
-            theme(plot.title = element_text(hjust = 0.5)) +
-            theme(panel.grid = element_blank()) +
-            theme(axis.text = element_text(colour = 'black'))+
-            theme(text=element_text(size=11,  family="serif"))+
-            geom_line(data = centers, aes(x = Var2,
-                                          y = value,
-                                          group = factor(Var1)),
-                      col = "black", linewidth = 1)+
+          ggplot2::ggplot(df, ggplot2::aes(x = variable, y = value, group = index, color = Cluster)) +
+            ggplot2::geom_line(show.legend = FALSE) +
+            ggplot2::labs(x = "", y = "Standardised value") +
+            ggplot2::labs(title = df$Cluster)+
+            # scale_color_manual(values = color_vector) +
+            ggplot2::scale_color_manual(values = input$color_select) +
+            ggplot2::theme_bw() +
+            ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) +
+            ggplot2::theme(panel.grid = ggplot2::element_blank()) +
+            ggplot2::theme(axis.text = ggplot2::element_text(colour = 'black'))+
+            ggplot2::theme(text=ggplot2::element_text(size=11,  family="serif"))+
+            ggplot2::geom_line(data = centers, ggplot2::aes(x = Var2,
+                                                            y = value,
+                                                            group = factor(Var1)),
+                               col = "black", linewidth = 1)+
             ggprism::theme_prism(border = TRUE)+
-            theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+            ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5))
         })
         patchwork_plot <- patchwork::wrap_plots(plots)
         print(patchwork_plot)
       })
       # kmeans显示上传的表格
       output$Kmeans_dataTable <- DT::renderDT({
-        req(data_new)
+        shiny::req(data_new)
         DT::datatable(data_new)
       })
       # 下载表格
-      output$download_Kmeans_table <- downloadHandler(
+      output$download_Kmeans_table <- shiny::downloadHandler(
         filename = function() {
-          paste("Kmeans_", Sys.Date(), ".csv", sep = "")
+          base::paste("Kmeans_", base::Sys.Date(), ".csv", sep = "")
         },
         content = function(file) {
-          req(data_new)
-          # 保存旋转矩阵为CSV文件
-          write.csv(data_new, file, row.names = TRUE)
+          shiny::req(data_new)
+          utils::write.csv(data_new, file, row.names = TRUE)
         }
       )
-      # 添加下载Kmeans图像为PDF的功能
-      output$download_Kmeans_Figure <- downloadHandler(
+      output$download_Kmeans_Figure <- shiny::downloadHandler(
         filename = function() {
-          paste("Kmeans_plot_", Sys.Date(), ".pdf", sep = "")
+          base::paste("Kmeans_plot_", base::Sys.Date(), ".pdf", sep = "")
         },
         content = function(file) {
-          req(data_scale)
-          req(cl)
+          shiny::req(data_scale)
+          shiny::req(cl)
           data_new <- data.frame("index" = rownames(data_scale), Cluster = cl$cluster, data_scale) %>%
-            as_tibble() %>%
-            dplyr::mutate(Cluster = paste0("Cluster", Cluster)) %>%
+            dplyr::as_tibble() %>%
+            dplyr::mutate(Cluster = base::paste0("Cluster", Cluster)) %>%
             dplyr::count(Cluster) %>%
             dplyr::rename(Cluster_Count = n) %>%
             dplyr::right_join(data_new, by = "Cluster") %>%
-            dplyr::mutate(Cluster = paste0(Cluster,":",Cluster_Count)) %>%
+            dplyr::mutate(Cluster = base::paste0(Cluster,":",Cluster_Count)) %>%
             dplyr::select(-Cluster_Count)
           # print(data_new)
-          data_new = reshape2::melt(data_new) %>% as_tibble()
+          data_new = reshape2::melt(data_new) %>% dplyr::as_tibble()
           centers_line <- reshape2::melt(cl$centers)
-          centers_line <- split(centers_line, centers_line$Var1)
-          # 定义绘图数据
-          plot_data <- split(data_new, data_new$Cluster)
+          centers_line <- base::split(centers_line, centers_line$Var1)
+          plot_data <- base::split(data_new, data_new$Cluster)
           # Generate a palette of distinct colors
-          num_clusters <- length(unique(data_new$Cluster))  # 获取聚类集群的数量
-          colors <- rainbow(num_clusters)  # 使用RColorBrewer生成一组颜色
+          num_clusters <- base::length(base::unique(data_new$Cluster))
+          colors <- grDevices::rainbow(num_clusters)
           # Create a named vector of colors
-          color_vector <- setNames(colors, unique(data_new$Cluster))
+          color_vector <- stats::setNames(colors, base::unique(data_new$Cluster))
           # Modify the plotting code to use the color_vector
           plots <- purrr::map2(plot_data, centers_line, function(df, centers) {
-            ggplot(df, aes(x = variable, y = value, group = index, color = Cluster)) +
-              geom_line(show.legend = FALSE) +
-              labs(x = "", y = "Standardised value") +
-              labs(title = df$Cluster)+
-              # scale_color_manual(values = color_vector) +  # 使用自定义的颜色向量
-              scale_color_manual(values = input$color_select) +  # 使用自定义的颜色向量
-              theme_bw() +
-              theme(plot.title = element_text(hjust = 0.5)) +
-              theme(panel.grid = element_blank()) +
-              theme(axis.text = element_text(colour = 'black'))+
-              theme(text=element_text(size=11,  family="serif"))+
-              geom_line(data = centers, aes(x = Var2,
-                                            y = value,
-                                            group = factor(Var1)),
-                        col = "black", linewidth = 1)+
+            ggplot2::ggplot(df, ggplot2::aes(x = variable, y = value, group = index, color = Cluster)) +
+              ggplot2::geom_line(show.legend = FALSE) +
+              ggplot2::labs(x = "", y = "Standardised value") +
+              ggplot2::labs(title = df$Cluster)+
+              # scale_color_manual(values = color_vector) +
+              ggplot2::scale_color_manual(values = input$color_select) +
+              ggplot2::theme_bw() +
+              ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)) +
+              ggplot2::theme(panel.grid = ggplot2::element_blank()) +
+              ggplot2::theme(axis.text = ggplot2::element_text(colour = 'black'))+
+              ggplot2::theme(text=ggplot2::element_text(size=11,  family="serif"))+
+              ggplot2::geom_line(data = centers, ggplot2::aes(x = Var2,
+                                                              y = value,
+                                                              group = factor(Var1)),
+                                 col = "black", linewidth = 1)+
               ggprism::theme_prism(border = TRUE)+
-              theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+              ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5))
           })
           patchwork_plot <- patchwork::wrap_plots(plots)
           print(patchwork_plot)
-          # 保存图像为PDF文件
-          ggsave(file, plot = patchwork_plot, device = "pdf", width = input$Kmeans_width, height = input$Kmeans_height)
+          ggplot2::ggsave(file, plot = patchwork_plot, device = "pdf", width = input$Kmeans_width, height = input$Kmeans_height)
         }
       )
+      shiny::updateTabsetPanel(session, "kmeans_tabs", selected = "Figure")
+    }
+    )
 
+    shiny::observeEvent(input$run_btn_heatmap, {
+      shiny::req(input$dropdown == "Heatmap")
+      if (is.null(input$file) && !isTRUE(builtin_loaded())) {
+        shiny::showNotification(
+          "Upload a CSV or click LOAD DEMO DATA before running the heatmap.",
+          type = "error"
+        )
+        return(invisible(NULL))
       }
-      )
+      mat <- data()
+      mat <- as.matrix(mat)
+      storage.mode(mat) <- "numeric"
+      mat <- mat[stats::complete.cases(mat), , drop = FALSE]
+      shiny::validate(shiny::need(nrow(mat) >= input$heatmap_centers, "The matrix must contain at least as many rows as K-means clusters."))
 
+      scaled_mat <- switch(
+        input$heatmap_scale,
+        row = t(scale(t(mat))),
+        column = scale(mat),
+        none = mat
+      )
+      scaled_mat[is.na(scaled_mat)] <- 0
+      km <- stats::kmeans(scaled_mat, centers = input$heatmap_centers)
+      cluster_table <- data.frame(ID = rownames(scaled_mat), Cluster = paste0("Cluster", km$cluster), scaled_mat, check.names = FALSE)
+      cluster_table <- cluster_table[order(cluster_table$Cluster), , drop = FALSE]
+      plot_mat <- as.matrix(cluster_table[, setdiff(colnames(cluster_table), c("ID", "Cluster")), drop = FALSE])
+      rownames(plot_mat) <- cluster_table$ID
+
+      output$heatmap_plot <- shiny::renderPlot({
+        stats::heatmap(
+          plot_mat,
+          Rowv = NA,
+          Colv = NA,
+          scale = "none",
+          labRow = NA,
+          margins = c(8, 6),
+          main = "Expression trend heatmap (K-means ordered)"
+        )
+      })
+
+      output$heatmap_table <- DT::renderDT({
+        DT::datatable(cluster_table, options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
+      })
+
+      output$download_heatmap_table <- shiny::downloadHandler(
+        filename = function() paste0("heatmap_kmeans_clusters_", Sys.Date(), ".csv"),
+        content = function(file) utils::write.csv(cluster_table, file, row.names = FALSE)
+      )
+    })
 
   }
   )
 }
-

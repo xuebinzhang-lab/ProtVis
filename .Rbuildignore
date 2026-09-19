@@ -6,3 +6,6 @@ dev_history.R
 $run_dev.*
 ^.here$
 ^LICENSE\.md$
+^R/.*\.(rdb|rdx)$
+^R/ProtVis$
+^install_ProtVis\.R$
