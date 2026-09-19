@@ -1195,6 +1195,13 @@ app_ui <- function(request) {
         sage_search_ui("sage_search")
       ),
 
+      bslib::nav_panel(
+        "Project Dashboard",
+        value = "project_dashboard",
+        icon = bsicons::bs_icon("speedometer2"),
+        protvis_dashboard_ui("project_dashboard")
+      ),
+
       bslib::nav_menu(
         "Pre-processing",
         icon = bsicons::bs_icon("wrench"),
@@ -1271,6 +1278,13 @@ app_ui <- function(request) {
         "PTM",
         icon = bsicons::bs_icon("layers"),
         PTM_ui("PTM")
+      ),
+
+      bslib::nav_panel(
+        "PSM Explorer",
+        value = "psm_explorer",
+        icon = bsicons::bs_icon("activity"),
+        psm_explorer_ui("psm_explorer")
       ),
 
       bslib::nav_panel(

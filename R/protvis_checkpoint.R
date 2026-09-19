@@ -360,6 +360,9 @@ attach_protvis_file <- function(dataset, path, name = basename(path),
   files <- dataset$other_files %||% list()
   files[[length(files) + 1L]] <- entry
   dataset$other_files <- files
+  dataset <- .protvis_record_file(
+    dataset, path, name = entry$name, kind = entry$kind
+  )
   .protvis_append_process(dataset, "attach_file", status = "success",
                           parameters = list(name = entry$name, kind = entry$kind))
 }
@@ -377,7 +380,7 @@ attach_protvis_file <- function(dataset, path, name = basename(path),
 #' Export a dataset and its provenance into a portable directory.
 #' @export
 export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
-  dataset <- as_protvis_dataset(dataset)
+  dataset <- protvis_standardize_dataset(dataset)
   validate_protvis_dataset(dataset)
   if (is.null(directory) || !nzchar(as.character(directory))) {
     stop("An export directory is required.", call. = FALSE)
@@ -436,14 +439,40 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
       }
     }
   }
-  writeLines(c(
-    "{",
-    paste0('  "object": "ProtVis_dataset",'),
-    paste0('  "created_at": "', as.character(Sys.time()), '",'),
-    paste0('  "proteins": ', nrow(dataset$expression_data), ","),
-    paste0('  "samples": ', ncol(dataset$expression_data)),
-    "}"
-  ), file.path(root, "metadata.json"))
+  jsonlite::write_json(
+    list(
+      object = "ProtVis_dataset",
+      schema_version = dataset$metadata$schema_version %||% dataset$version,
+      created_at = as.character(Sys.time()),
+      proteins = nrow(dataset$expression_data),
+      samples = if (ncol(dataset$expression_data)) {
+        ncol(dataset$expression_data)
+      } else nrow(dataset$sample_info)
+    ),
+    file.path(root, "metadata.json"),
+    auto_unbox = TRUE, pretty = TRUE, na = "null"
+  )
+  saveRDS(
+    dataset$metadata$provenance,
+    file.path(root, "provenance.rds"), compress = TRUE
+  )
+  tryCatch(
+    jsonlite::write_json(
+      dataset$metadata$provenance,
+      file.path(root, "provenance.json"),
+      auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null"
+    ),
+    error = function(e) {
+      writeLines(
+        paste("JSON provenance export was unavailable:", conditionMessage(e)),
+        file.path(root, "provenance_json_warning.txt")
+      )
+    }
+  )
+  utils::write.csv(
+    protvis_workflow_status(dataset),
+    file.path(root, "workflow_status.csv"), row.names = FALSE
+  )
   write_protvis_report(dataset, file.path(root, "report.html"))
   normalizePath(root, winslash = "/", mustWork = TRUE)
 }

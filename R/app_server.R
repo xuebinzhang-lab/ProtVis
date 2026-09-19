@@ -48,6 +48,7 @@ app_server <- function(input, output, session) {
   })
   project_init_server("project_init", shared_state = shared_state)
   sage_search_server("sage_search", shared_state = shared_state)
+  protvis_dashboard_server("project_dashboard", shared_state = shared_state)
   data_input_server(
     "data_input",
     data_source_reactive = reactive(shared_state$data_source),
@@ -65,6 +66,7 @@ app_server <- function(input, output, session) {
   gsea_server("gsea")
   pathview_server("pathview")
   PTM_server("PTM")
+  psm_explorer_server("psm_explorer", shared_state = shared_state)
   # protein_fun_server("protein_fun", shared_state)
   release_data_server("release_data1", shared_state)
   stringdb_ppi_server("stringdb_ppi")

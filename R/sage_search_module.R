@@ -27,6 +27,21 @@
     output_directory = output_directory, engine = "Sage 0.14.7"
   )
   dataset$metadata <- metadata
+  dataset <- .protvis_record_software(
+    dataset, "Sage", version = "0.14.7",
+    path = bundle$sage_path %||% protvis_sage_executable(),
+    parameters = parameters
+  )
+  dataset <- .protvis_record_file(
+    dataset, fasta, name = basename(fasta), kind = "FASTA database"
+  )
+  for (raw_path in as.character(bundle$config$mzml_paths %||% character())) {
+    if (file.exists(raw_path)) {
+      dataset <- .protvis_record_file(
+        dataset, raw_path, name = basename(raw_path), kind = "mzML input"
+      )
+    }
+  }
   attachments <- dataset$other_files %||% list()
   for (path in unname(unlist(bundle$files))) {
     if (file.exists(path)) {
@@ -36,9 +51,18 @@
         size_bytes = as.numeric(file.info(path)$size),
         md5 = unname(tools::md5sum(path)), attached_at = as.character(Sys.time())
       )
+      dataset <- .protvis_record_file(
+        dataset, path, name = basename(path), kind = "Sage database-search output"
+      )
     }
   }
   dataset$other_files <- attachments
+  if (is.data.frame(bundle$psms)) {
+    assays <- dataset$analysis_results$assays %||% list()
+    assays$psm <- bundle$psms
+    dataset$analysis_results$assays <- assays
+  }
+  dataset <- protvis_standardize_dataset(dataset)
   .protvis_append_process(
     dataset, "Sage_database_search", status = "success",
     parameters = parameters,
@@ -397,9 +421,17 @@ sage_search_ui <- function(id) {
       bslib::card(bslib::card_header("Sage log"), bslib::card_body(shiny::verbatimTextOutput(ns("log")))),
       bslib::card(bslib::card_header("Search result tables"), bslib::card_body(
         bslib::navset_tab(
-          bslib::nav_panel("Summary", DT::DTOutput(ns("summary"))),
+          bslib::nav_panel("QC Summary", DT::DTOutput(ns("sage_qc_summary"))),
+          bslib::nav_panel("Run QC", DT::DTOutput(ns("sage_run_qc"))),
+          bslib::nav_panel("Charge", shiny::plotOutput(ns("sage_charge"), height = "320px")),
+          bslib::nav_panel("Mass error", shiny::plotOutput(ns("sage_mass_error"), height = "320px")),
+          bslib::nav_panel("q-value", shiny::plotOutput(ns("sage_qvalue"), height = "320px")),
+          bslib::nav_panel("Peptide length", shiny::plotOutput(ns("sage_peptide_length"), height = "320px")),
+          bslib::nav_panel("Missed cleavage", shiny::plotOutput(ns("sage_missed"), height = "320px")),
+          bslib::nav_panel("Retention time", shiny::plotOutput(ns("sage_rt"), height = "320px")),
           bslib::nav_panel("PSMs", DT::DTOutput(ns("psms"))),
-          bslib::nav_panel("LFQ", DT::DTOutput(ns("lfq")))
+          bslib::nav_panel("LFQ", DT::DTOutput(ns("lfq"))),
+          bslib::nav_panel("Files", DT::DTOutput(ns("summary")))
         )
       )), col_widths = c(4, 8, 12)
     )
@@ -460,6 +492,113 @@ sage_search_server <- function(id, shared_state) {
     output$log <- shiny::renderText({
       b <- rv$bundle
       if (is.null(b)) "No search has been run." else paste(b$log, collapse = "\n")
+    })
+    sage_qc <- shiny::reactive({
+      b <- rv$bundle
+      if (is.null(b)) return(NULL)
+      protvis_sage_qc(b$psms)
+    })
+    output$sage_qc_summary <- DT::renderDT({
+      value <- sage_qc()
+      if (is.null(value)) return(data.frame(Message = "Run Sage Search to display QC."))
+      DT::datatable(value$summary, rownames = FALSE, options = list(dom = "t"))
+    })
+    output$sage_run_qc <- DT::renderDT({
+      value <- sage_qc()
+      if (is.null(value) || !nrow(value$per_run)) {
+        return(data.frame(Message = "No run-level QC columns were detected."))
+      }
+      DT::datatable(value$per_run, rownames = FALSE,
+                    options = list(pageLength = 12, scrollX = TRUE))
+    })
+    output$sage_charge <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$charge)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "Charge column not available")
+      } else {
+        graphics::barplot(
+          value$charge$psms, names.arg = value$charge$charge,
+          xlab = "Precursor charge", ylab = "PSMs", border = NA
+        )
+      }
+    })
+    output$sage_mass_error <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$mass_error)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "Precursor ppm column not available")
+      } else {
+        graphics::hist(
+          value$mass_error$ppm, breaks = "FD",
+          xlab = "Precursor mass error (ppm)", main = "Precursor mass accuracy",
+          border = "white"
+        )
+        graphics::abline(v = 0, lty = 2)
+      }
+    })
+    output$sage_qvalue <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$q_value)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "q-value column not available")
+      } else {
+        graphics::hist(
+          value$q_value$q_value, breaks = "FD",
+          xlab = "PSM q-value", main = "PSM confidence", border = "white"
+        )
+        graphics::abline(v = 0.01, lty = 2)
+      }
+    })
+    output$sage_peptide_length <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$peptide_length)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "Peptide sequence column not available")
+      } else {
+        graphics::hist(
+          value$peptide_length$peptide_length,
+          breaks = seq(
+            min(value$peptide_length$peptide_length) - 0.5,
+            max(value$peptide_length$peptide_length) + 0.5,
+            by = 1
+          ),
+          xlab = "Peptide length (aa)", main = "Peptide length distribution",
+          border = "white"
+        )
+      }
+    })
+    output$sage_missed <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$missed_cleavages)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "Missed-cleavage column not available")
+      } else {
+        graphics::barplot(
+          value$missed_cleavages$psms,
+          names.arg = value$missed_cleavages$missed_cleavages,
+          xlab = "Missed cleavages", ylab = "PSMs", border = NA
+        )
+      }
+    })
+    output$sage_rt <- shiny::renderPlot({
+      value <- sage_qc()
+      shiny::req(value)
+      if (!nrow(value$retention_time)) {
+        graphics::plot.new()
+        graphics::text(.5, .5, "Retention-time column not available")
+      } else {
+        graphics::hist(
+          value$retention_time$retention_time, breaks = "FD",
+          xlab = "Retention time", main = "PSM retention-time distribution",
+          border = "white"
+        )
+      }
     })
     output$summary <- DT::renderDT({
       b <- rv$bundle

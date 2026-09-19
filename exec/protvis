@@ -1,0 +1,3 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(ProtVis))
+ProtVis::run_protvis_cli()

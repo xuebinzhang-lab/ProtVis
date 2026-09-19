@@ -21,8 +21,12 @@ The application is designed for researchers who need publication-ready visual su
 ## Key features
 
 -   **Multi-source proteomics import** for MaxQuant, Proteome Discoverer, DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, and user-defined matrices.
--   **ProtVis_dataset** standardized object with expression data, sample/variable metadata, annotations, analysis results, provenance, checkpoints, and portable exports.
--   **Recoverable workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Failed nodes are recorded and can be retried or resumed without taking down the Shiny session.
+-   **ProtVis_dataset schema v3** with a canonical protein assay, PSM/peptide assay registry, aligned sample/protein metadata, annotations, analysis results, checkpoints, and backward-compatible migration. Optional `as_QFeatures()` / `from_QFeatures()` helpers connect ProtVis to the Bioconductor QFeatures ecosystem.
+-   **Structured provenance** records R/ProtVis/package versions, Sage version and parameters, MD5 file fingerprints, timestamps, node status, errors, and parent/object lineage. Portable exports include `provenance.json`, `provenance.rds`, and `workflow_status.csv`.
+-   **Recoverable dependency-aware workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Re-running an upstream node explicitly invalidates downstream results; failed nodes can be retried or resumed from checkpoints.
+-   **Project QC Dashboard** with protein/sample counts, data completeness, median protein CV, sample-level missingness/identification QC, workflow state, input-file provenance, and Sage search QC.
+-   **PSM Explorer** for Protein → Peptide → PSM → MS/MS inspection with mzIdentML/MGF loading, searchable PSM selection, PTM-aware theoretical fragments, matched b/y ions, and exportable annotated spectra.
+-   **Headless/CLI mode** via `ProtVis::run_protvis_cli()` or the installed `exec/protvis` script, using the same import, Sage, processing, checkpoint, provenance, and export backend as Shiny.
 -   **MaxQuant output preparation** as the first item in **Pre-processing** for MaxQuant-specific filtering and matrix handoff; other sources use their own parser-backed import path.
 -   **Protein-level downstream analysis** including DEP analysis, enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
@@ -105,8 +109,9 @@ and LFQ tables, configuration, paths, files, log, and provenance are stored in
 `ProtVis_dataset$analysis_results$Sage_database_search`; the stage checkpoint is
 written as `Step2_sage_database_search.rda` for downstream workflows.
 The search step then updates the Sage staging dataset into the canonical
-protein-by-sample `ProtVis_dataset`, aggregates the Sage LFQ peptide table by
-target protein, and retains the staging metadata and process history. This
+protein-by-sample `ProtVis_dataset`, converts the Sage LFQ output into the
+protein abundance matrix, retains the PSM assay, and preserves staging metadata
+and process history. This
 matrix becomes the active input for the existing preprocessing,
 differential-abundance, enrichment, and other downstream modules. This
 staging/finalization behavior is exclusive to the Sage workflow; other data
@@ -125,6 +130,46 @@ automatically persisted as an RDS plus a portable export bundle. If no output
 directory is supplied, `getwd()` is used; `protvis_output_directory()` exposes
 the same resolution rule for scripts and extensions. The Shiny interface
 therefore does not require a manual export step.
+
+### Project QC, workflow state, and PSM Explorer
+
+After Project init or Search, open **Project Dashboard** to inspect the active
+`ProtVis_dataset`. The dashboard summarizes identified proteins and samples,
+matrix completeness, median protein CV, sample-level missingness and intensity,
+the dependency-aware workflow graph, provenance events, file fingerprints, and
+Sage run-level QC. The **Resume workflow** button continues from the most recent
+valid checkpoint/node; a project still in `Sage_staging` is intentionally sent
+back to Search instead of inventing downstream quantitative data.
+
+The Search page includes dedicated Sage QC views for run-level IDs, precursor
+charge, precursor mass error, q-values, peptide length, missed cleavages, and
+retention-time distributions. Open **PSM Explorer** for spectrum-level evidence:
+load mzIdentML + MGF files, search/select any PSM, and inspect the matched
+PTM-aware b/y fragment ions and annotated spectrum.
+
+### Headless analysis
+
+The Shiny interface and CLI share the same backend. Examples:
+
+```r
+# Table-based input
+ProtVis::run_protvis_cli(c(
+  "--input", "proteins.tsv",
+  "--source", "DIA-NN",
+  "--output", "results"
+))
+
+# Resume an existing project/checkpoint directory
+ProtVis::run_protvis_cli(c(
+  "--resume", "results",
+  "--output", "results"
+))
+```
+
+For the raw-data route, pass `--fasta`, `--mzml-dir`, and `--sample-info`.
+A JSON file supplied with `--config` can provide Sage parameters and downstream
+stage parameters. Use `ProtVis::protvis_cli_help()` for the complete command
+summary.
 
 ------------------------------------------------------------------------
 

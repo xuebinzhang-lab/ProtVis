@@ -1,6 +1,6 @@
 Package: ProtVis
 Title: ProtVis Shiny App
-Version: 0.7.9
+Version: 0.8.0
 Authors@R:
     person(given = "Fei",
            family = "Liang",
@@ -101,5 +101,8 @@ Remotes:
 Suggests:
     ShinyWGCNA,
     arrow,
+    QFeatures,
+    SummarizedExperiment,
+    S4Vectors,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

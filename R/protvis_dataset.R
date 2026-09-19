@@ -705,6 +705,13 @@ methods::setMethod(
     errors[[length(errors) + 1L]] <- event
     dataset$process_info$errors <- errors
   }
+  if (exists(".protvis_append_provenance_event", mode = "function")) {
+    dataset <- .protvis_append_provenance_event(
+      dataset, stage = stage, status = status, parameters = parameters,
+      error = error, message = message,
+      started_at = started_at, finished_at = finished_at
+    )
+  }
   dataset
 }
 
@@ -809,6 +816,10 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     ),
     metadata
   )
+  object_metadata$schema <- object_metadata$schema %||% protvis_schema()
+  object_metadata$schema_version <- protvis_schema_version()
+  object_metadata$provenance <- object_metadata$provenance %||%
+    .protvis_default_provenance(object_metadata$source %||% "user")
   expression_data <- .protvis_normalise_dataset_missing_values(
     expression_data, source = object_metadata$source
   )
@@ -1289,11 +1300,27 @@ subset_protvis_dataset <- function(object, variables = NULL, samples = NULL) {
 
 methods::setMethod("show", "ProtVis_dataset", function(object) {
   validate_protvis_dataset(object)
-  cat("<ProtVis_dataset>\n")
+  cat("<ProtVis_dataset schema ", object$version, ">\n", sep = "")
   cat("  proteins:", nrow(object$expression_data),
-      " samples:", ncol(object$expression_data), "\n")
+      " samples:", if (ncol(object$expression_data)) {
+        ncol(object$expression_data)
+      } else nrow(object$sample_info), "\n")
   cat("  source:", object$metadata$source %||% "unknown", "\n")
   cat("  last stage:", object$process_info$active_stage %||% "none",
       " [", object$process_info$last_status %||% "unknown", "]\n", sep = "")
   invisible(object)
+})
+
+methods::setMethod("summary", "ProtVis_dataset", function(object, ...) {
+  if (exists("protvis_qc_summary", mode = "function")) {
+    return(protvis_qc_summary(object))
+  }
+  data.frame(
+    proteins = nrow(object$expression_data),
+    samples = if (ncol(object$expression_data)) {
+      ncol(object$expression_data)
+    } else nrow(object$sample_info),
+    source = as.character(object$metadata$source %||% "unknown"),
+    stringsAsFactors = FALSE
+  )
 })

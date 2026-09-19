@@ -102,11 +102,11 @@ protvis_stage_labels <- function() {
 }
 
 .protvis_clear_downstream <- function(dataset, stage) {
-  index <- match(stage, .protvis_stage_order)
-  if (is.na(index)) return(dataset)
-  downstream <- .protvis_stage_order[seq.int(index, length(.protvis_stage_order))]
-  for (name in downstream) dataset$analysis_results[[name]] <- NULL
-  dataset
+  protvis_invalidate_downstream(
+    dataset, stage,
+    reason = paste0(stage, " was rerun; downstream results require refresh."),
+    include_stage = TRUE, clear_results = TRUE
+  )
 }
 
 .protvis_noise_correction <- function(dataset, params) {
@@ -546,6 +546,7 @@ run_protvis_step <- function(dataset, stage, params = list(),
     result, stage, status = "success", parameters = params,
     started_at = started, finished_at = Sys.time()
   )
+  candidate <- .protvis_mark_stage_complete(candidate, stage)
   directory <- protvis_output_directory(
     checkpoint_dir %||% candidate$checkpoint_info$directory %||%
       candidate$metadata$checkpoint_dir
@@ -598,8 +599,13 @@ run_protvis_pipeline <- function(dataset, stages = NULL, params = list(),
       current, stage, params = params, checkpoint_dir = checkpoint_dir,
       stop_on_error = stop_on_error, ...
     )
-    event <- .protvis_last_event(current)
-    if (identical(event$status, "error") && !isTRUE(continue_on_error)) break
+    history <- current$process_info$history %||% list()
+    stage_events <- history[vapply(history, function(event) {
+      identical(as.character(event$stage %||% ""), stage)
+    }, logical(1))]
+    event <- if (length(stage_events)) stage_events[[length(stage_events)]] else NULL
+    if (!is.null(event) && identical(event$status, "error") &&
+        !isTRUE(continue_on_error)) break
   }
   current
 }
@@ -607,8 +613,10 @@ run_protvis_pipeline <- function(dataset, stages = NULL, params = list(),
 .protvis_last_failed_stage <- function(dataset) {
   history <- dataset$process_info$history %||% list()
   if (length(history) == 0L) return(NULL)
-  failed <- vapply(history, function(event) identical(event$status, "error"),
-                   logical(1))
+  failed <- vapply(history, function(event) {
+    identical(event$status, "error") &&
+      as.character(event$stage %||% "") %in% .protvis_stage_order
+  }, logical(1))
   if (!any(failed)) return(NULL)
   as.character(history[[max(which(failed))]]$stage)
 }
@@ -741,37 +749,104 @@ retry_protvis_step <- function(dataset, stage = NULL, params = list(),
                    checkpoint_dir = directory, ...)
 }
 
-#' Write a small self-contained HTML provenance report.
+#' Write a self-contained HTML project QC and provenance report.
 #' @export
 write_protvis_report <- function(dataset, file) {
-  dataset <- as_protvis_dataset(dataset)
+  dataset <- protvis_standardize_dataset(dataset)
   validate_protvis_dataset(dataset)
   if (length(file) != 1L || !nzchar(as.character(file))) {
     stop("A report filename is required.", call. = FALSE)
   }
   directory <- dirname(path.expand(file))
-  if (!dir.exists(directory)) dir.create(directory, recursive = TRUE,
-                                         showWarnings = FALSE)
-  history <- protvis_history(dataset)
-  rows <- if (nrow(history) == 0L) "" else paste(
-    apply(history, 1L, function(row) paste0(
-      "<tr><td>", row[["id"]], "</td><td>", row[["stage"]],
-      "</td><td>", row[["status"]], "</td><td>", row[["time"]],
-      "</td><td>", row[["error"]], "</td></tr>"
-    )), collapse = "\n"
+  if (!dir.exists(directory)) {
+    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  escape <- function(x) {
+    x <- as.character(x)
+    x <- gsub("&", "&amp;", x, fixed = TRUE)
+    x <- gsub("<", "&lt;", x, fixed = TRUE)
+    x <- gsub(">", "&gt;", x, fixed = TRUE)
+    x <- gsub('"', "&quot;", x, fixed = TRUE)
+    x
+  }
+  table_html <- function(data) {
+    if (is.null(data) || !nrow(data)) return("<p>No records.</p>")
+    headers <- paste0("<th>", escape(names(data)), "</th>", collapse = "")
+    rows <- apply(data, 1L, function(row) {
+      paste0(
+        "<tr>",
+        paste0("<td>", escape(ifelse(is.na(row), "", row)), "</td>",
+               collapse = ""),
+        "</tr>"
+      )
+    })
+    paste0(
+      "<table><thead><tr>", headers, "</tr></thead><tbody>",
+      paste(rows, collapse = "\n"), "</tbody></table>"
+    )
+  }
+
+  qc <- protvis_qc_summary(dataset)
+  workflow <- protvis_workflow_status(dataset)
+  provenance <- protvis_provenance(dataset)
+  sample_qc <- protvis_sample_qc(dataset)
+  sage <- protvis_sage_qc(protvis_assay(dataset, "psm"))
+  env <- provenance$environment %||% list()
+  env_table <- data.frame(
+    Item = c("Schema", "ProtVis", "R", "Platform", "OS", "Generated"),
+    Value = c(
+      dataset$metadata$schema_version %||% dataset$version,
+      env$ProtVis %||% .protvis_package_version(),
+      env$R %||% R.version.string,
+      env$platform %||% R.version$platform,
+      env$os %||% "",
+      as.character(Sys.time())
+    ),
+    stringsAsFactors = FALSE
   )
+  qc_table <- data.frame(
+    Metric = c(
+      "Proteins", "Samples", "Data completeness", "Missing fraction",
+      "Median protein CV", "Groups", "Completed workflow stages"
+    ),
+    Value = c(
+      qc$proteins, qc$samples,
+      ifelse(is.finite(qc$completeness),
+             paste0(round(100 * qc$completeness, 2), "%"), "NA"),
+      ifelse(is.finite(qc$missing_fraction),
+             paste0(round(100 * qc$missing_fraction, 2), "%"), "NA"),
+      ifelse(is.finite(qc$median_protein_cv),
+             paste0(round(100 * qc$median_protein_cv, 2), "%"), "NA"),
+      qc$groups, paste0(qc$completed_stages, "/", qc$total_stages)
+    ),
+    stringsAsFactors = FALSE
+  )
+
   html <- c(
     "<!doctype html><html><head><meta charset='utf-8'>",
-    "<title>ProtVis_dataset report</title>",
-    "<style>body{font-family:system-ui;margin:2rem;color:#1f3447}",
-    "table{border-collapse:collapse}td,th{border:1px solid #dbe8f3;padding:.4rem}",
-    "th{background:#e8f5fc}</style></head><body>",
-    "<h1>ProtVis_dataset</h1>",
-    paste0("<p>Proteins: ", nrow(dataset$expression_data),
-           " &nbsp; Samples: ", ncol(dataset$expression_data), "</p>"),
-    "<h2>Process history</h2><table><tr><th>ID</th><th>Stage</th>",
-    "<th>Status</th><th>Time</th><th>Error</th></tr>",
-    rows, "</table></body></html>"
+    "<title>ProtVis project report</title>",
+    "<style>",
+    "body{font-family:system-ui,-apple-system,sans-serif;margin:2rem auto;max-width:1200px;color:#1f3447;padding:0 1rem}",
+    "h1,h2{color:#176fa3} .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}",
+    ".card{border:1px solid #dbe8f3;border-radius:12px;padding:1rem;margin-bottom:1rem;background:#fff}",
+    "table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{border:1px solid #dbe8f3;padding:.42rem;text-align:left}",
+    "th{background:#e8f5fc}.muted{color:#607080}@media(max-width:800px){.grid{grid-template-columns:1fr}}",
+    "</style></head><body>",
+    "<h1>ProtVis Project QC Report</h1>",
+    paste0("<p class='muted'>Object: ", escape(protvis_dataset_name(dataset)), "</p>"),
+    "<div class='grid'><div class='card'><h2>Project summary</h2>",
+    table_html(qc_table),
+    "</div><div class='card'><h2>Environment</h2>",
+    table_html(env_table), "</div></div>",
+    "<div class='card'><h2>Workflow state</h2>", table_html(workflow), "</div>",
+    "<div class='card'><h2>Sample QC</h2>", table_html(sample_qc), "</div>",
+    "<div class='card'><h2>Sage search QC</h2>", table_html(sage$summary), "</div>",
+    "<div class='card'><h2>Provenance events</h2>",
+    table_html(provenance$events), "</div>",
+    "<div class='card'><h2>Input and output files</h2>",
+    table_html(provenance$files), "</div>",
+    "</body></html>"
   )
   writeLines(html, file)
   normalizePath(file, winslash = "/", mustWork = TRUE)
