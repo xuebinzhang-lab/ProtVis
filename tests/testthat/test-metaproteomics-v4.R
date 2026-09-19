@@ -116,3 +116,31 @@ testthat::test_that("peptide sample columns are not offered as function levels",
   testthat::expect_true(all(c("Pathway", "KO", "COG", "CAZy") %in% levels))
   testthat::expect_false(any(grepl("Control_|Treatment_", levels)))
 })
+
+
+testthat::test_that("stored metaproteomics inputs are reusable after project resume", {
+  dat <- metaproteomics_demo_data()
+  expression <- dat$abundance[, -1L, drop = FALSE]
+  rownames(expression) <- dat$abundance$ProteinID
+
+  object <- create_protvis_dataset(
+    expression_data = expression,
+    sample_info = dat$sample_info,
+    metadata = list(source = "resume_test")
+  )
+  result <- ProtVis:::.mp_prepare_analysis(
+    dat,
+    tax_level = "Genus",
+    function_level = "Pathway",
+    relative = TRUE,
+    top_n = 10L
+  )
+  run <- ProtVis:::.mp_result_run(result, source = "resume_test")
+  run$run_id <- "metaproteomics_resume_test"
+  object <- ProtVis:::.mp_append_run(object, run)
+
+  restored <- ProtVis:::.mp_data_from_dataset(object)
+  testthat::expect_true("Genus" %in% names(restored$taxonomy))
+  testthat::expect_true("Pathway" %in% names(restored[["function"]]))
+  testthat::expect_equal(nrow(restored$peptide), nrow(dat$peptide))
+})
