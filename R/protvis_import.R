@@ -71,14 +71,17 @@ protvis_builtin_datasets <- function() {
     source = c("MaxQuant", "Proteome Discoverer", "DIA-NN", "Spectronaut",
                "FragPipe", "Skyline", "OpenMS", "OpenMS"),
     file = c(
-      "Maxquant_Export.xlsx", "ProteomeDiscoverer_proteins.txt",
+      "Raw_reporter_corrected_5groups_verified.csv", "ProteomeDiscoverer_proteins.txt",
       "DIA-NN_report.tsv", "Spectronaut_report.tsv",
       "FragPipe_combined_protein.tsv", "Skyline_report.csv",
       "OpenMS_protein_quantification.tsv", "OpenMS_proteins.mzTab"
     ),
-    format = c("xlsx", "txt", "tsv", "tsv", "tsv", "csv", "tsv", "mzTab"),
+    format = c("csv", "txt", "tsv", "tsv", "tsv", "csv", "tsv", "mzTab"),
     description = c(
-      "MaxQuant reporter-intensity protein export (12,689 source rows)",
+      paste0(
+        "MaxQuant corrected reporter-intensity protein export ",
+        "(12,689 protein groups; 30 B73/Y12 samples)"
+      ),
       "Proteome Discoverer adapter view of 5,000 real Zea mays B73/Y12 protein groups",
       "DIA-NN adapter view of 5,000 real Zea mays B73/Y12 protein groups",
       "Spectronaut adapter view of 5,000 real Zea mays B73/Y12 protein groups",
@@ -88,26 +91,73 @@ protvis_builtin_datasets <- function() {
       "HUPO-PSI mzTab adapter view of 5,000 real Zea mays B73/Y12 protein groups"
     ),
     reference = c(
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx"
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv"
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
 
-# Sample metadata shipped with the bundled source fixtures.  The compact
-# tables retain 5,000 protein groups from the real MaxQuant B73/Y12 export
-# bundled with ProtVis.  Compact adapters expose one channel per group so
-# examples remain small while preserving a two-group DEP comparison.
+# Sample metadata shipped with the bundled source fixtures. The MaxQuant demo
+# retains all 30 biological samples. Compact adapters expose one channel per
+# genotype so examples remain small while preserving a two-group comparison.
 .protvis_builtin_sample_info <- function(source, file = NULL) {
   source <- .protvis_normalise_source(source)
+  if (identical(source, "MaxQuant")) {
+    samples <- c(
+      "B73_Root_VE_1", "B73_Root_V1.V2_1", "B73_Root_V4_1",
+      "B73_Leaf_VE.V1.V2_1", "B73_Leaf_V4.V6.V8_1",
+      "B73_Root_VE_2", "B73_Root_V1.V2_2", "B73_Root_V4_2",
+      "B73_Leaf_VE.V1.V2_2", "B73_Leaf_V4.V6.V8_2",
+      "B73_Root_VE_3", "B73_Root_V1.V2_3", "B73_Root_V4_3",
+      "B73_Leaf_VE.V1.V2_3", "B73_Leaf_V4.V6.V8_3",
+      "Y12_Root_VE_1", "Y12_Root_V1.V2_1", "Y12_Root_V4_1",
+      "Y12_Leaf_VE.V1.V2_1", "Y12_Leaf_V4.V6.V8_1",
+      "Y12_Root_VE_2", "Y12_Root_V1.V2_2", "Y12_Root_V4_2",
+      "Y12_Leaf_VE.V1.V2_2", "Y12_Leaf_V4.V6.V8_2",
+      "Y12_Root_VE_3", "Y12_Root_V1.V2_3", "Y12_Root_V4_3",
+      "Y12_Leaf_VE.V1.V2_3", "Y12_Leaf_V4.V6.V8_3"
+    )
+    genotype <- sub("_.*$", "", samples)
+    tissue <- ifelse(grepl("_Root_", samples), "Root", "Leaf")
+    replicate <- as.integer(sub("^.*_([0-9]+)$", "\\1", samples))
+    stage <- sub("^[^_]+_[^_]+_(.*)_[0-9]+$", "\\1", samples)
+    group <- sub("_[0-9]+$", "", samples)
+    data_file <- "Raw_reporter_corrected_5groups_verified.csv"
+    source_url <- paste0(
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/",
+      data_file
+    )
+    return(data.frame(
+      sample_id = samples,
+      maxquant_id = samples,
+      sample = samples,
+      group = group,
+      class = genotype,
+      condition = genotype,
+      genotype = genotype,
+      tissue = tissue,
+      tissue2 = ifelse(tissue == "Leaf", "Shoot", "Root"),
+      stage = stage,
+      replicate = replicate,
+      batch = paste0("TMT", replicate),
+      organism = rep("Zea mays", length(samples)),
+      accession = rep(
+        paste0("ProtVis-inst-extdata-", data_file), length(samples)
+      ),
+      source_url = rep(source_url, length(samples)),
+      source = rep(source, length(samples)),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
   samples <- c("B73_TMT1_1", "Y12_TMT1_1")
   group <- c("B73", "Y12")
   tmt <- c("TMT1", "TMT1")
@@ -123,9 +173,11 @@ protvis_builtin_datasets <- function() {
     tissue = rep("maize tissue (B73/Y12)", 2L),
     tissue2 = rep("maize tissue (B73/Y12)", 2L),
     organism = rep("Zea mays", 2L),
-    accession = rep("ProtVis-inst-extdata-Maxquant_Export.xlsx", 2L),
+    accession = rep(
+      "ProtVis-inst-extdata-Raw_reporter_corrected_5groups_verified.csv", 2L
+    ),
     source_url = rep(
-      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Maxquant_Export.xlsx",
+      "https://github.com/xuebinzhang-lab/ProtVis/blob/dev/inst/extdata/Raw_reporter_corrected_5groups_verified.csv",
       2L
     ),
     source = rep(source, 2L),
@@ -259,8 +311,8 @@ protvis_read_table <- function(path, filename = NULL, sheet = 1L) {
   source <- tolower(source)
   patterns <- switch(
     source,
-    "maxquant" = c("^protein ids?$", "^protein group$", "^majority protein ids?$",
-                   "^accession$"),
+    "maxquant" = c("^protein[ ._-]*ids?$", "^protein group$",
+                   "^majority protein ids?$", "^accession$"),
     "proteome discoverer" = c("^master protein accessions?$",
                                "^protein accessions?$", "^accession$",
                                "^protein group id$", "^protein id$"),
@@ -565,28 +617,13 @@ import_protvis <- function(path = NULL, source = "MaxQuant",
   object
 }
 
-#' Resolve the bundled MaxQuant workbook.
+#' Resolve the bundled MaxQuant demonstration table.
 #' @export
 protvis_builtin_data_path <- function(source = "MaxQuant", format = NULL) {
   if (!identical(.protvis_normalise_source(source), "MaxQuant")) {
     return(.protvis_builtin_fixture_path(source, format = format))
   }
-  installed <- system.file("extdata", "Maxquant_Export.xlsx", package = "ProtVis")
-  if (nzchar(installed) && file.exists(installed)) {
-    return(normalizePath(installed, winslash = "/", mustWork = TRUE))
-  }
-  candidates <- c(
-    file.path(getwd(), "inst", "extdata", "Maxquant_Export.xlsx"),
-    file.path(getwd(), "Maxquant_Export.xlsx"),
-    file.path(getwd(), "..", "inst", "extdata", "Maxquant_Export.xlsx"),
-    file.path(getwd(), "..", "..", "inst", "extdata", "Maxquant_Export.xlsx")
-  )
-  candidates <- candidates[file.exists(candidates)]
-  if (length(candidates) > 0L) {
-    return(normalizePath(candidates[[1L]], winslash = "/", mustWork = TRUE))
-  }
-  stop(paste0("Bundled Maxquant_Export.xlsx was not found. Install the ",
-              "package or place it in inst/extdata."), call. = FALSE)
+  .protvis_builtin_fixture_path("MaxQuant", format = format)
 }
 
 #' Load a bundled demonstration dataset.
@@ -612,7 +649,7 @@ load_protvis_builtin_data <- function(sample_info = NULL, source = "MaxQuant",
   } else {
     manifest_rows$file[[1L]]
   }
-  if (is.null(sample_info) && !identical(source, "MaxQuant")) {
+  if (is.null(sample_info)) {
     sample_info <- .protvis_builtin_sample_info(source, file_name)
   }
   object <- import_protvis(path, source = source,

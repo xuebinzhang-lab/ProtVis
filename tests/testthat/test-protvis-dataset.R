@@ -122,7 +122,7 @@ test_that("all tabular source adapters produce a common object", {
   }
 })
 
-test_that("MaxQuant built-in workbook is complete and filtered", {
+test_that("MaxQuant built-in corrected reporter table is complete and filtered", {
   path <- protvis_builtin_data_path()
   skip_if_not(file.exists(path))
   object <- load_protvis_builtin_data()
@@ -131,6 +131,11 @@ test_that("MaxQuant built-in workbook is complete and filtered", {
   expect_equal(object$metadata$raw_rows, 12689)
   expect_equal(object$metadata$retained_rows, 12300)
   expect_equal(object$metadata$removed_rows, 389)
+  expect_equal(nrow(object$sample_info), 30L)
+  expect_equal(object$sample_info$sample_id, colnames(object$expression_data))
+  expect_equal(length(unique(object$sample_info$group)), 10L)
+  expect_equal(object$metadata$filename,
+               "Raw_reporter_corrected_5groups_verified.csv")
   expect_true(file.exists(path))
 })
 

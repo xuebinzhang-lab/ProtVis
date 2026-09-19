@@ -59,10 +59,11 @@ Parser-backed imports are converted into a common ProtVis expression matrix and 
 
 The ProtVis_dataset tab also loads bundled examples for every supported source
 without requiring an upload. `protvis_builtin_datasets()` lists the files,
-formats, descriptions, and official documentation links. The fixtures are
-deliberately compact (5,000 protein groups for the source adapters) and include:
+formats, descriptions, and official documentation links. The MaxQuant example
+contains all 12,689 source protein groups and 30 samples; the derived source
+adapters retain 5,000 protein groups for faster demonstrations. The files are:
 
-- MaxQuant `Maxquant_Export.xlsx`
+- MaxQuant `Raw_reporter_corrected_5groups_verified.csv`
 - Proteome Discoverer `ProteomeDiscoverer_proteins.txt`
 - DIA-NN `DIA-NN_report.tsv`
 - Spectronaut `Spectronaut_report.tsv`
@@ -74,7 +75,9 @@ deliberately compact (5,000 protein groups for the source adapters) and include:
 Each fixture is parsed into `ProtVis_dataset` and can continue through the
 same QC, transformation, imputation, normalization, dimensionality reduction,
 differential analysis, enrichment, network, checkpoint, and export functions.
-The full MaxQuant workbook remains available for a larger reproducible example.
+The full MaxQuant corrected reporter table remains available as a larger
+reproducible example. It includes 30 B73/Y12 samples with matched genotype,
+tissue, developmental-stage, replicate, batch, and analysis-group metadata.
 
 ### Raw data and database-search preparation
 

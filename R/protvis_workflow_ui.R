@@ -64,7 +64,7 @@ protvis_dataset_ui <- function(id) {
               builtin$file,
               paste0(builtin$source, " — ", builtin$file)
             ),
-            selected = "Maxquant_Export.xlsx"
+            selected = "Raw_reporter_corrected_5groups_verified.csv"
           ),
           shiny::uiOutput(ns("builtin_provenance")),
           shiny::fileInput(
@@ -288,7 +288,7 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
 
     shiny::observeEvent(input$load_builtin, {
       selected_file <- as.character(input$builtin_source %||%
-                                      "Maxquant_Export.xlsx")
+                                      "Raw_reporter_corrected_5groups_verified.csv")
       selected_row <- builtin[builtin$file == selected_file, , drop = FALSE]
       if (nrow(selected_row) != 1L) {
         notify("The selected built-in example is not available.", "error")
@@ -498,7 +498,7 @@ protvis_dataset_server <- function(id, shared_state = NULL) {
       if (is.null(rv$dataset)) {
         return(shiny::div(
           class = "protvis-dataset-status",
-          "No dataset loaded. Load the bundled MaxQuant workbook or upload a table."
+          "No dataset loaded. Load the bundled MaxQuant table or upload a table."
         ))
       }
       dataset <- rv$dataset
