@@ -263,6 +263,306 @@
   )
 }
 
+
+# Visualization helpers for the statistical-engine workspace. These are
+# intentionally additive: the preserved DEP workflow keeps its original
+# volcano/heatmap/bar implementation, while every engine result receives the
+# same publication-oriented visual summaries using that engine's own statistics.
+
+.protvis_dep_engine_empty_plot <- function(message) {
+  ggplot2::ggplot() +
+    ggplot2::annotate("text", x = 0.5, y = 0.5, label = message, size = 5) +
+    ggplot2::xlim(0, 1) +
+    ggplot2::ylim(0, 1) +
+    ggplot2::theme_void()
+}
+
+.protvis_dep_engine_classify <- function(table, fdr = 0.05, logfc = 0.27) {
+  table <- base::as.data.frame(
+    table, stringsAsFactors = FALSE, check.names = FALSE
+  )
+  if (!base::all(c("ID", "logFC") %in% base::names(table))) {
+    base::stop("Engine result requires ID and logFC columns.", call. = FALSE)
+  }
+
+  logfc_values <- suppressWarnings(base::as.numeric(table$logFC))
+  adjusted <- if ("adj.P.Val" %in% base::names(table)) {
+    suppressWarnings(base::as.numeric(table$adj.P.Val))
+  } else {
+    base::rep(NA_real_, base::nrow(table))
+  }
+  raw_p <- if ("P.Value" %in% base::names(table)) {
+    suppressWarnings(base::as.numeric(table$P.Value))
+  } else {
+    base::rep(NA_real_, base::nrow(table))
+  }
+
+  use_fdr <- base::any(base::is.finite(adjusted))
+  significance <- if (use_fdr) adjusted else raw_p
+  metric <- if (use_fdr) "FDR" else "P-value"
+  threshold <- suppressWarnings(base::as.numeric(fdr[[1L]]))
+  if (!base::is.finite(threshold) || threshold <= 0) threshold <- 0.05
+  logfc_threshold <- suppressWarnings(base::as.numeric(logfc[[1L]]))
+  if (!base::is.finite(logfc_threshold) || logfc_threshold < 0) {
+    logfc_threshold <- 0.27
+  }
+
+  regulation <- base::rep("Not significant", base::nrow(table))
+  regulation[
+    base::is.finite(significance) &
+      significance <= threshold &
+      base::is.finite(logfc_values) &
+      logfc_values >= logfc_threshold
+  ] <- "Upregulated"
+  regulation[
+    base::is.finite(significance) &
+      significance <= threshold &
+      base::is.finite(logfc_values) &
+      logfc_values <= -logfc_threshold
+  ] <- "Downregulated"
+
+  table$.pv_logFC <- logfc_values
+  table$.pv_significance <- significance
+  table$.pv_regulation <- base::factor(
+    regulation,
+    levels = c("Downregulated", "Not significant", "Upregulated")
+  )
+  list(
+    data = table,
+    metric = metric,
+    threshold = threshold,
+    logfc_threshold = logfc_threshold
+  )
+}
+
+.protvis_dep_engine_volcano_plot <- function(
+    table, method, comparison, fdr = 0.05, logfc = 0.27,
+    up = "#d62728", down = "#1f77b4", ns = "#9aa6b2") {
+  classified <- .protvis_dep_engine_classify(table, fdr, logfc)
+  data <- classified$data
+  keep <- base::is.finite(data$.pv_logFC) &
+    base::is.finite(data$.pv_significance) &
+    data$.pv_significance >= 0
+  data <- data[keep, , drop = FALSE]
+  if (!base::nrow(data)) {
+    return(.protvis_dep_engine_empty_plot("No finite statistics for volcano plot"))
+  }
+
+  data$.pv_minus_log10 <- -base::log10(
+    base::pmax(data$.pv_significance, .Machine$double.xmin)
+  )
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = .pv_logFC, y = .pv_minus_log10, colour = .pv_regulation
+    )
+  ) +
+    ggplot2::geom_point(alpha = 0.72, size = 1.8) +
+    ggplot2::geom_vline(
+      xintercept = c(-classified$logfc_threshold, classified$logfc_threshold),
+      linetype = 2, linewidth = 0.45
+    ) +
+    ggplot2::geom_hline(
+      yintercept = -base::log10(classified$threshold),
+      linetype = 2, linewidth = 0.45
+    ) +
+    ggplot2::scale_color_manual(
+      values = c(
+        "Downregulated" = down,
+        "Not significant" = ns,
+        "Upregulated" = up
+      ),
+      drop = FALSE
+    ) +
+    ggplot2::labs(
+      title = base::paste(method, "·", comparison),
+      subtitle = base::paste0(
+        classified$metric, " ≤ ", signif(classified$threshold, 3),
+        "  |  |log2FC| ≥ ", signif(classified$logfc_threshold, 3)
+      ),
+      x = "log2 fold change",
+      y = base::paste0("-log10(", classified$metric, ")"),
+      colour = NULL
+    ) +
+    ggplot2::theme_bw(base_size = 12) +
+    ggplot2::theme(
+      legend.position = "top",
+      plot.title = ggplot2::element_text(face = "bold")
+    )
+}
+
+.protvis_dep_engine_bar_plot <- function(
+    table, method, comparison, fdr = 0.05, logfc = 0.27,
+    up = "#d62728", down = "#1f77b4") {
+  classified <- .protvis_dep_engine_classify(table, fdr, logfc)
+  values <- base::as.character(classified$data$.pv_regulation)
+  counts <- base::data.frame(
+    regulation = base::factor(
+      c("Downregulated", "Upregulated"),
+      levels = c("Downregulated", "Upregulated")
+    ),
+    n = c(
+      base::sum(values == "Downregulated", na.rm = TRUE),
+      base::sum(values == "Upregulated", na.rm = TRUE)
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  ggplot2::ggplot(
+    counts, ggplot2::aes(x = regulation, y = n, fill = regulation)
+  ) +
+    ggplot2::geom_col(width = 0.66) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = n), vjust = -0.35, size = 4
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c("Downregulated" = down, "Upregulated" = up),
+      drop = FALSE
+    ) +
+    ggplot2::labs(
+      title = base::paste("Differential proteins ·", method),
+      subtitle = comparison,
+      x = NULL, y = "Protein count", fill = NULL
+    ) +
+    ggplot2::theme_bw(base_size = 12) +
+    ggplot2::theme(
+      legend.position = "none",
+      plot.title = ggplot2::element_text(face = "bold")
+    ) +
+    ggplot2::expand_limits(y = base::max(counts$n, 1L) * 1.12)
+}
+
+.protvis_dep_engine_heatmap_plot <- function(
+    table, dataset, sample_sets, method, comparison,
+    fdr = 0.05, logfc = 0.27, top_n = 50L,
+    show_colnames = TRUE, show_rownames = FALSE) {
+  if (!inherits(dataset, "ProtVis_dataset")) {
+    return(.protvis_dep_engine_empty_plot("No ProtVis_dataset available"))
+  }
+  classified <- .protvis_dep_engine_classify(table, fdr, logfc)
+  sig <- classified$data[
+    base::as.character(classified$data$.pv_regulation) != "Not significant",
+    , drop = FALSE
+  ]
+  if (!base::nrow(sig)) {
+    return(.protvis_dep_engine_empty_plot("No significant proteins"))
+  }
+
+  sig <- sig[base::order(
+    sig$.pv_significance,
+    -base::abs(sig$.pv_logFC),
+    na.last = TRUE
+  ), , drop = FALSE]
+  top_n <- suppressWarnings(base::as.integer(top_n[[1L]]))
+  if (!base::is.finite(top_n) || top_n < 2L) top_n <- 50L
+  sig <- sig[base::seq_len(base::min(base::nrow(sig), top_n)), , drop = FALSE]
+
+  mat <- .protvis_dep_matrix(dataset)
+  samples <- base::as.character(sample_sets$samples %||% base::character())
+  samples <- samples[samples %in% base::colnames(mat)]
+  if (!base::length(samples)) {
+    return(.protvis_dep_engine_empty_plot("Comparison samples are unavailable"))
+  }
+  mat <- mat[, samples, drop = FALSE]
+
+  matrix_ids <- base::rownames(mat)
+  if (base::is.null(matrix_ids)) {
+    return(.protvis_dep_engine_empty_plot("Protein identifiers are unavailable"))
+  }
+  clean_matrix_ids <- sub(";.*$", "", base::trimws(matrix_ids))
+  clean_result_ids <- sub(";.*$", "", base::trimws(base::as.character(sig$ID)))
+  row_index <- base::match(clean_result_ids, clean_matrix_ids)
+  row_index <- base::unique(row_index[!base::is.na(row_index)])
+  if (!base::length(row_index)) {
+    return(.protvis_dep_engine_empty_plot(
+      "Significant proteins could not be matched to the expression matrix"
+    ))
+  }
+
+  mat <- mat[row_index, , drop = FALSE]
+  keep <- base::apply(mat, 1, function(x) base::any(base::is.finite(x)))
+  mat <- mat[keep, , drop = FALSE]
+  if (!base::nrow(mat)) {
+    return(.protvis_dep_engine_empty_plot("No finite values for heatmap"))
+  }
+
+  for (i in base::seq_len(base::nrow(mat))) {
+    missing <- !base::is.finite(mat[i, ])
+    if (base::any(missing)) {
+      observed <- mat[i, !missing]
+      mat[i, missing] <- if (base::length(observed)) {
+        stats::median(observed)
+      } else {
+        0
+      }
+    }
+  }
+
+  zmat <- base::t(base::apply(mat, 1, function(x) {
+    center <- base::mean(x)
+    spread <- stats::sd(x)
+    if (!base::is.finite(spread) || spread == 0) {
+      base::rep(0, base::length(x))
+    } else {
+      (x - center) / spread
+    }
+  }))
+  base::rownames(zmat) <- base::rownames(mat)
+  base::colnames(zmat) <- base::colnames(mat)
+
+  row_order <- base::seq_len(base::nrow(zmat))
+  col_order <- base::seq_len(base::ncol(zmat))
+  if (base::nrow(zmat) >= 2L) {
+    row_order <- stats::hclust(stats::dist(zmat))$order
+  }
+  if (base::ncol(zmat) >= 2L) {
+    col_order <- stats::hclust(stats::dist(base::t(zmat)))$order
+  }
+  zmat <- zmat[row_order, col_order, drop = FALSE]
+
+  long <- base::data.frame(
+    protein = base::rep(base::rownames(zmat), times = base::ncol(zmat)),
+    sample = base::rep(base::colnames(zmat), each = base::nrow(zmat)),
+    z = base::as.vector(zmat),
+    stringsAsFactors = FALSE
+  )
+  long$protein <- base::factor(
+    long$protein, levels = base::rev(base::rownames(zmat))
+  )
+  long$sample <- base::factor(long$sample, levels = base::colnames(zmat))
+
+  ggplot2::ggplot(long, ggplot2::aes(x = sample, y = protein, fill = z)) +
+    ggplot2::geom_tile() +
+    ggplot2::scale_fill_gradient2() +
+    ggplot2::labs(
+      title = base::paste("Significant-protein heatmap ·", method),
+      subtitle = base::paste0(
+        comparison, "  |  top ", base::nrow(zmat), " matched proteins"
+      ),
+      x = NULL, y = NULL, fill = "Row z-score"
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(),
+      axis.text.x = if (isTRUE(show_colnames)) {
+        ggplot2::element_text(angle = 45, hjust = 1)
+      } else {
+        ggplot2::element_blank()
+      },
+      axis.text.y = if (isTRUE(show_rownames)) {
+        ggplot2::element_text(size = 7)
+      } else {
+        ggplot2::element_blank()
+      },
+      plot.title = ggplot2::element_text(face = "bold")
+    )
+}
+
+.protvis_dep_engine_safe_name <- function(x) {
+  x <- gsub("[^A-Za-z0-9._-]+", "_", base::as.character(x))
+  gsub("^_+|_+$", "", x)
+}
+
 .protvis_dep_engine_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
@@ -355,6 +655,7 @@ DEP_analysis_server <- function(id, shared_state) {
       msstats_table = NULL,
       results = base::list(),
       summary = base::data.frame(),
+      comparison = NULL,
       loaded = FALSE
     )
 
@@ -387,6 +688,7 @@ DEP_analysis_server <- function(id, shared_state) {
       rv$count_table <- dataset$variable_info
       rv$results <- base::list()
       rv$summary <- base::data.frame()
+      rv$comparison <- NULL
       rv$loaded <- TRUE
       columns <- .protvis_dep_group_columns(dataset$sample_info)
       shiny::updateSelectInput(session, "engine_group_column", choices = columns, selected = if (base::length(columns)) columns[[1L]] else character())
@@ -520,6 +822,12 @@ DEP_analysis_server <- function(id, shared_state) {
         shiny::setProgress(1)
       })
       rv$summary <- base::do.call(base::rbind, summaries)
+      rv$comparison <- base::list(
+        grouping_column = gcol,
+        group1 = g1,
+        group2 = g2,
+        sample_sets = sample_sets
+      )
 
       if (inherits(shared_state$dataset, "ProtVis_dataset")) {
         dataset <- shared_state$dataset
@@ -546,17 +854,317 @@ DEP_analysis_server <- function(id, shared_state) {
     })
 
     output$engine_result_tabs <- shiny::renderUI({
-      if (!base::length(rv$results)) return(shiny::div("No completed engine results yet.", class = "pv-dep-engine-note"))
+      if (!base::length(rv$results)) {
+        return(shiny::div(
+          "No completed engine results yet.",
+          class = "pv-dep-engine-note"
+        ))
+      }
+
+      comparison <- rv$comparison
+      if (base::is.null(comparison)) {
+        return(shiny::div(
+          "Run the statistical engines to create result visualizations.",
+          class = "pv-dep-engine-note"
+        ))
+      }
+      comparison_label <- base::paste(
+        comparison$group1, "vs", comparison$group2
+      )
+
       tabs <- base::lapply(base::names(rv$results), function(method) {
-        label <- base::names(.protvis_dep_engine_names)[base::match(method, .protvis_dep_engine_names)]
-        output_id <- base::paste0("engine_table_", method)
-        output[[output_id]] <- DT::renderDT({
+        label <- base::names(.protvis_dep_engine_names)[
+          base::match(method, .protvis_dep_engine_names)
+        ]
+        if (!base::length(label) || base::is.na(label)) label <- method
+
+        table_id <- base::paste0("engine_table_", method)
+        volcano_id <- base::paste0("engine_volcano_", method)
+        heatmap_id <- base::paste0("engine_heatmap_", method)
+        bar_id <- base::paste0("engine_bar_", method)
+        volcano_download_id <- base::paste0(
+          "download_engine_volcano_", method
+        )
+        heatmap_download_id <- base::paste0(
+          "download_engine_heatmap_", method
+        )
+        bar_download_id <- base::paste0("download_engine_bar_", method)
+
+        output[[table_id]] <- DT::renderDT({
           table <- rv$results[[method]]
-          DT::datatable(table, rownames = FALSE, filter = "top", extensions = "Buttons", options = base::list(scrollX = TRUE, pageLength = 15, dom = "Bfrtip", buttons = c("copy", "csv", "excel")))
+          DT::datatable(
+            table,
+            rownames = FALSE,
+            filter = "top",
+            extensions = "Buttons",
+            options = base::list(
+              scrollX = TRUE,
+              pageLength = 15,
+              dom = "Bfrtip",
+              buttons = c("copy", "csv", "excel")
+            )
+          )
         })
-        bslib::nav_panel(label, DT::DTOutput(session$ns(output_id)))
+
+        output[[volcano_id]] <- shiny::renderPlot({
+          shiny::req(rv$results[[method]], rv$comparison)
+          .protvis_dep_engine_volcano_plot(
+            rv$results[[method]],
+            method = label,
+            comparison = comparison_label,
+            fdr = input$engine_fdr %||% 0.05,
+            logfc = input$engine_logfc %||% 0.27,
+            up = input[[base::paste0("engine_up_", method)]] %||% "#d62728",
+            down = input[[base::paste0("engine_down_", method)]] %||% "#1f77b4",
+            ns = input[[base::paste0("engine_ns_", method)]] %||% "#9aa6b2"
+          )
+        })
+
+        output[[heatmap_id]] <- shiny::renderPlot({
+          shiny::req(rv$results[[method]], rv$comparison, rv$dataset)
+          .protvis_dep_engine_heatmap_plot(
+            rv$results[[method]],
+            dataset = rv$dataset,
+            sample_sets = rv$comparison$sample_sets,
+            method = label,
+            comparison = comparison_label,
+            fdr = input$engine_fdr %||% 0.05,
+            logfc = input$engine_logfc %||% 0.27,
+            top_n = input[[base::paste0("engine_heatmap_top_", method)]] %||% 50L,
+            show_colnames = isTRUE(
+              input[[base::paste0("engine_heatmap_colnames_", method)]]
+            ),
+            show_rownames = isTRUE(
+              input[[base::paste0("engine_heatmap_rownames_", method)]]
+            )
+          )
+        })
+
+        output[[bar_id]] <- shiny::renderPlot({
+          shiny::req(rv$results[[method]], rv$comparison)
+          .protvis_dep_engine_bar_plot(
+            rv$results[[method]],
+            method = label,
+            comparison = comparison_label,
+            fdr = input$engine_fdr %||% 0.05,
+            logfc = input$engine_logfc %||% 0.27,
+            up = input[[base::paste0("engine_bar_up_", method)]] %||% "#d62728",
+            down = input[[base::paste0("engine_bar_down_", method)]] %||% "#1f77b4"
+          )
+        })
+
+        output[[volcano_download_id]] <- shiny::downloadHandler(
+          filename = function() {
+            base::paste0(
+              .protvis_dep_engine_safe_name(label), "_",
+              .protvis_dep_engine_safe_name(comparison_label),
+              "_volcano.pdf"
+            )
+          },
+          content = function(file) {
+            plot <- .protvis_dep_engine_volcano_plot(
+              rv$results[[method]],
+              method = label,
+              comparison = comparison_label,
+              fdr = input$engine_fdr %||% 0.05,
+              logfc = input$engine_logfc %||% 0.27,
+              up = input[[base::paste0("engine_up_", method)]] %||% "#d62728",
+              down = input[[base::paste0("engine_down_", method)]] %||% "#1f77b4",
+              ns = input[[base::paste0("engine_ns_", method)]] %||% "#9aa6b2"
+            )
+            ggplot2::ggsave(
+              file, plot = plot, device = "pdf",
+              width = input[[base::paste0("engine_volcano_width_", method)]] %||% 8,
+              height = input[[base::paste0("engine_volcano_height_", method)]] %||% 6,
+              units = "in"
+            )
+          }
+        )
+
+        output[[heatmap_download_id]] <- shiny::downloadHandler(
+          filename = function() {
+            base::paste0(
+              .protvis_dep_engine_safe_name(label), "_",
+              .protvis_dep_engine_safe_name(comparison_label),
+              "_heatmap.pdf"
+            )
+          },
+          content = function(file) {
+            plot <- .protvis_dep_engine_heatmap_plot(
+              rv$results[[method]],
+              dataset = rv$dataset,
+              sample_sets = rv$comparison$sample_sets,
+              method = label,
+              comparison = comparison_label,
+              fdr = input$engine_fdr %||% 0.05,
+              logfc = input$engine_logfc %||% 0.27,
+              top_n = input[[base::paste0("engine_heatmap_top_", method)]] %||% 50L,
+              show_colnames = isTRUE(
+                input[[base::paste0("engine_heatmap_colnames_", method)]]
+              ),
+              show_rownames = isTRUE(
+                input[[base::paste0("engine_heatmap_rownames_", method)]]
+              )
+            )
+            ggplot2::ggsave(
+              file, plot = plot, device = "pdf",
+              width = input[[base::paste0("engine_heatmap_width_", method)]] %||% 9,
+              height = input[[base::paste0("engine_heatmap_height_", method)]] %||% 7,
+              units = "in"
+            )
+          }
+        )
+
+        output[[bar_download_id]] <- shiny::downloadHandler(
+          filename = function() {
+            base::paste0(
+              .protvis_dep_engine_safe_name(label), "_",
+              .protvis_dep_engine_safe_name(comparison_label),
+              "_DEP_count.pdf"
+            )
+          },
+          content = function(file) {
+            plot <- .protvis_dep_engine_bar_plot(
+              rv$results[[method]],
+              method = label,
+              comparison = comparison_label,
+              fdr = input$engine_fdr %||% 0.05,
+              logfc = input$engine_logfc %||% 0.27,
+              up = input[[base::paste0("engine_bar_up_", method)]] %||% "#d62728",
+              down = input[[base::paste0("engine_bar_down_", method)]] %||% "#1f77b4"
+            )
+            ggplot2::ggsave(
+              file, plot = plot, device = "pdf",
+              width = input[[base::paste0("engine_bar_width_", method)]] %||% 7,
+              height = input[[base::paste0("engine_bar_height_", method)]] %||% 5.5,
+              units = "in"
+            )
+          }
+        )
+
+        bslib::nav_panel(
+          label,
+          bslib::navset_card_tab(
+            full_screen = TRUE,
+            bslib::nav_panel(
+              "Table",
+              DT::DTOutput(session$ns(table_id))
+            ),
+            bslib::nav_panel(
+              "Volcano",
+              bslib::layout_sidebar(
+                sidebar = bslib::sidebar(
+                  width = 245,
+                  shiny::p(
+                    "Uses the FDR and |log2FC| thresholds in the main Statistical engines sidebar.",
+                    class = "pv-dep-engine-note"
+                  ),
+                  colourpicker::colourInput(
+                    session$ns(base::paste0("engine_up_", method)),
+                    "Upregulated", value = "#d62728"
+                  ),
+                  colourpicker::colourInput(
+                    session$ns(base::paste0("engine_down_", method)),
+                    "Downregulated", value = "#1f77b4"
+                  ),
+                  colourpicker::colourInput(
+                    session$ns(base::paste0("engine_ns_", method)),
+                    "Not significant", value = "#9aa6b2"
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_volcano_width_", method)),
+                    "PDF width (inch)", value = 8, min = 4, max = 20
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_volcano_height_", method)),
+                    "PDF height (inch)", value = 6, min = 4, max = 20
+                  ),
+                  shiny::downloadButton(
+                    session$ns(volcano_download_id), "Download Volcano"
+                  )
+                ),
+                shiny::plotOutput(
+                  session$ns(volcano_id), height = "520px"
+                )
+              )
+            ),
+            bslib::nav_panel(
+              "Heatmap",
+              bslib::layout_sidebar(
+                sidebar = bslib::sidebar(
+                  width = 245,
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_heatmap_top_", method)),
+                    "Top significant proteins",
+                    value = 50, min = 2, max = 500, step = 1
+                  ),
+                  shiny::checkboxInput(
+                    session$ns(base::paste0(
+                      "engine_heatmap_colnames_", method
+                    )),
+                    "Show sample names", value = TRUE
+                  ),
+                  shiny::checkboxInput(
+                    session$ns(base::paste0(
+                      "engine_heatmap_rownames_", method
+                    )),
+                    "Show protein names", value = FALSE
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_heatmap_width_", method)),
+                    "PDF width (inch)", value = 9, min = 4, max = 20
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_heatmap_height_", method)),
+                    "PDF height (inch)", value = 7, min = 4, max = 20
+                  ),
+                  shiny::downloadButton(
+                    session$ns(heatmap_download_id), "Download Heatmap"
+                  )
+                ),
+                shiny::plotOutput(
+                  session$ns(heatmap_id), height = "560px"
+                )
+              )
+            ),
+            bslib::nav_panel(
+              "DEP count",
+              bslib::layout_sidebar(
+                sidebar = bslib::sidebar(
+                  width = 245,
+                  colourpicker::colourInput(
+                    session$ns(base::paste0("engine_bar_up_", method)),
+                    "Upregulated", value = "#d62728"
+                  ),
+                  colourpicker::colourInput(
+                    session$ns(base::paste0("engine_bar_down_", method)),
+                    "Downregulated", value = "#1f77b4"
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_bar_width_", method)),
+                    "PDF width (inch)", value = 7, min = 4, max = 20
+                  ),
+                  shiny::numericInput(
+                    session$ns(base::paste0("engine_bar_height_", method)),
+                    "PDF height (inch)", value = 5.5, min = 4, max = 20
+                  ),
+                  shiny::downloadButton(
+                    session$ns(bar_download_id), "Download DEP Count"
+                  )
+                ),
+                shiny::plotOutput(
+                  session$ns(bar_id), height = "500px"
+                )
+              )
+            )
+          )
+        )
       })
-      do.call(bslib::navset_card_tab, c(list(full_screen = TRUE), tabs))
+      base::do.call(
+        bslib::navset_card_tab,
+        c(base::list(full_screen = TRUE), tabs)
+      )
     })
+
   })
 }

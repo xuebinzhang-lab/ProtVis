@@ -28,7 +28,7 @@ The application is designed for researchers who need publication-ready visual su
 -   **PSM Explorer** for Protein → Peptide → PSM → MS/MS inspection with mzIdentML/MGF loading, searchable PSM selection, PTM-aware theoretical fragments, matched b/y ions, and exportable annotated spectra.
 -   **Headless/CLI mode** via `ProtVis::run_protvis_cli()` or the installed `exec/protvis` script, using the same import, Sage, processing, checkpoint, provenance, and export backend as Shiny.
 -   **MaxQuant output preparation** as the first item in **Pre-processing** for MaxQuant-specific filtering and matrix handoff; other sources use their own parser-backed import path.
--   **Protein-level downstream analysis** including DEP analysis, enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
+-   **Protein-level downstream analysis** including the preserved DEP workflow plus limma/DEqMS/proDA/MSstats comparison. Each completed statistical engine keeps its own result table, volcano plot, significant-protein heatmap, and DEP-count plot, followed by enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
 -   **Metaproteomics module** with built-in demo data for abundance, taxonomy, and functional annotations.
 -   **Taxonomy-function visualization** including composition plots, Sankey diagrams, and heatmaps for metaproteomics interpretation.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
