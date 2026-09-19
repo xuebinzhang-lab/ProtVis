@@ -66,6 +66,15 @@ correct_values <- function(raw_mat) {
   values <- as.matrix(clean_mat[, sample_cols, drop = FALSE])
   suppressWarnings(storage.mode(values) <- "double")
   values[is.na(values)] <- 0
+
+  # Match the archived DataCleaning.R full_join(rep1, rep2, rep3) semantics:
+  # proteins with no positive reporter intensity in any replicate are absent
+  # from the corrected matrix rather than retained as all-NA rows.
+  keep_rows <- base::rowSums(values > 0, na.rm = TRUE) > 0
+  clean_mat <- clean_mat[keep_rows, , drop = FALSE]
+  values <- values[keep_rows, , drop = FALSE]
+  if (base::nrow(clean_mat) == 0L) return(clean_mat)
+
   replicate_index <- match(replicate_names, sample_cols)
   replicate_groups <- base::sub("^([123])_", "", replicate_names)
   replicate_groups <- base::sub("_[123]$", "", replicate_groups)
