@@ -39,7 +39,9 @@ data_transformed_ui <- function(id) {
           "Transformation Method",
           choices = list(
             "Recommended" = c(
-              "log2 (recommended)" = "log2",
+              "Auto (source recommended)" = "auto",
+              "MaxQuant: log2(x × 1e7)" = "maxquant_log2",
+              "log2" = "log2",
               "None" = "None",
               "log10" = "log10"
             ),
@@ -50,11 +52,12 @@ data_transformed_ui <- function(id) {
               "Scale + center" = "scale-center"
             )
           ),
-          selected = "log2"
+          selected = "auto"
         ),
         shiny::div(
-          "log2 is recommended for standard proteomics abundance workflows. ",
-          "Advanced scaling methods are mainly intended for exploratory analysis or visualization.",
+          "Auto uses the source-specific preset. For MaxQuant this reproduces ",
+          "the archived workflow: log2(intensity × 1e7). Advanced scaling methods ",
+          "remain available for exploratory analysis or visualization.",
           style = "font-size:12px;color:#657789;line-height:1.45;margin-top:-6px;margin-bottom:10px;"
         ),
 
@@ -202,7 +205,8 @@ data_transformed_server <- function(id, shared_state) {
       protein_ids = NULL,
       load_success = FALSE,
       transformed = NULL,
-      transformation_done = FALSE
+      transformation_done = FALSE,
+      transformation_method = NULL
     )
 
     shiny::observeEvent(input$load_data, {
@@ -221,6 +225,7 @@ data_transformed_server <- function(id, shared_state) {
         rv$correct_noise_result <- protvis_expression_matrix(shared_state$dataset)
         rv$transformed <- NULL
         rv$transformation_done <- FALSE
+        rv$transformation_method <- NULL
         rv$load_success <- TRUE
         shiny::showNotification("✅ ProtVis_dataset loaded successfully.", type = "message")
         return(invisible(NULL))
@@ -241,6 +246,7 @@ data_transformed_server <- function(id, shared_state) {
 
         rv$transformed <- NULL
         rv$transformation_done <- FALSE
+        rv$transformation_method <- NULL
         rv$load_success <- !base::is.null(dataset)
 
         shiny::showNotification("✅ Data loaded successfully.", type = "message")
@@ -262,7 +268,7 @@ data_transformed_server <- function(id, shared_state) {
       if (isTRUE(rv$transformation_done)) {
         shiny::div(
           class = "pv-status pv-status-ready",
-          paste0("✓ Current transformation method: ", input$data_transformed)
+          paste0("✓ Current transformation method: ", rv$transformation_method %||% input$data_transformed)
         )
       } else {
         shiny::div(class = "pv-status pv-status-empty", "Data transformation not run yet")
@@ -322,19 +328,37 @@ data_transformed_server <- function(id, shared_state) {
       shiny::req(original_matrix_numeric())
 
       df_mat <- original_matrix_numeric()
+      dataset_for_defaults <- if (
+        inherits(shared_state$dataset, "ProtVis_dataset")
+      ) shared_state$dataset else NULL
+      requested_method <- input$data_transformed %||% "auto"
+      resolved_method <- if (!base::is.null(dataset_for_defaults)) {
+        .protvis_resolve_preprocessing_method(
+          dataset_for_defaults, "transformation", requested_method
+        )
+      } else if (base::tolower(requested_method) %in%
+                 c("auto", "default", "recommended")) {
+        "log2"
+      } else {
+        base::tolower(requested_method)
+      }
 
       rv$transformed <- base::switch(
-        input$data_transformed,
-        "None" = df_mat,
+        resolved_method,
+        "none" = df_mat,
+        "maxquant_log2" = .protvis_maxquant_log2_matrix(
+          df_mat, multiplier = 1e7
+        ),
         "log10" = log10(df_mat + 1e-8),
         "log2" = log2(df_mat + 1e-8),
-        "Standardization" = scale(df_mat, center = TRUE, scale = TRUE),
-        "Z-Score" = scale(df_mat, center = TRUE, scale = TRUE),
+        "standardization" = scale(df_mat, center = TRUE, scale = TRUE),
+        "z-score" = scale(df_mat, center = TRUE, scale = TRUE),
         "scale" = scale(df_mat, center = FALSE, scale = TRUE),
         "center" = scale(df_mat, center = TRUE, scale = FALSE),
         "scale-center" = scale(df_mat, center = TRUE, scale = TRUE),
         df_mat
       )
+      rv$transformation_method <- resolved_method
 
       rv$transformed <- as.data.frame(
         rv$transformed,
@@ -357,17 +381,25 @@ data_transformed_server <- function(id, shared_state) {
         )
         dataset <- .protvis_new_analysis_dataset(
           shared_state$dataset, "transformation",
-          list(method = input$data_transformed)
+          list(
+            method = rv$transformation_method,
+            requested_method = requested_method,
+            multiplier = if (identical(rv$transformation_method, "maxquant_log2")) 1e7 else NULL
+          )
         )
         dataset <- .protvis_replace_expression(dataset, transformed_matrix)
         dataset <- .protvis_store_preprocessing_result(
           dataset,
           stage = "transformation",
-          method = input$data_transformed
+          method = rv$transformation_method
         )
         dataset <- .protvis_append_process(
           dataset, "transformation", status = "success",
-          parameters = list(method = input$data_transformed)
+          parameters = list(
+            method = rv$transformation_method,
+            requested_method = requested_method,
+            multiplier = if (identical(rv$transformation_method, "maxquant_log2")) 1e7 else NULL
+          )
         )
         directory <- protvis_output_directory(shared_state$workdir %||% getwd())
         dataset <- tryCatch(
@@ -384,7 +416,7 @@ data_transformed_server <- function(id, shared_state) {
       rv$transformation_done <- TRUE
 
       shiny::showNotification(
-        paste0("✅ Data transformation completed: ", input$data_transformed),
+        paste0("✅ Data transformation completed: ", rv$transformation_method),
         type = "message"
       )
     })
