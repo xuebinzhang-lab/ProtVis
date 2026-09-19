@@ -166,3 +166,21 @@ testthat::test_that("default MaxQuant pipeline resolves to reproducible methods"
     "maxquant_recommended"
   )
 })
+
+
+testthat::test_that("replicate correction drops proteins with no observed intensity", {
+  raw <- data.frame(
+    ID = c("P0", "P1"),
+    A_1 = c(0, 10),
+    A_2 = c(0, 12),
+    A_3 = c(0, 0),
+    B_1 = c(0, 20),
+    B_2 = c(0, 22),
+    B_3 = c(0, 24),
+    check.names = FALSE
+  )
+
+  corrected <- correct_values(raw)
+  testthat::expect_identical(corrected$ID, "P1")
+  testthat::expect_equal(corrected$A_3, 11)
+})
