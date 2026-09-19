@@ -110,6 +110,32 @@ protvis_stage_labels <- function() {
 }
 
 .protvis_noise_correction <- function(dataset, params) {
+  method <- .protvis_resolve_preprocessing_method(
+    dataset, "noise_correction", params$method %||% "auto"
+  )
+
+  if (method %in% c("replicate_correction", "maxquant_replicate_correction")) {
+    raw <- base::data.frame(
+      ID = base::rownames(dataset$expression_data),
+      dataset$expression_data,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+    corrected <- correct_values(raw)
+    dataset <- .protvis_update_expression(dataset, corrected)
+    dataset$analysis_results$noise_correction <- list(
+      status = "success",
+      method = "replicate_correction",
+      minimum_observed_replicates = 2L,
+      retained_rows = base::nrow(dataset$expression_data)
+    )
+    return(dataset)
+  }
+
+  if (!method %in% c("missingness_filter", "missing_filter", "filter")) {
+    base::stop("Unknown noise-correction method: ", method, call. = FALSE)
+  }
+
   max_missing <- as.numeric(params$max_missing %||% 0.5)
   if (length(max_missing) != 1L || is.na(max_missing) ||
       max_missing < 0 || max_missing >= 1) {
@@ -133,13 +159,23 @@ protvis_stage_labels <- function() {
 }
 
 .protvis_transformation <- function(dataset, params) {
-  method <- tolower(as.character(params$method %||% "log2"))
+  method <- .protvis_resolve_preprocessing_method(
+    dataset, "transformation", params$method %||% "auto"
+  )
   if (method %in% c("none", "identity")) return(dataset)
   matrix <- as.matrix(dataset$expression_data)
   storage.mode(matrix) <- "numeric"
   finite <- matrix[is.finite(matrix)]
   if (length(finite) == 0L) stop("No finite values available for transformation.",
                                   call. = FALSE)
+
+  if (method %in% c("maxquant_log2", "maxquant_recommended")) {
+    transformed <- .protvis_maxquant_log2_matrix(
+      matrix, multiplier = params$multiplier %||% 1e7
+    )
+    return(.protvis_replace_expression(dataset, transformed))
+  }
+
   pseudocount <- as.numeric(params$pseudocount %||% 1)
   if (length(pseudocount) != 1L || is.na(pseudocount) || pseudocount <= 0) {
     stop("pseudocount must be a positive number.", call. = FALSE)
@@ -186,12 +222,26 @@ protvis_stage_labels <- function() {
 }
 
 .protvis_imputation <- function(dataset, params) {
-  method <- tolower(as.character(params$method %||% "median"))
+  method <- .protvis_resolve_preprocessing_method(
+    dataset, "imputation", params$method %||% "auto"
+  )
   matrix <- as.matrix(dataset$expression_data)
   storage.mode(matrix) <- "numeric"
   if (method %in% c("none", "skip")) return(dataset)
-  if (method %in% c("knn", "k-nearest-neighbor", "k_nearest_neighbor")) {
-    matrix <- .protvis_knn_fill(matrix, params$k %||% 10L)
+  if (method %in% c("knn", "k-nearest-neighbor", "k_nearest_neighbor",
+                    "knn_exact")) {
+    use_exact <- .protvis_is_maxquant_dataset(dataset) ||
+      base::identical(method, "knn_exact") ||
+      base::identical(base::tolower(base::as.character(
+        params$engine %||% ""
+      )), "impute")
+    if (isTRUE(use_exact)) {
+      matrix <- .protvis_knn_impute_exact(
+        matrix, seed = params$seed %||% 12345L
+      )
+    } else {
+      matrix <- .protvis_knn_fill(matrix, params$k %||% 10L)
+    }
   } else if (method %in% c("median", "min", "zero")) {
     for (j in seq_len(ncol(matrix))) {
       observed <- matrix[, j]
@@ -551,19 +601,18 @@ run_protvis_step <- function(dataset, stage, params = list(),
     } else {
       list()
     }
-    default_method <- switch(
-      stage,
-      noise_correction = "missingness_filter",
-      transformation = "log2",
-      imputation = "median",
-      normalization = "median",
-      stage
+    requested_method <- params$method %||% "auto"
+    resolved_method <- .protvis_resolve_preprocessing_method(
+      result, stage, requested_method
     )
     result <- .protvis_store_preprocessing_result(
       result,
       stage = stage,
-      method = params$method %||% default_method,
-      extra = extra
+      method = resolved_method,
+      extra = utils::modifyList(
+        extra,
+        list(requested_method = requested_method)
+      )
     )
   }
   candidate <- .protvis_append_process(
