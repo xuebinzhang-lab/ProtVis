@@ -41,7 +41,7 @@
   input_scale <- base::tolower(base::as.character(input_scale %||% "auto"))
   if (!identical(input_scale, "auto")) return(input_scale)
   method <- base::tolower(base::trimws(base::as.character(transformation_method %||% "unknown")))
-  if (method %in% c("log2")) return("log2")
+  if (method %in% c("log2", "maxquant_log2")) return("log2")
   if (method %in% c("log10")) return("log10")
   if (method %in% c("none", "raw", "unknown", "")) return("raw")
   "other"
