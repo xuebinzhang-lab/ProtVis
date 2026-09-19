@@ -73,3 +73,92 @@ jobs:
             stop("Missing schema-v4 contract markers: ", paste(missing, collapse = ", "))
           }
           cat("Schema v4 append-only source contract present.\n")
+
+
+      - name: Run schema v4 core smoke tests
+        shell: Rscript {0}
+        run: |
+          source("R/protvis_dataset.R")
+          source("R/protvis_architecture.R")
+          source("R/protvis_runs_v4.R")
+
+          expression <- data.frame(
+            S1 = c(1, 2, 3),
+            S2 = c(4, 5, 6),
+            row.names = c("P1", "P2", "P3"),
+            check.names = FALSE
+          )
+          object <- create_protvis_dataset(expression)
+          stopifnot(
+            identical(object$version, "4.0.0"),
+            is.data.frame(object$result_registry),
+            nzchar(object$workflow$active_matrix_run_id)
+          )
+
+          object <- record_protvis_output(
+            object,
+            module = "smoke_analysis",
+            method = "first",
+            tables = list(result = data.frame(id = "P1", value = 1)),
+            plot_data = list(points = data.frame(x = 1, y = 2)),
+            parameters = list(alpha = 0.05)
+          )
+          object <- record_protvis_output(
+            object,
+            module = "smoke_analysis",
+            method = "second",
+            tables = list(result = data.frame(id = "P2", value = 2)),
+            plot_data = list(points = data.frame(x = 2, y = 4)),
+            parameters = list(alpha = 0.01)
+          )
+          history <- protvis_result_history(object, "smoke_analysis")
+          stopifnot(
+            length(history) == 2L,
+            identical(history[[1L]]$method, "first"),
+            identical(history[[2L]]$method, "second"),
+            isTRUE(history[[1L]]$sealed),
+            isTRUE(history[[2L]]$sealed)
+          )
+
+          first_matrix <- expression + 10
+          second_matrix <- expression + 20
+          object <- add_protvis_run(
+            object, "normalization", method = "median",
+            expression_data = first_matrix
+          )
+          first_id <- protvis_latest_result(object, "normalization")$run_id
+          object <- add_protvis_run(
+            object, "normalization", method = "vsn",
+            expression_data = second_matrix
+          )
+          stopifnot(isTRUE(all.equal(
+            as.matrix(object$expression_data),
+            as.matrix(second_matrix),
+            check.attributes = FALSE
+          )))
+          object <- protvis_activate_result(object, first_id)
+          stopifnot(
+            identical(object$workflow$active_matrix_run_id, first_id),
+            isTRUE(all.equal(
+              as.matrix(object$expression_data),
+              as.matrix(first_matrix),
+              check.attributes = FALSE
+            ))
+          )
+
+          local_run <- list(
+            method = "local_engine",
+            parameters = list(beta = 0.5),
+            tables = list(summary = data.frame(metric = "n", value = 3))
+          )
+          object <- .protvis_append_analysis_run(
+            object, "local_module", local_run, run_id = "local_smoke_1"
+          )
+          mirrored <- protvis_latest_result(object, "local_module")
+          stopifnot(
+            identical(mirrored$method, "local_engine"),
+            is.data.frame(mirrored$results$tables$summary),
+            identical(mirrored$parameters$beta, 0.5)
+          )
+
+          cat("Schema v4 core smoke tests passed.\n")
