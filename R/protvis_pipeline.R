@@ -542,6 +542,30 @@ run_protvis_step <- function(dataset, stage, params = list(),
     validate_protvis_dataset(failed)
     return(failed)
   }
+  if (stage %in% c(
+    "noise_correction", "transformation", "imputation", "normalization"
+  )) {
+    extra <- if (identical(stage, "normalization") &&
+                 !is.null(params$input_scale)) {
+      list(input_scale = params$input_scale)
+    } else {
+      list()
+    }
+    default_method <- switch(
+      stage,
+      noise_correction = "missingness_filter",
+      transformation = "log2",
+      imputation = "median",
+      normalization = "median",
+      stage
+    )
+    result <- .protvis_store_preprocessing_result(
+      result,
+      stage = stage,
+      method = params$method %||% default_method,
+      extra = extra
+    )
+  }
   candidate <- .protvis_append_process(
     result, stage, status = "success", parameters = params,
     started_at = started, finished_at = Sys.time()

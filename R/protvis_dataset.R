@@ -731,6 +731,82 @@ protvis_dataset_name <- function(object) {
   as.character(object$metadata$object_name %||% "ProtVis_dataset")
 }
 
+
+# Convert the active protein-by-sample expression matrix to an explicit result
+# table suitable for storage inside analysis_results. Protein identifiers are
+# kept as the first column so the table remains self-describing when inspected
+# in RStudio or exported independently.
+.protvis_preprocessing_result_table <- function(dataset) {
+  dataset <- as_protvis_dataset(dataset)
+  values <- base::as.data.frame(
+    dataset$expression_data,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  ids <- base::rownames(values)
+  if (base::is.null(ids) || base::length(ids) != base::nrow(values)) {
+    ids <- base::paste0("P", base::seq_len(base::nrow(values)))
+  }
+  out <- base::data.frame(
+    protein_id = base::as.character(ids),
+    values,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  base::rownames(out) <- NULL
+  out
+}
+
+# Store a canonical preprocessing result. This keeps the compact method/status
+# metadata while retaining the actual matrix produced by the stage.
+.protvis_store_preprocessing_result <- function(
+    dataset, stage, method = NULL, extra = list(), status = "success") {
+  dataset <- as_protvis_dataset(dataset)
+  stage <- base::as.character(stage %||% "")[[1L]]
+  supported <- c(
+    "noise_correction", "transformation", "imputation", "normalization"
+  )
+  if (!stage %in% supported) return(dataset)
+
+  old <- dataset$analysis_results[[stage]]
+  if (base::is.data.frame(old)) {
+    old <- base::list(qc_table = old)
+  } else if (!base::is.list(old)) {
+    old <- base::list()
+  }
+  if (!base::is.list(extra)) extra <- base::list()
+
+  method_value <- method %||% old$method %||% stage
+  method_value <- base::as.character(method_value)[[1L]]
+  if (base::is.na(method_value) || !base::nzchar(method_value)) {
+    method_value <- stage
+  }
+
+  # Avoid duplicated list keys when upgrading a result that already has
+  # metadata from an earlier implementation.
+  old <- old[base::setdiff(
+    base::names(old),
+    c("status", "method", "result_table")
+  )]
+  extra <- extra[base::setdiff(
+    base::names(extra),
+    c("status", "method", "result_table")
+  )]
+
+  dataset$analysis_results[[stage]] <- base::c(
+    base::list(
+      status = base::as.character(status)[[1L]],
+      method = method_value
+    ),
+    extra,
+    old,
+    base::list(
+      result_table = .protvis_preprocessing_result_table(dataset)
+    )
+  )
+  dataset
+}
+
 .protvis_new_analysis_dataset <- function(dataset, stage, parameters = list()) {
   validate_protvis_dataset(dataset)
   method <- parameters$method %||% stage

@@ -360,8 +360,10 @@ data_transformed_server <- function(id, shared_state) {
           list(method = input$data_transformed)
         )
         dataset <- .protvis_replace_expression(dataset, transformed_matrix)
-        dataset$analysis_results$transformation <- list(
-          status = "success", method = input$data_transformed
+        dataset <- .protvis_store_preprocessing_result(
+          dataset,
+          stage = "transformation",
+          method = input$data_transformed
         )
         dataset <- .protvis_append_process(
           dataset, "transformation", status = "success",

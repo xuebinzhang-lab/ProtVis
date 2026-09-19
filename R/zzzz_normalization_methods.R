@@ -417,8 +417,11 @@ data_normalization_server <- function(id, shared_state) {
         dataset, "normalization",
         list(method = method, input_scale = resolved_scale(), comparison_methods = base::names(.protvis_norm_methods))
       )
-      dataset$analysis_results$normalization <- list(
-        status = "success", method = method, input_scale = resolved_scale()
+      dataset <- .protvis_store_preprocessing_result(
+        dataset,
+        stage = "normalization",
+        method = method,
+        extra = list(input_scale = resolved_scale())
       )
       dataset <- .protvis_append_process(
         dataset, "normalization", status = "success",

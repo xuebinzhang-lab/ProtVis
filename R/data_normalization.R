@@ -387,8 +387,10 @@ data_normalization_server <- function(id, shared_state) {
       dataset <- .protvis_new_analysis_dataset(
         dataset, "normalization", list(method = "median_subtraction")
       )
-      dataset$analysis_results$normalization <- list(
-        status = "success", method = "median_subtraction"
+      dataset <- .protvis_store_preprocessing_result(
+        dataset,
+        stage = "normalization",
+        method = "median_subtraction"
       )
       dataset <- .protvis_append_process(
         dataset, "normalization", status = "success",

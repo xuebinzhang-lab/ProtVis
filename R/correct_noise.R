@@ -501,8 +501,10 @@ correct_noise_server <- function(id, shared_state) {
           dataset <- .protvis_new_analysis_dataset(
             dataset, "noise_correction", list(method = "replicate_correction")
           )
-          dataset$analysis_results$noise_correction <- list(
-            status = "success", method = "replicate_correction"
+          dataset <- .protvis_store_preprocessing_result(
+            dataset,
+            stage = "noise_correction",
+            method = "replicate_correction"
           )
           dataset <- .protvis_append_process(
             dataset, "noise_correction", status = "success",

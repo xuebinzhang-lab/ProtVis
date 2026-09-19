@@ -538,8 +538,10 @@ data_imputation_server <- function(id, shared_state) {
       dataset <- .protvis_new_analysis_dataset(
         dataset, "imputation", list(method = input$choice_method)
       )
-      dataset$analysis_results$imputation <- list(
-        status = "success", method = input$choice_method
+      dataset <- .protvis_store_preprocessing_result(
+        dataset,
+        stage = "imputation",
+        method = input$choice_method
       )
       dataset <- .protvis_append_process(
         dataset, "imputation", status = "success",
