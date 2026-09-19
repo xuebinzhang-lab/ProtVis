@@ -3,14 +3,26 @@
 # methods added by zzzz_normalization_methods.R are accepted programmatically.
 
 .protvis_normalization <- function(dataset, params) {
-  method <- base::tolower(base::as.character(params$method %||% "median"))
+  method <- .protvis_resolve_preprocessing_method(
+    dataset, "normalization", params$method %||% "auto"
+  )
   if (method %in% c("none", "identity")) return(dataset)
 
   matrix <- base::as.matrix(dataset$expression_data)
   storage.mode(matrix) <- "numeric"
 
+  if (method %in% c("maxquant_recommended", "maxquant_default")) {
+    normalized <- .protvis_maxquant_normalize_matrix(
+      matrix,
+      row_shift = params$row_shift %||% 5,
+      zero_value = params$zero_value %||% 1
+    )
+    return(.protvis_replace_expression(dataset, normalized))
+  }
+
   aliases <- c(
     median = "median",
+    median_subtraction = "median",
     quantile = "quantile",
     quantile_normalization = "quantile",
     vsn = "vsn",
