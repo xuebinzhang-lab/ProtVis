@@ -211,7 +211,7 @@ utils::globalVariables(c(
       check.names = FALSE
     ),
     taxonomy = .mp_taxonomy_from_dataset(dataset),
-    function = .mp_function_from_dataset(dataset),
+    "function" = .mp_function_from_dataset(dataset),
     peptide = .mp_peptide_from_dataset(dataset)
   )
 }
@@ -497,7 +497,7 @@ utils::globalVariables(c(
                                  relative = TRUE, top_n = 10L) {
   abundance <- .mp_abundance_long(dat$abundance, dat$sample_info)
   taxonomy <- .mp_normalise_id_table(dat$taxonomy)
-  function_table <- .mp_normalise_id_table(dat$function)
+  function_table <- .mp_normalise_id_table(dat[["function"]])
 
   if (!tax_level %in% names(taxonomy)) {
     stop("Selected taxonomic level is not available: ", tax_level, call. = FALSE)
@@ -551,7 +551,7 @@ utils::globalVariables(c(
       abundance = abundance$abundance,
       sample_info = abundance$sample_info,
       taxonomy = taxonomy,
-      function = function_table,
+      "function" = function_table,
       peptide = as.data.frame(
         dat$peptide %||% data.frame(),
         stringsAsFactors = FALSE,
@@ -737,7 +737,7 @@ metaproteomics_demo_data <- function() {
     abundance = abundance,
     sample_info = sample_info,
     taxonomy = taxonomy,
-    function = function_table,
+    "function" = function_table,
     peptide = peptide
   )
 }
@@ -890,7 +890,7 @@ metaproteomics_server <- function(id, shared_state = NULL) {
 
     refresh_choices <- function() {
       tax_levels <- .mp_tax_levels(rv$data$taxonomy)
-      fun_levels <- .mp_function_levels(rv$data$function, rv$data$peptide)
+      fun_levels <- .mp_function_levels(rv$data[["function"]], rv$data$peptide)
       tax_selected <- if ("Genus" %in% tax_levels) {
         "Genus"
       } else if (length(tax_levels)) {
@@ -969,7 +969,7 @@ metaproteomics_server <- function(id, shared_state = NULL) {
           dat$taxonomy <- read_csv_file(input$taxonomy_file)
         }
         if (!is.null(input$function_file)) {
-          dat$function <- read_csv_file(input$function_file)
+          dat[["function"]] <- read_csv_file(input$function_file)
         }
         if (!is.null(input$peptide_file)) {
           dat$peptide <- read_csv_file(input$peptide_file)
@@ -1066,7 +1066,7 @@ metaproteomics_server <- function(id, shared_state = NULL) {
     result_data <- shiny::reactive({
       if (is.null(rv$result)) {
         tax <- .mp_tax_levels(rv$data$taxonomy)
-        fun <- .mp_function_levels(rv$data$function, rv$data$peptide)
+        fun <- .mp_function_levels(rv$data[["function"]], rv$data$peptide)
         shiny::validate(
           shiny::need(length(tax), "Load taxonomy annotation to start."),
           shiny::need(length(fun), "Load function annotation to start.")
@@ -1095,7 +1095,7 @@ metaproteomics_server <- function(id, shared_state = NULL) {
           "Source: ", rv$source,
           ". Proteins: ", nrow(dat$abundance %||% data.frame()),
           "; taxonomy rows: ", nrow(dat$taxonomy %||% data.frame()),
-          "; function rows: ", nrow(dat$function %||% data.frame()),
+          "; function rows: ", nrow(dat[["function"]] %||% data.frame()),
           "; peptide rows: ", peptide_n, ".",
           active_note
         )
