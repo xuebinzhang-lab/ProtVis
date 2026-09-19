@@ -66,6 +66,23 @@ data_normalization_ui <- function(id) {
         shiny::uiOutput(ns("load_status_panel")),
         shiny::hr(),
 
+        shiny::selectInput(
+          ns("normalization_method"),
+          "Normalization Method",
+          choices = c(
+            "Auto (source recommended)" = "auto",
+            "MaxQuant recommended (median center + row shift)" = "maxquant_recommended",
+            "Median subtraction" = "median_subtraction"
+          ),
+          selected = "auto"
+        ),
+        shiny::div(
+          "For MaxQuant, Auto reproduces the archived workflow: sample-wise ",
+          "median subtraction followed by the row-wise +abs(min)+5 shift ",
+          "(exact zeros become 1).",
+          style = "font-size:12px;color:#657789;line-height:1.45;margin-top:-6px;margin-bottom:10px;"
+        ),
+
         shiny::actionButton(
           ns("run_normalization"),
           "Run normalization",
@@ -197,7 +214,8 @@ data_normalization_server <- function(id, shared_state) {
       expression_matrix = NULL,
       load_success = FALSE,
       normalized_matrix = NULL,
-      normalization_done = FALSE
+      normalization_done = FALSE,
+      normalization_method = NULL
     )
 
     valid_workdir <- function() {
@@ -254,6 +272,7 @@ data_normalization_server <- function(id, shared_state) {
 
         rv$normalized_matrix <- NULL
         rv$normalization_done <- FALSE
+        rv$normalization_method <- NULL
         rv$load_success <- TRUE
 
         shiny::showNotification(
@@ -282,7 +301,10 @@ data_normalization_server <- function(id, shared_state) {
 
     output$normalization_status_panel <- shiny::renderUI({
       if (isTRUE(rv$normalization_done)) {
-        shiny::div(class = "pv-status pv-status-ready", "✓ Median subtraction normalization completed")
+        shiny::div(
+          class = "pv-status pv-status-ready",
+          paste0("✓ Normalization completed: ", rv$normalization_method %||% "unknown")
+        )
       } else {
         shiny::div(class = "pv-status pv-status-empty", "Normalization not run yet")
       }
@@ -362,7 +384,27 @@ data_normalization_server <- function(id, shared_state) {
         return(invisible(NULL))
       }
 
-      normalized_data <- sample_subtract(expr_df)
+      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
+        shared_state$dataset
+      } else {
+        create_protvis_dataset(
+          expr_df, sample_info = rv$sample_info
+        )
+      }
+      requested_method <- input$normalization_method %||% "auto"
+      resolved_method <- .protvis_resolve_preprocessing_method(
+        dataset, "normalization", requested_method
+      )
+
+      normalized_data <- if (
+        resolved_method %in% c("maxquant_recommended", "maxquant_default")
+      ) {
+        .protvis_maxquant_normalize_matrix(
+          expr_df, row_shift = 5, zero_value = 1
+        )
+      } else {
+        sample_subtract(expr_df)
+      }
       normalized_data <- base::as.data.frame(
         normalized_data,
         stringsAsFactors = FALSE,
@@ -375,26 +417,30 @@ data_normalization_server <- function(id, shared_state) {
 
       rv$normalized_matrix <- normalized_data
       rv$normalization_done <- TRUE
+      rv$normalization_method <- resolved_method
 
-      dataset <- if (inherits(shared_state$dataset, "ProtVis_dataset")) {
-        shared_state$dataset
-      } else {
-        create_protvis_dataset(
-          expr_df, sample_info = rv$sample_info
-        )
-      }
       dataset <- .protvis_update_expression(dataset, normalized_data)
       dataset <- .protvis_new_analysis_dataset(
-        dataset, "normalization", list(method = "median_subtraction")
+        dataset, "normalization", list(
+          method = resolved_method,
+          requested_method = requested_method,
+          row_shift = if (identical(resolved_method, "maxquant_recommended")) 5 else NULL,
+          zero_value = if (identical(resolved_method, "maxquant_recommended")) 1 else NULL
+        )
       )
       dataset <- .protvis_store_preprocessing_result(
         dataset,
         stage = "normalization",
-        method = "median_subtraction"
+        method = resolved_method
       )
       dataset <- .protvis_append_process(
         dataset, "normalization", status = "success",
-        parameters = list(method = "median_subtraction")
+        parameters = list(
+          method = resolved_method,
+          requested_method = requested_method,
+          row_shift = if (identical(resolved_method, "maxquant_recommended")) 5 else NULL,
+          zero_value = if (identical(resolved_method, "maxquant_recommended")) 1 else NULL
+        )
       )
       .protvis_ui_sync_state(dataset, shared_state)
       .protvis_save_stage_dataset(
