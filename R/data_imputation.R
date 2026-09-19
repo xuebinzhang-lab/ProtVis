@@ -155,6 +155,21 @@ data_imputation_ui <- function(id) {
 
 
 
+.protvis_imputation_plot_data <- function(data) {
+  df <- base::as.data.frame(
+    data, stringsAsFactors = FALSE, check.names = FALSE
+  )
+  id_columns <- base::intersect(
+    c("ID", "variable_id", "protein_id"),
+    base::colnames(df)
+  )
+  if (base::length(id_columns) > 0L) {
+    df <- df[, base::setdiff(base::colnames(df), id_columns), drop = FALSE]
+  }
+  df
+}
+
+
 #' Data Imputation Server Module
 #'
 #' Server logic for the data imputation module. This module:
@@ -338,9 +353,11 @@ data_imputation_server <- function(id, shared_state) {
       output$originalPlot <- shiny::renderPlot({
         shiny::req(expression_matrix_display())
 
-        plot_df <- .protvis_rownames_to_column(expression_matrix_display(), "ID")
+        plot_df <- .protvis_imputation_plot_data(
+          expression_matrix_display()
+        )
 
-        visdat::vis_dat(base::data.frame(plot_df)) +
+        visdat::vis_dat(plot_df) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -564,10 +581,9 @@ data_imputation_server <- function(id, shared_state) {
     output$imputedPlot <- shiny::renderPlot({
       shiny::req(imputed_data())
 
-      plot_df <- imputed_data()
-      plot_df <- .protvis_rownames_to_column(plot_df, "ID")
+      plot_df <- .protvis_imputation_plot_data(imputed_data())
 
-      visdat::vis_dat(base::data.frame(plot_df)) +
+      visdat::vis_dat(plot_df) +
         ggplot2::scale_fill_manual(
           values = c(
             "character" = "skyblue",
@@ -584,10 +600,11 @@ data_imputation_server <- function(id, shared_state) {
         base::paste0("original_data_plot_", base::Sys.Date(), ".pdf")
       },
       content = function(file) {
-        plot_df <- expression_matrix_display() %>%
-          .protvis_rownames_to_column("ID")
+        plot_df <- .protvis_imputation_plot_data(
+          expression_matrix_display()
+        )
 
-        g <- visdat::vis_dat(base::data.frame(plot_df)) +
+        g <- visdat::vis_dat(plot_df) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
@@ -615,10 +632,9 @@ data_imputation_server <- function(id, shared_state) {
       content = function(file) {
         shiny::req(imputed_data())
 
-        plot_df <- imputed_data()
-        plot_df <- .protvis_rownames_to_column(plot_df, "ID")
+        plot_df <- .protvis_imputation_plot_data(imputed_data())
 
-        g <- visdat::vis_dat(base::data.frame(plot_df)) +
+        g <- visdat::vis_dat(plot_df) +
           ggplot2::scale_fill_manual(
             values = c(
               "character" = "skyblue",
