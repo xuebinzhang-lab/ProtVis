@@ -485,6 +485,7 @@ project_init_server <- function(id, shared_state) {
           filename = input$expression_matrix$name
         )
         shared_state$expression_matrix <- expression_matrix
+        shared_state$expression_matrix_name <- input$expression_matrix$name
         shiny::showNotification("Expression matrix uploaded", type = "message")
       }, error = function(e) {
         shiny::showNotification(
@@ -508,19 +509,46 @@ project_init_server <- function(id, shared_state) {
         manifest <- protvis_builtin_datasets()
         row <- manifest[manifest$file == selected, , drop = FALSE]
         if (nrow(row) != 1L) stop("Please select a valid built-in example.", call. = FALSE)
-        dataset <- load_protvis_builtin_data(
-          source = row$source[[1L]], file = row$file[[1L]], auto_export = FALSE
+        source_name <- row$source[[1L]]
+        file_name <- row$file[[1L]]
+        if (identical(source_name, "MaxQuant")) {
+          # MaxQuant filtering belongs to the dedicated output-preparation
+          # step. Load the original table here without applying any flags so
+          # Project init can preserve Protein IDs plus the three flag columns.
+          fixture_path <- .protvis_builtin_fixture_path(
+            source_name, file = file_name
+          )
+          raw_maxquant <- protvis_read_table(
+            fixture_path, filename = file_name
+          )
+          shared_state$sample_info <- .protvis_builtin_sample_info(
+            source_name, file_name
+          )
+          shared_state$expression_matrix <- raw_maxquant
+          shared_state$expression_matrix_filtered <- raw_maxquant
+          shared_state$maxquant_raw_table <- raw_maxquant
+          shared_state$maxquant_raw_filename <- file_name
+          shared_state$expression_matrix_name <- file_name
+          shared_state$dataset <- NULL
+        } else {
+          dataset <- load_protvis_builtin_data(
+            source = source_name, file = file_name, auto_export = FALSE
+          )
+          shared_state$sample_info <- dataset$sample_info
+          # Keep the protein identifier as an explicit column at every UI
+          # boundary. ProtVis_dataset stores it as row names internally.
+          shared_state$expression_matrix <- protvis_expression_matrix(dataset)
+          shared_state$expression_matrix_filtered <-
+            protvis_expression_matrix(dataset)
+          shared_state$expression_matrix_name <- file_name
+          shared_state$maxquant_raw_table <- NULL
+          shared_state$maxquant_raw_filename <- NULL
+          shared_state$dataset <- NULL
+        }
+        shared_state$data_source <- source_name
+        shared_state$workdir <- protvis_output_directory(
+          shared_state$workdir %||% getwd()
         )
-        shared_state$sample_info <- dataset$sample_info
-        # Keep the protein identifier as an explicit column at every UI
-        # boundary.  ProtVis_dataset stores it as row names internally, but
-        # the preprocessing modules intentionally consume an ID-first data
-        # frame.  Passing expression_data directly makes the first sample
-        # look like ID and silently discards the real protein identifiers.
-        shared_state$expression_matrix <- protvis_expression_matrix(dataset)
-        shared_state$expression_matrix_filtered <- protvis_expression_matrix(dataset)
-        shared_state$data_source <- row$source[[1L]]
-        shared_state$workdir <- protvis_output_directory(shared_state$workdir %||% getwd())
         shiny::showNotification(
           paste(row$source[[1L]], "built-in example loaded; click Project init to create ProtVis_dataset."),
           type = "message"
@@ -683,21 +711,58 @@ project_init_server <- function(id, shared_state) {
         }
         shiny::req(shared_state$sample_info, shared_state$expression_matrix,
                    shared_state$data_source)
+        data_source <- shared_state$data_source
+        matrix_for_validation <- shared_state$expression_matrix
+        maxquant_raw <- NULL
+
+        if (identical(data_source, "MaxQuant")) {
+          # Preserve the original MaxQuant table until the explicit REMOVE
+          # action. If a previous built-in load already registered it, prefer
+          # that copy; otherwise treat an uploaded proteinGroups-like table as
+          # the raw source when it has a recognised MaxQuant protein ID column.
+          if (is.data.frame(shared_state$maxquant_raw_table)) {
+            maxquant_raw <- shared_state$maxquant_raw_table
+          } else if (is.data.frame(shared_state$expression_matrix) &&
+                     !is.null(.protvis_id_column(
+                       shared_state$expression_matrix, "MaxQuant"
+                     ))) {
+            maxquant_raw <- shared_state$expression_matrix
+          }
+
+          if (is.data.frame(maxquant_raw)) {
+            parsed_maxquant <- .protvis_parse_maxquant(
+              maxquant_raw, filters = character()
+            )
+            matrix_for_validation <- parsed_maxquant$expression
+            shared_state$maxquant_raw_table <- maxquant_raw
+            shared_state$maxquant_raw_filename <-
+              shared_state$maxquant_raw_filename %||%
+              shared_state$expression_matrix_name %||% ""
+          }
+        }
+
         validated <- validate_protvis_data(
-          shared_state$expression_matrix, shared_state$sample_info,
-          source = shared_state$data_source
+          matrix_for_validation, shared_state$sample_info,
+          source = data_source
         )
         sample_info <- validated$sample_info
         expression_matrix <- validated$expression_matrix
         shared_state$sample_info <- sample_info
         shared_state$expression_matrix <- expression_matrix
-        data_source <- shared_state$data_source
         shared_state$workdir <- directory
         dataset <- create_protvis_dataset(
           expression_data = expression_matrix,
           sample_info = sample_info,
           metadata = list(source = data_source, output_directory = directory)
         )
+        if (is.data.frame(maxquant_raw)) {
+          dataset <- .protvis_attach_maxquant_preparation(
+            dataset,
+            raw_table = maxquant_raw,
+            filename = shared_state$maxquant_raw_filename %||%
+              shared_state$expression_matrix_name %||% ""
+          )
+        }
         if (isTRUE(shared_state$raw_check$valid) &&
             is.data.frame(shared_state$raw_manifest)) {
           dataset$metadata$raw_directory <- shared_state$raw_directory
