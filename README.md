@@ -289,7 +289,7 @@ run_ProtVis()
 5.  **Explore metaproteomics**
     -   Open **Multi-omics → Metaproteomics** and click **Use Active ProtVis_dataset** to reuse the current protein matrix, sample metadata, compatible annotations, and peptide assay when present.
     -   Alternatively upload protein abundance, sample metadata, taxonomy, function annotation, and an optional peptide-centric table.
-    -   Generate taxonomy composition/ranking, function composition, taxon × function Sankey/heatmap views, and weighted peptide-centric functional abundance summaries.
+    -   Generate taxonomy composition/ranking, taxonomy/function group-differential tables and plots, taxon × function Sankey/heatmap views, and weighted peptide-centric functional abundance summaries.
     -   Completed analyses are stored as immutable runs in `analysis_results$metaproteomics$runs`; `expression_data` remains the active protein matrix.
 
 ------------------------------------------------------------------------
@@ -336,7 +336,7 @@ Treatment_2,Treatment
 
 The peptide table accepts a peptide sequence column such as `Peptide` or `Sequence`, sample intensity columns (or long-form `Sample` + `Intensity`), and either a direct functional assignment such as `Pathway` / `KO` or a `ProteinID` that can be joined to the function table. Shared peptide intensity is divided across multiple semicolon-delimited functional assignments before aggregation.
 
-The built-in demo contains all five layers. Protein-level, taxonomic, functional, taxon × function, peptide-function score, and peptide-function differential tables are retained in the stored run.
+The built-in demo contains all five layers. Protein-level, taxonomic, functional, taxonomy/function differential, taxon × function, peptide-function score, and peptide-function differential tables are retained in the stored run.
 
 ------------------------------------------------------------------------
 
