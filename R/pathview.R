@@ -65,7 +65,7 @@ pathview_ui <- function(id) {
 #'
 utils::globalVariables(c("ko", "KO", "pathway", "Description"))
 
-pathview_server <- function(id) {
+pathview_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     if (!base::exists("bods", envir = .GlobalEnv)) {
@@ -202,6 +202,34 @@ pathview_server <- function(id) {
           base::list(src = png_file, contentType = "image/png",
                width = "100%", alt = base::paste("Pathway:", pid))
         }, deleteFile = FALSE)
+        .protvis_record_shared_run(
+          shared_state,
+          module = "pathview",
+          method = "KEGG_native",
+          category = "enrichment",
+          parameters = list(
+            pathway_id = pid,
+            species = "ko",
+            gene_idtype = "KEGG",
+            node_summary = "mean"
+          ),
+          tables = list(
+            gene_scores = data.frame(
+              KO = names(geneList),
+              value = as.numeric(geneList),
+              stringsAsFactors = FALSE
+            )
+          ),
+          plot_data = list(
+            gene_scores = data.frame(
+              KO = names(geneList),
+              value = as.numeric(geneList),
+              stringsAsFactors = FALSE
+            )
+          ),
+          plot_config = list(pathway_id = pid, output_format = "png"),
+          files = list(pathway_png = png_file)
+        )
       }, error = function(e) {
         shiny::showNotification(
           base::paste("Pathview error:", e$message),

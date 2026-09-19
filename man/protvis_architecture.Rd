@@ -56,5 +56,5 @@ QC lists; conversion functions return ProtVis_dataset or QFeatures objects.
 \details{
 QFeatures conversion is optional and requires QFeatures,
 SummarizedExperiment, and S4Vectors. Legacy ProtVis_dataset objects are
-upgraded in memory without discarding their existing analysis state. Schema v4 keeps expression_data as the active protein matrix and stores repeated module analyses as append-only run histories under analysis_results.
+upgraded in memory without discarding their existing analysis state. Schema v4 also maintains a project-wide append-only run registry, workflow dependency graph, and artifact index while preserving module-local run stores and legacy latest-result views. Schema v4 keeps expression_data as the active protein matrix and stores repeated module analyses as append-only run histories under analysis_results.
 }

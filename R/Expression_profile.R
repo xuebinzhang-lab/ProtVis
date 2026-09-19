@@ -174,7 +174,7 @@ Expression_profile_ui <- function(id) {
 
 utils::globalVariables(c("Cluster_Count", "variable",
                          "index","Cluster","Var2","Var1"))
-Expression_profile_server <- function(id) {
+Expression_profile_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     builtin_loaded <- shiny::reactiveVal(FALSE)
@@ -259,6 +259,31 @@ Expression_profile_server <- function(id) {
       data_new <- data.frame("index" = rownames(data_scale), "Cluster" = cl$cluster, data_scale) %>%
         dplyr::as_tibble() %>%
         dplyr::mutate("Cluster" = base::paste0("Cluster", Cluster))
+      .protvis_record_shared_run(
+        shared_state,
+        module = "expression_profile_kmeans",
+        method = "kmeans",
+        category = "analysis",
+        parameters = list(
+          centers = input$centers,
+          display_mode = input$dropdown
+        ),
+        tables = list(
+          clusters = as.data.frame(data_new, check.names = FALSE)
+        ),
+        matrices = list(
+          scaled_expression = as.matrix(data_scale),
+          centers = as.matrix(cl$centers)
+        ),
+        statistics = list(
+          cluster = cl$cluster,
+          tot_withinss = cl$tot.withinss,
+          betweenss = cl$betweenss
+        ),
+        plot_data = list(
+          clusters = as.data.frame(data_new, check.names = FALSE)
+        )
+      )
       output$Kmeansplotshow <- shiny::renderPlot({
         shiny::req(data_scale)
         shiny::req(cl)
@@ -398,6 +423,30 @@ Expression_profile_server <- function(id) {
       cluster_table <- cluster_table[order(cluster_table$Cluster), , drop = FALSE]
       plot_mat <- as.matrix(cluster_table[, setdiff(colnames(cluster_table), c("ID", "Cluster")), drop = FALSE])
       rownames(plot_mat) <- cluster_table$ID
+
+      .protvis_record_shared_run(
+        shared_state,
+        module = "expression_profile_heatmap",
+        method = "kmeans_heatmap",
+        category = "analysis",
+        parameters = list(
+          centers = input$heatmap_centers,
+          scale = input$heatmap_scale
+        ),
+        tables = list(
+          cluster_table = cluster_table
+        ),
+        matrices = list(
+          heatmap_matrix = plot_mat,
+          centers = as.matrix(km$centers)
+        ),
+        statistics = list(cluster = km$cluster),
+        plot_data = list(cluster_table = cluster_table),
+        plot_config = list(
+          row_order = rownames(plot_mat),
+          column_order = colnames(plot_mat)
+        )
+      )
 
       output$heatmap_plot <- shiny::renderPlot({
         stats::heatmap(

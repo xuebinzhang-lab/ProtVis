@@ -610,7 +610,7 @@ protein_workbench_ui <- function(id) {
 #' @param id Shiny module id.
 #' @return A Shiny module server.
 #' @export
-protein_workbench_server <- function(id) {
+protein_workbench_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     rv <- shiny::reactiveValues(
       search = base::data.frame(),
@@ -709,6 +709,38 @@ protein_workbench_server <- function(id) {
           rv$alphafold_pdb <- NULL
           rv$message <- base::paste0("Local sequence loaded: ", base::nchar(rv$local_sequence), " aa")
         }
+
+        sequence_value <- rv$local_sequence %||% ""
+        if (!base::nzchar(sequence_value) && !base::is.null(rv$entry)) {
+          sequence_value <- .protvis_pw_sequence(rv$entry)
+        }
+        table_candidates <- list(
+          search = rv$search,
+          summary = .protvis_pw_summary_table(rv$entry),
+          comments = .protvis_pw_comments_table(rv$entry),
+          interpro = rv$interpro,
+          sequence_stats = .protvis_pw_sequence_stats(sequence_value)
+        )
+        table_candidates <- table_candidates[
+          vapply(table_candidates, is.data.frame, logical(1))
+        ]
+        .protvis_record_shared_run(
+          shared_state,
+          module = "protein_workbench",
+          method = if (base::nzchar(query)) "UniProt_query" else "local_sequence",
+          category = "toolkits",
+          parameters = list(
+            query = query,
+            organism_id = input$organism_id %||% NA_character_
+          ),
+          tables = table_candidates,
+          statistics = list(
+            accession = if (base::is.null(rv$entry)) NA_character_ else
+              rv$entry$primaryAccession %||% NA_character_,
+            sequence = sequence_value,
+            alphafold = rv$alphafold
+          )
+        )
       }, error = function(e) {
         rv$message <- base::conditionMessage(e)
         shiny::showModal(shiny::modalDialog(

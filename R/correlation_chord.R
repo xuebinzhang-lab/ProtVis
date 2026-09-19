@@ -318,7 +318,7 @@ correlation_chord_ui <- function(id) {
 #' @name correlation_chord_server
 #' @export
 #'
-correlation_chord_server <- function(id) {
+correlation_chord_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     rv <- shiny::reactiveValues(
@@ -493,6 +493,25 @@ correlation_chord_server <- function(id) {
 
         rv$cor_mat <- cor_mat
         rv$edge_df <- cor_df
+
+        .protvis_record_shared_run(
+          shared_state,
+          module = "correlation_chord",
+          method = input$method %||% "pearson",
+          category = "network",
+          parameters = list(
+            columns = input$columns,
+            threshold = input$threshold,
+            max_links = input$max_links
+          ),
+          matrices = list(correlation_matrix = cor_mat),
+          tables = list(edges = cor_df),
+          plot_data = list(chord_edges = cor_df),
+          plot_config = list(
+            positive_color = input$pos_color,
+            negative_color = input$neg_color
+          )
+        )
 
         shiny::incProgress(1, detail = "Completed.")
       })

@@ -668,7 +668,7 @@ stringdb_ppi_ui <- function(id) {
 #' @export
 #'
 #' @import shiny
-stringdb_ppi_server <- function(id) {
+stringdb_ppi_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     output$custom_species_ui <- shiny::renderUI({
@@ -837,6 +837,42 @@ stringdb_ppi_server <- function(id) {
         }
       )
     })
+
+    shiny::observeEvent(input$run_ppi, {
+      res <- ppi_result()
+      table_candidates <- list(
+        mapping = res$mapping_table,
+        nodes = res$node_table,
+        edges = res$edge_table
+      )
+      table_candidates <- table_candidates[
+        vapply(table_candidates, is.data.frame, logical(1))
+      ]
+      .protvis_record_shared_run(
+        shared_state,
+        module = "stringdb_ppi",
+        method = paste0("STRINGdb_", res$version %||% input$string_version),
+        category = "network",
+        parameters = list(
+          species = res$species %||% input$species_choice,
+          score_threshold = input$score_threshold,
+          layout = input$layout,
+          keep_input_only = isTRUE(input$keep_input_only),
+          include_disconnected = isTRUE(input$include_disconnected)
+        ),
+        tables = table_candidates,
+        statistics = list(
+          n_input = res$n_input,
+          n_mapped = res$n_mapped,
+          nodes = if (!is.null(res$graph)) igraph::vcount(res$graph) else NA_integer_,
+          edges = if (!is.null(res$graph)) igraph::ecount(res$graph) else NA_integer_
+        ),
+        plot_data = list(
+          network = if (inherits(res$plot, "ggplot")) res$plot$data else data.frame()
+        ),
+        plot_config = list(layout = input$layout)
+      )
+    }, ignoreInit = TRUE)
 
     output$summary_box <- shiny::renderUI({
       if (is.null(input$run_ppi) || input$run_ppi == 0) {

@@ -241,7 +241,7 @@ stacked_column_chart_ui <- function(id) {
 #' @importFrom ggplot2 ggplot aes geom_bar scale_fill_manual labs theme_bw theme
 #' @importFrom ggplot2 element_text element_blank coord_flip ggsave
 #' @export
-stacked_column_chart_server <- function(id) {
+stacked_column_chart_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     ns <- session$ns
@@ -462,6 +462,22 @@ stacked_column_chart_server <- function(id) {
       rv$plot_data <- data_long
       rv$plot_obj <- p
       rv$has_run <- TRUE
+
+      .protvis_record_shared_run(
+        shared_state,
+        module = "stacked_column_chart",
+        method = input$plot_type %||% "stack",
+        category = "toolkits",
+        parameters = list(
+          flip_coordinates = isTRUE(input$flip_coords),
+          show_border = isTRUE(input$show_border),
+          x_label = input$x_label,
+          y_label = input$y_label
+        ),
+        tables = list(input = df2),
+        plot_data = list(stacked_chart = data_long),
+        plot_config = list(colors = color_values)
+      )
 
       shinyjs::enable("download_plot")
 

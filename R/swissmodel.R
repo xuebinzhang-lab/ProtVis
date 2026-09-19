@@ -805,7 +805,7 @@ swissmodel_ui <- function(id) {
 #' @param id Shiny module id.
 #' @return A Shiny module server.
 #' @export
-swissmodel_server <- function(id) {
+swissmodel_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     rv <- shiny::reactiveValues(
       token = NULL,
@@ -1004,6 +1004,34 @@ swissmodel_server <- function(id) {
           paste("SWISS-MODEL project loaded:", rv$project_id),
           type = "message", duration = 4
         )
+        model_tables <- list(models = rv$models)
+        model_tables <- model_tables[
+          vapply(model_tables, is.data.frame, logical(1))
+        ]
+        .protvis_record_shared_run(
+          shared_state,
+          module = "swissmodel",
+          method = input$mode %||% "auto",
+          category = "protein_structure",
+          parameters = list(
+            mode = input$mode,
+            project_title = input$project_title,
+            template_offset = input$template_offset,
+            pdb_id = input$pdb_id,
+            chain_id = input$chain_id,
+            assembly_id = input$assembly_id
+          ),
+          tables = model_tables,
+          statistics = list(
+            project_id = rv$project_id,
+            summary = rv$summary,
+            selected_model = input$model_id %||% NA_character_,
+            model_details = rv$model_details
+          ),
+          plot_config = list(
+            compare_models = input$compare_models %||% character()
+          )
+        )
       }, error = function(e) {
         shiny::showModal(shiny::modalDialog(
           title = "SWISS-MODEL error",
@@ -1051,6 +1079,14 @@ swissmodel_server <- function(id) {
         token <- trimws(input$api_token %||% "")
         if (!nzchar(token)) token <- NULL
         rv$atlas <- .protvis_swiss_atlas_search(query, token)
+        .protvis_record_shared_run(
+          shared_state,
+          module = "swissmodel_atlas",
+          method = "Atlas_search",
+          category = "protein_structure",
+          parameters = list(query_length = nchar(query)),
+          statistics = list(result = rv$atlas)
+        )
         shiny::showNotification("SWISS-MODEL Atlas request completed.", type = "message", duration = 3)
       }, error = function(e) shiny::showNotification(conditionMessage(e), type = "error", duration = 5))
     })

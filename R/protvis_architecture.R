@@ -14,8 +14,14 @@ protvis_schema <- function() {
     assay_levels = c("psm", "peptide", "protein"),
     core_fields = c(
       "expression_data", "sample_info", "variable_info", "annotation",
-      "analysis_results", "process_info", "metadata", "other_files",
-      "checkpoint_info"
+      "analysis_results", "result_registry", "artifacts", "workflow",
+      "process_info", "metadata", "other_files", "checkpoint_info"
+    ),
+    storage = list(
+      run_store = "analysis_results$v4$runs",
+      result_registry = "metadata$result_registry",
+      artifacts = "metadata$artifacts",
+      workflow = "metadata$workflow"
     ),
     annotation_fields = c(
       "eggnog_output", "GO_annotation", "KEGG_annotation"
@@ -23,9 +29,16 @@ protvis_schema <- function() {
     analysis_contract = list(
       mode = "append_only",
       active_matrix = "expression_data",
+      canonical_runs = "analysis_results$v4$runs",
+      result_registry = "metadata$result_registry",
+      dependency_graph = "metadata$workflow",
       module_runs = "analysis_results$<module>$runs",
-      latest_pointer = "analysis_results$<module>$latest_run_id",
-      preserve_core_matrix = TRUE
+      latest_pointer = "compatibility/latest view only",
+      preserve_core_matrix = TRUE,
+      ordinary_analysis = c(
+        "tables", "statistics", "plot_data", "plot_config",
+        "parameters", "dependencies", "files"
+      )
     ),
     metaproteomics = list(
       protein_abundance = "expression_data",
@@ -198,7 +211,31 @@ protvis_standardize_dataset <- function(object) {
   }
   metadata$provenance$files <- metadata$provenance$files %||% list()
   metadata$provenance$events <- metadata$provenance$events %||% list()
+  if (exists(".protvis_empty_result_registry", mode = "function")) {
+    metadata$result_registry <- if (is.data.frame(metadata$result_registry)) {
+      metadata$result_registry
+    } else {
+      .protvis_empty_result_registry()
+    }
+    metadata$artifacts <- if (is.list(metadata$artifacts)) {
+      metadata$artifacts
+    } else {
+      .protvis_empty_artifacts()
+    }
+    metadata$workflow <- if (is.list(metadata$workflow)) {
+      metadata$workflow
+    } else {
+      .protvis_empty_workflow()
+    }
+    metadata$run_counter <- suppressWarnings(
+      as.integer(metadata$run_counter %||% 0L)
+    )
+    if (!is.finite(metadata$run_counter)) metadata$run_counter <- 0L
+  }
   object$metadata <- metadata
+  if (exists(".protvis_migrate_legacy_results", mode = "function")) {
+    object <- .protvis_migrate_legacy_results(object)
+  }
   if (!length(object$metadata$provenance$events) &&
       length(object$process_info$history %||% list())) {
     for (event in object$process_info$history) {
@@ -351,15 +388,6 @@ register_protvis_assay <- function(object, level = c("psm", "peptide"),
     parameters = utils::modifyList(
       list(run_id = final_id, storage = "append_only"),
       parameters %||% list()
-    )
-  )
-  object <- .protvis_append_provenance_event(
-    object,
-    stage = module,
-    status = "success",
-    parameters = utils::modifyList(
-      list(run_id = final_id, storage = "append_only"),
-      parameters %||% list()
     ),
     message = paste0("Appended analysis run ", final_id, ".")
   )
@@ -423,7 +451,10 @@ protvis_provenance <- function(object) {
     environment = provenance$environment,
     software = provenance$software,
     events = event_table,
-    files = file_table
+    files = file_table,
+    result_registry = object$result_registry,
+    workflow = object$workflow,
+    artifacts = object$artifacts
   )
 }
 

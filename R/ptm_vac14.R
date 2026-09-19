@@ -888,7 +888,7 @@
   )
 }
 
-.protvis_vac14_server <- function(input, output, session) {
+.protvis_vac14_server <- function(input, output, session, shared_state = NULL) {
   result <- shiny::reactiveVal(NULL)
   status <- shiny::reactiveVal(list(type = "idle", message = "Ready to validate the Vac14 Ser3 benchmark."))
   running <- shiny::reactiveVal(FALSE)
@@ -1268,7 +1268,7 @@
   )
 }
 
-.protvis_vac14_server <- function(input, output, session) {
+.protvis_vac14_server <- function(input, output, session, shared_state = NULL) {
   bundle <- shiny::reactiveVal(NULL)
   result <- shiny::reactiveVal(NULL)
   status <- shiny::reactiveVal(list(
@@ -1340,6 +1340,50 @@
       }
       result(value)
       completed_signature(signature)
+
+      spectrum_tables <- list(
+        summary = value$summary,
+        matched_ions = value$matched,
+        ion_coverage = value$key_ions,
+        theoretical_fragments = value$theoretical$fragment_table,
+        selected_PSM = value$psm_table,
+        spectrum_peaks = value$peaks
+      )
+      spectrum_tables <- spectrum_tables[
+        vapply(spectrum_tables, is.data.frame, logical(1))
+      ]
+      .protvis_record_shared_run(
+        shared_state,
+        module = "ptm_spectrum",
+        method = "mzIdentML_MGF_fragment_matching",
+        category = "ptm",
+        parameters = list(
+          fragment_tolerance_da = input$vac14_tolerance,
+          source = loaded$source %||% input$vac14_source,
+          psm_index = choice,
+          b_ion_color = input$vac14_b_color,
+          y_ion_color = input$vac14_y_color
+        ),
+        tables = spectrum_tables,
+        statistics = list(
+          protein = value$target$protein %||% NA_character_,
+          peptide = value$target$sequence %||% NA_character_,
+          modified_peptide = value$target$modified_sequence %||% NA_character_,
+          spectrum = value$target$spectrum_label %||%
+            value$target$spectrum_title %||% NA_character_,
+          precursor_mz = value$target$precursor_mz %||% NA_real_,
+          precursor_charge = value$target$precursor_charge %||% NA_integer_
+        ),
+        plot_data = list(
+          peaks = value$peaks,
+          matched_ions = value$matched
+        ),
+        plot_config = list(
+          b_color = input$vac14_b_color,
+          y_color = input$vac14_y_color
+        )
+      )
+
       status(list(
         type = "success",
         message = paste0(

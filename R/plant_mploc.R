@@ -444,7 +444,7 @@ plant_mploc_ui <- function(id) {
 #' @param id Module namespace.
 #' @return Shiny server module.
 #' @export
-plant_mploc_server <- function(id) {
+plant_mploc_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     result <- shiny::reactiveVal(NULL)
     status <- shiny::reactiveVal("Ready")
@@ -511,6 +511,27 @@ plant_mploc_server <- function(id) {
           }
         )
         result(value)
+        .protvis_record_shared_run(
+          shared_state,
+          module = "plant_mploc",
+          method = "Plant-mPLoc",
+          category = "subcellular_localization",
+          parameters = list(
+            protein_id = input$protein_id,
+            ignore_ssl = isTRUE(input$ignore_ssl),
+            timeout = input$timeout
+          ),
+          tables = list(
+            prediction = data.frame(
+              protein_id = value$protein_id,
+              sequence_length = value$length,
+              predicted_location = value$prediction,
+              source = value$source,
+              stringsAsFactors = FALSE
+            )
+          ),
+          statistics = list(sequence = sequence)
+        )
         status("Completed")
         shiny::showNotification("Plant-mPLoc prediction completed.", type = "message")
       }, error = function(e) {

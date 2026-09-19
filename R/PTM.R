@@ -130,9 +130,9 @@ PTM_ui <- function(id) {
 #' @importFrom ggplot2 ggplot aes geom_col theme_minimal labs ggsave
 #' @name PTM_server
 #' @export
-PTM_server <- function(id) {
+PTM_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
-    .protvis_vac14_server(input, output, session)
+    .protvis_vac14_server(input, output, session, shared_state = shared_state)
     ptm_data <- shiny::reactive({
       shiny::req(input$ptm_file)
       ext <- base::tolower(tools::file_ext(input$ptm_file$name))
@@ -174,6 +174,28 @@ PTM_server <- function(id) {
           y = "Observed values"
         )
     })
+
+    shiny::observeEvent(input$visualize, {
+      dat <- ptm_data()
+      plot <- ptm_plot()
+      .protvis_record_shared_run(
+        shared_state,
+        module = "ptm_overview",
+        method = input$mod_type %||% "PTM",
+        category = "ptm",
+        parameters = list(
+          peptide = input$Peptide %||% NA_character_,
+          modification = input$mod_type %||% NA_character_
+        ),
+        tables = list(ptm_input = dat),
+        plot_data = list(
+          overview = if (inherits(plot, "ggplot")) plot$data else data.frame()
+        ),
+        plot_config = list(
+          title = if (inherits(plot, "ggplot")) plot$labels$title else NULL
+        )
+      )
+    }, ignoreInit = TRUE)
 
     output$status_message <- shiny::renderText({
       if (base::is.null(input$ptm_file)) {

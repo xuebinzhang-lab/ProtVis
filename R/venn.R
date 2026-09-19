@@ -84,7 +84,7 @@ venn_ui <- function(id) {
 
 utils::globalVariables(c("Name", "Set", "everything", "across"))
 
-venn_server <- function(id) {
+venn_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     rv <- shiny::reactiveValues(
       set_list = NULL,
@@ -219,6 +219,30 @@ venn_server <- function(id) {
     shiny::observeEvent(input$run, {
       dat <- parsed_data()
       set_plot_state(dat)
+      .protvis_record_shared_run(
+        shared_state,
+        module = "venn",
+        method = get_plot_mode(),
+        category = "toolkits",
+        parameters = list(
+          requested_plot_type = input$plot_type,
+          n_sets = length(dat$set_list)
+        ),
+        tables = list(
+          membership = dat$bin_df
+        ),
+        matrices = list(
+          upset_matrix = as.matrix(dat$row_mat)
+        ),
+        statistics = list(
+          sets = dat$set_list
+        ),
+        plot_data = list(membership = dat$bin_df),
+        plot_config = list(
+          mode = get_plot_mode(),
+          colors = rv$colors
+        )
+      )
     })
 
     output$plot_notice <- shiny::renderUI({

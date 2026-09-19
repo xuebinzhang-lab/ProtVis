@@ -472,7 +472,7 @@ co_enrichment_ui <- function(id) {
 #' @import shiny
 #' @import bslib
 #' @export
-co_enrichment_server <- function(id) {
+co_enrichment_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     ns <- session$ns
@@ -1778,6 +1778,33 @@ co_enrichment_server <- function(id) {
         rv$bubble_df <- res$bubble_df
         rv$intersection_df <- res$intersection_df
         rv$matrix_df <- res$matrix_df
+
+        .protvis_record_shared_run(
+          shared_state,
+          module = "co_enrichment",
+          method = paste0(input$omics_mode, "_omics"),
+          category = "multi_omics",
+          parameters = list(
+            padj_cutoff = input$padj_cutoff,
+            keep_unique_only = isTRUE(input$keep_unique_only),
+            omics_names = c(
+              input$omics1_name, input$omics2_name,
+              if (identical(input$omics_mode, "three")) input$omics3_name else NULL
+            )
+          ),
+          tables = list(
+            summary = res$summary_df,
+            pathways = res$pathway_df,
+            bubble = res$bubble_df,
+            intersections = res$intersection_df,
+            matrix = res$matrix_df
+          ),
+          plot_data = list(
+            summary = res$summary_df,
+            upset = res$intersection_df,
+            bubble = res$bubble_df
+          )
+        )
 
         shiny::showNotification(
           "Co-enrichment analysis completed successfully.",

@@ -182,7 +182,7 @@ boxplot_module_ui <- function(id) {
 #' @importFrom shinyjs toggleState
 #' @name boxplot_module_server
 #' @export
-boxplot_module_server <- function(id) {
+boxplot_module_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     rv <- shiny::reactiveValues(
@@ -669,6 +669,33 @@ boxplot_module_server <- function(id) {
 
       rv$plot_obj <- make_plot(dat)
       rv$plot_ready <- TRUE
+
+      result_tables <- list(
+        input_long = dat,
+        pairwise = rv$stats_pairwise,
+        anova = rv$stats_anova,
+        tukey = rv$stats_tukey
+      )
+      result_tables <- result_tables[
+        vapply(result_tables, is.data.frame, logical(1))
+      ]
+      .protvis_record_shared_run(
+        shared_state,
+        module = "boxplot",
+        method = input$stat_method %||% "visualization",
+        category = "toolkits",
+        parameters = list(
+          stat_method = input$stat_method,
+          plot_width = input$plot_width,
+          plot_height = input$plot_height
+        ),
+        tables = result_tables,
+        plot_data = list(
+          boxplot = if (inherits(rv$plot_obj, "ggplot")) {
+            rv$plot_obj$data
+          } else dat
+        )
+      )
     })
 
     output$boxplot <- shiny::renderPlot({

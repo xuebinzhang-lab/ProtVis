@@ -46,7 +46,30 @@ jobs:
             "man/protvis_dashboard_ui.Rd",
             "man/psm_explorer_ui.Rd",
             "man/run_protvis_cli.Rd",
-            "man/fragpipe_search.Rd"
+            "man/fragpipe_search.Rd",
+            "man/protvis_runs_v4.Rd"
           )
           for (f in rd) tools::checkRd(f)
           cat("DESCRIPTION and new Rd files validated.\n")
+
+
+      - name: Validate schema v4 source contract
+        shell: Rscript {0}
+        run: |
+          runs <- paste(readLines("R/protvis_runs_v4.R", warn = FALSE), collapse = "\n")
+          dataset <- paste(readLines("R/protvis_dataset.R", warn = FALSE), collapse = "\n")
+          architecture <- paste(readLines("R/protvis_architecture.R", warn = FALSE), collapse = "\n")
+          required <- c(
+            "analysis_results$v4$runs",
+            "active_matrix_run_id",
+            "protvis_activate_result",
+            "record_protvis_output",
+            "result_registry"
+          )
+          missing <- required[!vapply(required, function(x) {
+            grepl(x, paste(runs, dataset, architecture, sep = "\n"), fixed = TRUE)
+          }, logical(1))]
+          if (length(missing)) {
+            stop("Missing schema-v4 contract markers: ", paste(missing, collapse = ", "))
+          }
+          cat("Schema v4 append-only source contract present.\n")

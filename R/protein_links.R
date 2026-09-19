@@ -23,7 +23,7 @@ blast_uniprot <- function(input,
   if (base::is.list(input)) input <- base::unlist(input)
   if (base::is.character(input) && base::length(input) == 1 && base::file.exists(input)) {
     seqs <- Biostrings::readAAStringSet(input)
-    seq_names <- nbase::ames(seqs)
+    seq_names <- base::names(seqs)
     seq_list <- base::as.character(seqs)
   } else if (base::is.character(input)) {
     seq_list <- input
@@ -148,9 +148,40 @@ protein_links_ui <- function(id) {
 
 utils::globalVariables(c("Description", "UniProtID"))
 
-protein_links_server <- function(id) {
+protein_links_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    shiny::observeEvent(input$run_blast, {
+      shiny::req(input$seq_input, input$db_swiss, input$db_trembl)
+      result <- tryCatch(
+        blast_uniprot(
+          list(input$seq_input),
+          db_swiss = input$db_swiss,
+          db_trembl = input$db_trembl,
+          blastp_path = input$blastp_path
+        ),
+        error = function(e) NULL
+      )
+      if (is.data.frame(result)) {
+        .protvis_record_shared_run(
+          shared_state,
+          module = "protein_links_blast",
+          method = "BLASTp_UniProt",
+          category = "toolkits",
+          parameters = list(
+            top_n = 1,
+            swissprot_database = input$db_swiss,
+            trembl_database = input$db_trembl,
+            blastp_path = input$blastp_path
+          ),
+          tables = list(blast_hits = result),
+          statistics = list(
+            query_sequence = gsub("\\s+", "", input$seq_input)
+          )
+        )
+      }
+    }, ignoreInit = TRUE)
+
     #' Render Links Panel
     #'
     #' Reactive output that generates protein database links based on user input.

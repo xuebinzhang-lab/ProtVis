@@ -424,6 +424,30 @@ overview_server <- function(id, shared_state) {
           diag(result) <- 1
         }
         rv$cor_results <- result
+        if (!base::is.null(result)) {
+          .protvis_record_shared_run(
+            shared_state,
+            module = "overview_correlation",
+            method = base::tolower(input$cor_method),
+            category = "qc",
+            parameters = list(
+              method = base::tolower(input$cor_method),
+              cluster_rows = isTRUE(input$cor_cluster_rows),
+              cluster_columns = isTRUE(input$cor_cluster_columns)
+            ),
+            matrices = list(correlation_matrix = result),
+            plot_data = list(
+              correlation_matrix = as.data.frame(result)
+            ),
+            plot_config = list(
+              color_min = input$cor_color_min,
+              color_max = input$cor_color_max,
+              low_color = input$cor_low_color,
+              mid_color = input$cor_mid_color,
+              high_color = input$cor_high_color
+            )
+          )
+        }
         shiny::incProgress(1, detail = "Done")
       })
     })
@@ -618,6 +642,33 @@ overview_server <- function(id, shared_state) {
 
         rv$exp_results <- base::as.data.frame(
           mat, stringsAsFactors = FALSE, check.names = FALSE
+        )
+        .protvis_record_shared_run(
+          shared_state,
+          module = "overview_expression_pattern",
+          method = if (isTRUE(input$exp_scale)) {
+            paste0("top_variance_", input$exp_scale_method)
+          } else {
+            "top_variance_unscaled"
+          },
+          category = "qc",
+          parameters = list(
+            top_n = top_n,
+            scale = isTRUE(input$exp_scale),
+            scale_method = input$exp_scale_method,
+            cluster_rows = isTRUE(input$exp_cluster_rows),
+            cluster_columns = isTRUE(input$exp_cluster_columns)
+          ),
+          matrices = list(expression_pattern = mat),
+          tables = list(
+            expression_pattern = data.frame(
+              protein_id = rownames(mat),
+              mat,
+              check.names = FALSE,
+              stringsAsFactors = FALSE
+            )
+          ),
+          plot_data = list(expression_pattern = as.data.frame(mat))
         )
         shiny::incProgress(1, detail = "Done")
       })
@@ -870,6 +921,38 @@ overview_server <- function(id, shared_state) {
         DR_results$after <- run_safe(rv$normalized_matrix, "After-normalization")
         shiny::incProgress(0.6, detail = "Finished post-normalization")
       })
+
+      dr_tables <- list(
+        before_normalization = if (!is.null(DR_results$before)) {
+          data.frame(
+            sample_id = rownames(DR_results$before),
+            DR_results$before,
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+          )
+        } else NULL,
+        after_normalization = if (!is.null(DR_results$after)) {
+          data.frame(
+            sample_id = rownames(DR_results$after),
+            DR_results$after,
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+          )
+        } else NULL
+      )
+      dr_tables <- dr_tables[vapply(dr_tables, is.data.frame, logical(1))]
+      .protvis_record_shared_run(
+        shared_state,
+        module = "dimensionality_reduction",
+        method = input$dimReductionMethod,
+        category = "dimensionality_reduction",
+        parameters = list(
+          group_by = input$dr_group_by,
+          shape_by = input$dr_shape_by
+        ),
+        tables = dr_tables,
+        plot_data = dr_tables
+      )
     })
 
     plot_DR_results <- function(dr_data, title_suffix) {

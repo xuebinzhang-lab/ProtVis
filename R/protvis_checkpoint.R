@@ -417,8 +417,39 @@ export_protvis_dataset <- function(dataset, directory, include_raw = TRUE) {
   }
   utils::write.csv(protvis_history(dataset),
                    file.path(root, "process_history.csv"), row.names = FALSE)
+
+  utils::write.csv(
+    protvis_result_registry(dataset),
+    file.path(root, "result_registry.csv"),
+    row.names = FALSE
+  )
+  saveRDS(dataset$artifacts, file.path(root, "artifacts.rds"), compress = TRUE)
+  workflow <- dataset$workflow
+  saveRDS(workflow, file.path(root, "workflow.rds"), compress = TRUE)
+  if (is.data.frame(workflow$nodes)) {
+    utils::write.csv(
+      workflow$nodes, file.path(root, "workflow_nodes.csv"), row.names = FALSE
+    )
+  }
+  if (is.data.frame(workflow$edges)) {
+    utils::write.csv(
+      workflow$edges, file.path(root, "workflow_edges.csv"), row.names = FALSE
+    )
+  }
+  run_store <- dataset$run_store
+  if (is.list(run_store$runs) && length(run_store$runs)) {
+    run_dir <- file.path(root, "runs")
+    dir.create(run_dir, showWarnings = FALSE)
+    for (run_id in names(run_store$runs)) {
+      .protvis_export_value(
+        run_store$runs[[run_id]],
+        file.path(run_dir, paste0(.protvis_safe_file_name(run_id), ".rds"))
+      )
+    }
+  }
+
   dir.create(file.path(root, "analysis_results"), showWarnings = FALSE)
-  result_names <- names(dataset$analysis_results)
+  result_names <- setdiff(names(dataset$analysis_results), "v4")
   if (length(result_names) > 0L) {
     for (name in result_names) {
       .protvis_export_value(

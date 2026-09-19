@@ -105,7 +105,7 @@ methods::setClass(
     metadata = list(),
     other_files = list(),
     checkpoint_info = list(),
-    version = "2.0.0",
+    version = "4.0.0",
     activated = "expression_data"
   )
 )
@@ -170,7 +170,7 @@ methods::setValidity("ProtVis_dataset", function(object) {
   "variable_info", "feature_info", "sample_info_note", "variable_info_note",
   "process_info", "other_files", "version",
   "activated", "annotation", "analysis_results", "metadata",
-  "checkpoint_info"
+  "checkpoint_info", "result_registry", "artifacts", "workflow", "run_store"
 )
 
 .protvis_get_field <- function(x, name) {
@@ -195,6 +195,22 @@ methods::setValidity("ProtVis_dataset", function(object) {
   )
   if (!is.null(slot_name)) return(methods::slot(x, slot_name))
 
+  if (identical(name, "result_registry")) {
+    return(methods::slot(x, "metadata")$result_registry %||%
+             if (exists(".protvis_empty_result_registry", mode = "function")) {
+               .protvis_empty_result_registry()
+             } else data.frame())
+  }
+  if (identical(name, "artifacts")) {
+    return(methods::slot(x, "metadata")$artifacts %||% list())
+  }
+  if (identical(name, "workflow")) {
+    return(methods::slot(x, "metadata")$workflow %||% list())
+  }
+  if (identical(name, "run_store")) {
+    return(methods::slot(x, "analysis_results")$v4 %||% list())
+  }
+
   # Convenient access to an expression column by sample identifier.
   if (name %in% colnames(methods::slot(x, "expression_data"))) {
     return(methods::slot(x, "expression_data")[[name]])
@@ -206,6 +222,20 @@ methods::setValidity("ProtVis_dataset", function(object) {
 
 .protvis_set_field <- function(x, name, value) {
   name <- as.character(name)
+
+  if (name %in% c("result_registry", "artifacts", "workflow")) {
+    metadata <- methods::slot(x, "metadata")
+    metadata[[name]] <- value
+    methods::slot(x, "metadata") <- metadata
+    return(x)
+  }
+  if (identical(name, "run_store")) {
+    results <- methods::slot(x, "analysis_results")
+    results$v4 <- value
+    methods::slot(x, "analysis_results") <- results
+    return(x)
+  }
+
   slot_name <- switch(
     name,
     expression_data = "expression_data",
@@ -229,6 +259,11 @@ methods::setValidity("ProtVis_dataset", function(object) {
   }
   if (identical(slot_name, "annotation")) {
     value <- .protvis_normalise_annotation(value)
+  }
+  if (identical(slot_name, "analysis_results") &&
+      exists(".protvis_capture_analysis_assignment", mode = "function")) {
+    old <- methods::slot(x, "analysis_results")
+    return(.protvis_capture_analysis_assignment(x, old, value))
   }
   methods::slot(x, slot_name) <- value
   x
@@ -712,6 +747,13 @@ methods::setMethod(
       started_at = started_at, finished_at = finished_at
     )
   }
+  if (exists(".protvis_sync_process_to_run", mode = "function")) {
+    dataset <- .protvis_sync_process_to_run(
+      dataset, stage = stage, status = status, parameters = parameters,
+      error = error, message = message,
+      started_at = started_at, finished_at = finished_at
+    )
+  }
   dataset
 }
 
@@ -894,6 +936,16 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
   )
   object_metadata$schema <- object_metadata$schema %||% protvis_schema()
   object_metadata$schema_version <- protvis_schema_version()
+  if (identical(protvis_schema_version(), "4.0.0") &&
+      exists(".protvis_empty_result_registry", mode = "function")) {
+    object_metadata$result_registry <- object_metadata$result_registry %||%
+      .protvis_empty_result_registry()
+    object_metadata$artifacts <- object_metadata$artifacts %||%
+      .protvis_empty_artifacts()
+    object_metadata$workflow <- object_metadata$workflow %||%
+      .protvis_empty_workflow()
+    object_metadata$run_counter <- object_metadata$run_counter %||% 0L
+  }
   object_metadata$provenance <- object_metadata$provenance %||%
     .protvis_default_provenance(object_metadata$source %||% "user")
   expression_data <- .protvis_normalise_dataset_missing_values(
@@ -921,9 +973,32 @@ create_protvis_dataset <- function(expression_data, sample_info = NULL,
     metadata = object_metadata,
     other_files = other_files,
     checkpoint_info = list(),
-    version = "2.0.0",
+    version = "4.0.0",
     activated = activated
   )
+  if (identical(protvis_schema_version(), "4.0.0") &&
+      exists(".protvis_empty_run_store", mode = "function")) {
+    initial_results <- methods::slot(object, "analysis_results")
+    initial_results$v4 <- .protvis_empty_run_store()
+    methods::slot(object, "analysis_results") <- initial_results
+    if (exists(".protvis_append_run_direct", mode = "function")) {
+      object <- .protvis_append_run_direct(
+        object,
+        module = "dataset_state",
+        method = object_metadata$source %||% "creation",
+        category = "project",
+        status = "success",
+        matrices = list(expression_data = expression_data),
+        state = list(
+          expression_data = expression_data,
+          sample_info = sample_info,
+          variable_info = variable_info
+        ),
+        source = "creation",
+        activate_matrix = TRUE
+      )
+    }
+  }
   object <- .protvis_append_process(
     object, "creation", status = "success",
     parameters = list(n_proteins = nrow(expression_data),
@@ -1188,7 +1263,9 @@ validate_protvis_dataset <- function(object, strict = TRUE) {
          paste(missing, collapse = ", "), call. = FALSE)
   }
   expression_data <- object$expression_data
-  sage_staging <- identical(object$metadata$workflow_stage, "Sage_staging")
+  sage_staging <- object$metadata$workflow_stage %in% c(
+    "Sage_staging", "Search_staging", "FragPipe_staging"
+  )
   if (!is.data.frame(expression_data) ||
       (!sage_staging && (nrow(expression_data) < 1L ||
                          ncol(expression_data) < 1L))) {

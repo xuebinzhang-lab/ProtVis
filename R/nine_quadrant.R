@@ -219,7 +219,7 @@ nine_quadrant_ui <- function(id) {
 #'
 utils::globalVariables(c("Omic1_status", "Omic2_status", "Quadrant", "x_center", "y_center"))
 
-nine_quadrant_server <- function(id) {
+nine_quadrant_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -449,6 +449,22 @@ nine_quadrant_server <- function(id) {
         return(invisible(NULL))
       }
       plot_ready(TRUE)
+      result_table <- processed()
+      .protvis_record_shared_run(
+        shared_state,
+        module = "nine_quadrant",
+        method = "two_omics_quadrant",
+        category = "multi_omics",
+        parameters = list(
+          x = input$col_x,
+          y = input$col_y,
+          fold_change_cutoff = input$fc_cutoff,
+          show_counts = isTRUE(input$show_counts)
+        ),
+        tables = list(quadrants = result_table),
+        plot_data = list(quadrants = result_table),
+        plot_config = list(colors = colors())
+      )
       shinyjs::enable("download_pdf")
       lapply(quadrant_names, function(q) shinyjs::enable(paste0("download_", q)))
     })

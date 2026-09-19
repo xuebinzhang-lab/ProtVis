@@ -145,7 +145,7 @@ DEG_ui <- function(id) {
 utils::globalVariables(c("padj", "log2FoldChange", "regular",
                          "GeneID","baseMean","lfcSE","pvalue","Regulation"))
 
-DEG_server <- function(id) {
+DEG_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     # State management
@@ -491,6 +491,48 @@ DEG_server <- function(id) {
         utils::head(20)
       return(sig_genes)
     })
+    # Persist PCA + DESeq2 results as one immutable schema-v4 run for
+    # every explicit analysis request.
+    shiny::observeEvent(input$generate_plot, {
+      shiny::req(analysis_ready())
+      res_tbl <- deseq_results()
+      pca_tbl <- pca_rotated_data()
+      stats <- deg_stats()
+      top_tbl <- top_degs()
+      .protvis_record_shared_run(
+        shared_state,
+        module = "deg_deseq2",
+        method = "DESeq2",
+        category = "differential_analysis",
+        parameters = list(
+          contrast = c("Group", "B73", "Y12"),
+          padj_threshold = 0.05,
+          log2fc_threshold = 1,
+          pca_colby = input$pca_colby,
+          pca_shapeby = input$pca_shapeby
+        ),
+        tables = list(
+          differential_expression = as.data.frame(res_tbl),
+          top_DEGs = as.data.frame(top_tbl),
+          PCA_scores = as.data.frame(pca_tbl)
+        ),
+        statistics = stats,
+        plot_data = list(
+          volcano = as.data.frame(res_tbl),
+          PCA = as.data.frame(pca_tbl)
+        ),
+        plot_config = list(
+          volcano_colors = c(
+            up = input$color_up,
+            down = input$color_down,
+            not_significant = input$color_not_sig
+          ),
+          point_size = input$volcano_point_size,
+          alpha = input$volcano_alpha
+        )
+      )
+    }, ignoreInit = TRUE, priority = -10)
+
     # Draw a volcano map
     voc_plot_obj <- shiny::reactive({
       shiny::req(deseq_results())

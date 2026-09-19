@@ -234,7 +234,7 @@ utils::globalVariables(c(
 #' @importFrom DT renderDT datatable DTOutput
 #' @importFrom tibble rownames_to_column
 #' @export
-background_make_server <- function(id) {
+background_make_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     go_bg <- shiny::reactiveVal(NULL)
@@ -485,6 +485,18 @@ background_make_server <- function(id) {
       go_bg(go_background)
       kegg_bg(kegg_background)
       run_done(TRUE)
+
+      .protvis_record_shared_run(
+        shared_state,
+        module = "background_make",
+        method = "eggNOG_background",
+        category = "enrichment",
+        parameters = list(separator = sep),
+        tables = list(
+          GO_background = go_background,
+          KEGG_background = kegg_background
+        )
+      )
 
       shiny::showNotification(
         "Background generation completed successfully.",

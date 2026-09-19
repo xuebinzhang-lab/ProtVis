@@ -21,7 +21,7 @@ The application is designed for researchers who need publication-ready visual su
 ## Key features
 
 -   **Multi-source proteomics import** for MaxQuant, Proteome Discoverer, DIA-NN, Spectronaut, FragPipe, Skyline, OpenMS, and user-defined matrices.
--   **ProtVis_dataset schema v4** with a canonical active protein matrix, PSM/peptide assay registry, aligned sample/protein metadata, structured provenance, and append-only module run stores. Repeated analyses preserve prior tables, plot data, parameters, and inputs instead of replacing earlier results. Optional `as_QFeatures()` / `from_QFeatures()` helpers connect ProtVis to the Bioconductor QFeatures ecosystem.
+-   **ProtVis_dataset schema v4** with a canonical active protein matrix, a project-wide append-only run registry, workflow dependency graph, artifact index, PSM/peptide assay registry, aligned sample/protein metadata, and structured provenance. Core preprocessing runs retain complete matrix snapshots; ordinary analyses retain result tables, statistics, plot data/configuration, parameters, files, and dependencies. Re-running a module never replaces an earlier run. Optional `as_QFeatures()` / `from_QFeatures()` helpers connect ProtVis to the Bioconductor QFeatures ecosystem.
 -   **Structured provenance** records R/ProtVis/package versions, Sage version and parameters, MD5 file fingerprints, timestamps, node status, errors, and parent/object lineage. Portable exports include `provenance.json`, `provenance.rds`, and `workflow_status.csv`.
 -   **Recoverable dependency-aware workflow nodes** for QC filtering, transformation, imputation, normalization, dimensionality reduction, differential analysis, enrichment, and network analysis. Re-running an upstream node explicitly invalidates downstream results; failed nodes can be retried or resumed from checkpoints.
 -   **Project QC Dashboard** with protein/sample counts, data completeness, median protein CV, sample-level missingness/identification QC, workflow state, input-file provenance, and Sage search QC.
@@ -157,13 +157,48 @@ Script users can call `load_protvis_builtin_data(source = "DIA-NN")`,
 `export_protvis_dataset()`.
 
 All ProtVis operations use `ProtVis_dataset` as the primary state container.
-Each processing node returns a new version with a name such as
-`ProtVis_dataset__transformation__log2__v2` and records its parent, method,
-parameters, timestamps, results, and errors. Successful and failed nodes are
-automatically persisted as an RDS plus a portable export bundle. If no output
-directory is supplied, `getwd()` is used; `protvis_output_directory()` exposes
-the same resolution rule for scripts and extensions. The Shiny interface
-therefore does not require a manual export step.
+Schema v4 treats each analysis execution as an immutable run. The current
+`expression_data` always points to the activated protein-by-sample matrix.
+Noise correction, transformation, imputation, and normalization therefore keep
+the complete matrix plus aligned sample/protein metadata for every run, while
+ordinary analyses store their result tables, statistics, plot data and plot
+configuration, parameters, files, and upstream run dependencies without
+duplicating the full active matrix.
+
+The project-wide canonical history is stored in
+`analysis_results$v4$runs`, indexed by `result_registry`, `workflow`, and
+`artifacts`. Existing module-local stores such as
+`analysis_results$metaproteomics$runs` remain supported and their newest run
+is mirrored into the global registry. Legacy top-level results continue to work
+as a compatibility/latest view, but assignments are automatically captured as
+new schema-v4 runs instead of overwriting project history.
+
+Useful schema-v4 APIs are:
+
+```r
+protvis_result_registry(dataset)
+protvis_latest_result(dataset, "normalization")
+protvis_result_history(dataset, "normalization")
+protvis_result(dataset, run_id)
+
+# Switch expression_data back to a historical preprocessing matrix
+dataset <- protvis_activate_result(dataset, run_id)
+
+# Store output from a custom extension
+dataset <- record_protvis_output(
+  dataset,
+  module = "custom_analysis",
+  tables = list(result = my_table),
+  plot_data = list(volcano = volcano_df),
+  parameters = list(...)
+)
+```
+
+Portable exports include `result_registry.csv`, workflow nodes/edges, the
+artifact index, and one RDS file per immutable run in addition to the active
+matrix and compatibility exports. If no output directory is supplied,
+`getwd()` is used; `protvis_output_directory()` exposes the same resolution
+rule for scripts and extensions.
 
 ### Project QC, workflow state, and PSM Explorer
 
@@ -361,7 +396,7 @@ ProtVis_dataset
 └── metadata / provenance / checkpoints
 ```
 
-Re-running the module therefore does not overwrite earlier metaproteomics results. When a saved project is reopened, **Use Active ProtVis_dataset** can also recover taxonomy, function, and peptide inputs from the most recent stored metaproteomics run when those annotations are not already present in the active dataset.
+Re-running the module therefore does not overwrite earlier metaproteomics results. Each metaproteomics run remains available in its module-local store and is also indexed in the project-wide schema-v4 run registry. When a saved project is reopened, **Use Active ProtVis_dataset** can recover taxonomy, function, and peptide inputs from the most recent stored metaproteomics run when those annotations are not already present in the active dataset.
 
 ------------------------------------------------------------------------
 

@@ -443,6 +443,26 @@ wgcna_server <- function(id, rv = NULL) {
         exp.ds$param <- ShinyWGCNA::getsampleTree(exp.ds$table2)
       })
 
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_filter",
+        method = "ShinyWGCNA_getdatExpr",
+        category = "network",
+        parameters = list(
+          RcCutoff = rccutoff(),
+          sample_percentage = sampP(),
+          retained_features = exp.ds$GNC,
+          cut_method = cutmethod(),
+          input_format = fmt(),
+          transform_method = mtd()
+        ),
+        tables = list(
+          first_filter = as.data.frame(exp.ds$table),
+          filtered_expression = as.data.frame(exp.ds$table2)
+        ),
+        matrices = list(filtered_expression = as.matrix(exp.ds$table2))
+      )
+
       output$filter1 <- shiny::renderUI({
         shiny::HTML(
           base::paste0(
@@ -491,6 +511,21 @@ wgcna_server <- function(id, rv = NULL) {
           type = networktype()
         )
       })
+
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_soft_threshold",
+        method = "ShinyWGCNA_getpower",
+        category = "network",
+        parameters = list(
+          network_type = networktype(),
+          requested_R2 = rscut()
+        ),
+        tables = list(
+          soft_threshold = as.data.frame(exp.ds$sft$sft)
+        ),
+        statistics = list(recommended_power = exp.ds$sft$power)
+      )
 
       output$powerout <- shiny::renderUI({
         shiny::HTML(
@@ -567,6 +602,31 @@ wgcna_server <- function(id, rv = NULL) {
       exp.ds$MEs_col <- exp.ds$netout$MEs_col
       exp.ds$MEs <- exp.ds$netout$MEs
       exp.ds$Gene2module <- exp.ds$netout$Gene2module
+
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_modules",
+        method = "ShinyWGCNA_getnetwork",
+        category = "network",
+        parameters = list(
+          power = exp.ds$power,
+          min_module_size = as.numeric(input$minMsize),
+          merge_cut_height = as.numeric(input$mch),
+          max_block_size = as.numeric(input$blocksize),
+          network_type = networktype()
+        ),
+        tables = list(
+          gene_to_module = as.data.frame(exp.ds$Gene2module)
+        ),
+        matrices = list(
+          module_eigengenes = as.matrix(exp.ds$MEs),
+          module_eigengenes_colored = as.matrix(exp.ds$MEs_col)
+        ),
+        statistics = list(
+          module_labels = exp.ds$moduleLabels,
+          module_colors = exp.ds$moduleColors
+        )
+      )
 
       shiny::showNotification("Module detection finished.", type = "message")
     })
@@ -671,6 +731,28 @@ wgcna_server <- function(id, rv = NULL) {
         col = base::list(Module = exp.ds$mod_color_anno),
         show_legend = FALSE,
         show_annotation_name = FALSE
+      )
+
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_module_trait",
+        method = "ShinyWGCNA_getMt_getKME",
+        category = "network",
+        parameters = list(
+          x_angle = input$xangle,
+          correlation = "pearson"
+        ),
+        tables = list(
+          KME = as.data.frame(exp.ds$KME)
+        ),
+        matrices = list(
+          module_trait_correlation = as.matrix(exp.ds$modTraitCor),
+          module_trait_pvalue = as.matrix(exp.ds$modTraitP),
+          phenotype = as.matrix(exp.ds$phen)
+        ),
+        plot_data = list(
+          module_trait_correlation = as.data.frame(exp.ds$modTraitCor)
+        )
       )
 
       shiny::showNotification("Module-trait analysis finished.", type = "message")
@@ -781,6 +863,23 @@ wgcna_server <- function(id, rv = NULL) {
         moduleColors = exp.ds$moduleColors
       )
 
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_interested_module",
+        method = "module_membership",
+        category = "network",
+        parameters = list(
+          module = exp.ds$sml,
+          trait = exp.ds$st,
+          correlation = "pearson"
+        ),
+        matrices = list(
+          module_membership = as.matrix(exp.ds$MM),
+          module_membership_pvalue = as.matrix(exp.ds$MMP)
+        ),
+        plot_config = list(module = exp.ds$sml, trait = exp.ds$st)
+      )
+
       shiny::showNotification("Interested module analysis finished.", type = "message")
     })
 
@@ -837,6 +936,26 @@ wgcna_server <- function(id, rv = NULL) {
         type = networktype()
       )
 
+      hub_tables <- list(
+        hub1 = exp.ds$hub.all$hub1,
+        hub3 = exp.ds$hub.all$hub3
+      )
+      hub_tables <- hub_tables[vapply(hub_tables, is.data.frame, logical(1))]
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_hub_genes",
+        method = "ShinyWGCNA_hubgenes",
+        category = "network",
+        parameters = list(
+          module = exp.ds$hubml,
+          trait = exp.ds$hubt,
+          kME_cutoff = exp.ds$kMEcut,
+          GS_cutoff = exp.ds$GScut,
+          power = exp.ds$power
+        ),
+        tables = hub_tables
+      )
+
       shiny::showNotification("Hub gene analysis finished.", type = "message")
     })
 
@@ -852,6 +971,24 @@ wgcna_server <- function(id, rv = NULL) {
         moduleColors = exp.ds$moduleColors,
         threshold = exp.ds$threshold_use,
         type = networktype()
+      )
+
+      .protvis_record_shared_run(
+        rv,
+        module = "wgcna_cytoscape",
+        method = "ShinyWGCNA_cytoscapeout",
+        category = "network",
+        parameters = list(
+          module = exp.ds$hubml,
+          threshold = exp.ds$threshold_use,
+          power = exp.ds$power,
+          network_type = networktype()
+        ),
+        tables = list(
+          edges = as.data.frame(exp.ds$cyt[[1]]),
+          nodes = as.data.frame(exp.ds$cyt[[2]])
+        ),
+        plot_data = list(edges = as.data.frame(exp.ds$cyt[[1]]))
       )
 
       shiny::showNotification("Cytoscape tables generated.", type = "message")

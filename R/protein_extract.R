@@ -321,7 +321,7 @@ protein_extract_ui <- function(id) {
 #' @importFrom DT renderDT datatable
 #' @name protein_extract_server
 #' @export
-protein_extract_server <- function(id) {
+protein_extract_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     rv <- shiny::reactiveValues(
@@ -453,6 +453,40 @@ protein_extract_server <- function(id) {
         rv$found_ids <- match_result$found_ids
         rv$unmatched_ids <- match_result$unmatched_ids
         rv$has_run <- TRUE
+
+        sequence_table <- if (length(rv$matched_seqs) > 0L) {
+          data.frame(
+            Protein_ID = names(rv$matched_seqs),
+            Length = Biostrings::width(rv$matched_seqs),
+            Sequence = as.character(rv$matched_seqs),
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+          )
+        } else {
+          data.frame(stringsAsFactors = FALSE)
+        }
+        .protvis_record_shared_run(
+          shared_state,
+          module = "protein_extract",
+          method = "FASTA_ID_matching",
+          category = "toolkits",
+          parameters = list(
+            n_query = length(rv$protein_ids),
+            n_matched = length(rv$matched_seqs)
+          ),
+          tables = list(
+            match_details = rv$match_details,
+            sequences = sequence_table,
+            unmatched = data.frame(
+              Protein_ID = rv$unmatched_ids %||% character(),
+              stringsAsFactors = FALSE
+            )
+          ),
+          files = if (!is.null(input$fasta_file) &&
+                      file.exists(input$fasta_file$datapath)) {
+            list(fasta = input$fasta_file$datapath)
+          } else list()
+        )
 
         if (length(rv$matched_seqs) > 0) {
           shinyjs::enable("download_results")

@@ -337,7 +337,10 @@ protvis_dashboard_ui <- function(id) {
           ),
           bslib::navset_card_tab(
             bslib::nav_panel("Sample QC", DT::DTOutput(ns("sample_qc"))),
-            bslib::nav_panel("Workflow", DT::DTOutput(ns("workflow_table"))),
+            bslib::nav_panel("Pipeline stages", DT::DTOutput(ns("workflow_table"))),
+            bslib::nav_panel("Run registry", DT::DTOutput(ns("result_registry"))),
+            bslib::nav_panel("Workflow nodes", DT::DTOutput(ns("v4_workflow_nodes"))),
+            bslib::nav_panel("Workflow edges", DT::DTOutput(ns("v4_workflow_edges"))),
             bslib::nav_panel("Provenance", DT::DTOutput(ns("provenance"))),
             bslib::nav_panel("Input files", DT::DTOutput(ns("files"))),
             bslib::nav_panel("Search QC", DT::DTOutput(ns("sage_qc"))),
@@ -448,6 +451,47 @@ protvis_dashboard_server <- function(id, shared_state) {
       DT::datatable(
         protvis_workflow_status(object), rownames = FALSE,
         options = list(dom = "t", scrollX = TRUE)
+      )
+    })
+
+    output$result_registry <- DT::renderDT({
+      object <- current_dataset()
+      if (is.null(object)) return(data.frame(Message = "No active dataset."))
+      registry <- protvis_result_registry(object)
+      if (!nrow(registry)) {
+        return(data.frame(Message = "No schema-v4 runs recorded yet."))
+      }
+      DT::datatable(
+        registry, rownames = FALSE, filter = "top",
+        options = list(pageLength = 15, scrollX = TRUE)
+      )
+    })
+
+    output$v4_workflow_nodes <- DT::renderDT({
+      object <- current_dataset()
+      if (is.null(object)) return(data.frame(Message = "No active dataset."))
+      graph <- protvis_workflow_graph(object)
+      nodes <- graph$nodes %||% data.frame()
+      if (!is.data.frame(nodes) || !nrow(nodes)) {
+        return(data.frame(Message = "No workflow nodes recorded yet."))
+      }
+      DT::datatable(
+        nodes, rownames = FALSE,
+        options = list(pageLength = 15, scrollX = TRUE)
+      )
+    })
+
+    output$v4_workflow_edges <- DT::renderDT({
+      object <- current_dataset()
+      if (is.null(object)) return(data.frame(Message = "No active dataset."))
+      graph <- protvis_workflow_graph(object)
+      edges <- graph$edges %||% data.frame()
+      if (!is.data.frame(edges) || !nrow(edges)) {
+        return(data.frame(Message = "No workflow dependencies recorded yet."))
+      }
+      DT::datatable(
+        edges, rownames = FALSE,
+        options = list(pageLength = 15, scrollX = TRUE)
       )
     })
 

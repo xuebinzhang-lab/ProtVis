@@ -54,7 +54,7 @@ gsea_ui <- function(id) {
 #' @name gsea_server
 #' @export
 #'
-gsea_server <- function(id) {
+gsea_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     gsea_res_val <- shiny::reactiveVal()
     top_df_val <- shiny::reactiveVal()
@@ -114,6 +114,32 @@ gsea_server <- function(id) {
         shiny::req(input$pathway)
         GseaVis::gseaNb(object = gsea_res, geneSetID = input$pathway, subPlot = 3)
       })
+      .protvis_record_shared_run(
+        shared_state,
+        module = "gsea",
+        method = "clusterProfiler_GSEA",
+        category = "enrichment",
+        parameters = list(
+          minGSSize = input$minGSSize,
+          maxGSSize = input$maxGSSize,
+          significant_only = isTRUE(input$sig_only),
+          sort_by = input$sort_by,
+          top_n = input$plot_top_x
+        ),
+        tables = list(
+          gsea_results = as.data.frame(gsea_res@result),
+          top_pathways = as.data.frame(top_df),
+          gene_ranks = data.frame(
+            gene = names(gene_ranks),
+            rank = as.numeric(gene_ranks),
+            stringsAsFactors = FALSE
+          )
+        ),
+        plot_data = list(top_pathways = as.data.frame(top_df)),
+        plot_config = list(
+          selected_pathway = input$pathway %||% NA_character_
+        )
+      )
     })
     output$download_csv <- shiny::downloadHandler(
       filename = function() base::paste0("GSEA_result_", base::Sys.Date(), ".csv"),

@@ -22,7 +22,7 @@ psm_explorer_ui <- function(id) {
 #' @export
 psm_explorer_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
-    selected <- .protvis_vac14_server(input, output, session)
+    selected <- .protvis_vac14_server(input, output, session, shared_state = shared_state)
 
     shiny::observeEvent(selected(), {
       value <- selected()

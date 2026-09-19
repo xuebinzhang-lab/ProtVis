@@ -231,7 +231,7 @@ protein_structure_ui <- function(id) {
 #' @import shiny
 #' @name protein_structure_server
 #' @export
-protein_structure_server <- function(id) {
+protein_structure_server <- function(id, shared_state = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     # Reuse the module namespace when triggering namespaced inputs from
     # server-side observers (for example, the Use Demo button).  `ns()` is
@@ -480,6 +480,37 @@ protein_structure_server <- function(id) {
           stringsAsFactors = FALSE
         )
         rv$analysis_done <- TRUE
+
+        nma_tables <- list(summary = rv$summary)
+        if (!is.null(modes$fluctuations)) {
+          fluct <- tryCatch(
+            as.data.frame(modes$fluctuations, check.names = FALSE),
+            error = function(e) NULL
+          )
+          if (is.data.frame(fluct)) nma_tables$fluctuations <- fluct
+        }
+        .protvis_record_shared_run(
+          shared_state,
+          module = "protein_structure",
+          method = "bio3d_NMA",
+          category = "protein_structure",
+          parameters = list(
+            source = rv$active_source,
+            file_name = rv$active_file_name,
+            sheet_color = input$sheet_color,
+            helix_color = input$helix_color,
+            line_width = input$line_width
+          ),
+          tables = nma_tables,
+          statistics = list(
+            frequencies = modes$frequencies %||% NULL,
+            source_file = rv$active_file_path
+          ),
+          files = if (!is.null(rv$active_file_path) &&
+                      file.exists(rv$active_file_path)) {
+            list(pdb = rv$active_file_path)
+          } else list()
+        )
 
         shiny::showNotification(
           "Analysis completed successfully!",
