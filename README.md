@@ -30,7 +30,8 @@ The application is designed for researchers who need publication-ready visual su
 -   **MaxQuant output preparation** as the first item in **Pre-processing** for MaxQuant-specific filtering and matrix handoff; other sources use their own parser-backed import path.
 -   **Protein-level downstream analysis** including the preserved DEP workflow plus limma/DEqMS/proDA/MSstats comparison. Each completed statistical engine keeps its own result table, volcano plot, significant-protein heatmap, and DEP-count plot, followed by enrichment analysis, GSEA, KEGG/pathway visualization, PPI, WGCNA, co-enrichment, Venn analysis, and expression profiling.
 -   **Metaproteomics workflow** that can start from the active `ProtVis_dataset` or uploaded protein abundance, sample metadata, taxonomy, function, and optional peptide tables. Taxonomic ranks and functional categories are detected dynamically.
--   **Protein-, taxonomy-, function-, and peptide-centric interpretation** with abundance composition, taxon ranking, taxon × function Sankey/heatmap views, and pepFunk-inspired weighted peptide-to-function summaries. Each run is appended under `analysis_results$metaproteomics$runs` without changing the active protein matrix.
+-   **Metaproteomics architecture inspired by conduitR + QFeatures + pepFunk**, with `metaprotr`-style taxonomy visualization and conventional metaproteomics summaries added at the presentation/analysis layer. These packages provide design references; ProtVis keeps its own unified `ProtVis_dataset` state model.
+-   **Protein-, taxonomy-, function-, taxon × function-, and peptide-centric interpretation** with abundance composition, rank plots, group differential tables, Sankey/heatmap views, and weighted peptide-to-function summaries. Each run is appended under `analysis_results$metaproteomics$runs` without changing the active protein matrix.
 -   **Interactive Shiny interface** for users who prefer GUI-driven analysis and figure generation.
 -   **Dual raw-data Search backends**: bundled Sage for lightweight FASTA + mzML searching, plus an integrated FragPipe headless backend with official runtime installation/detection, workflow and manifest generation, PSM/peptide/protein ingestion, and provenance. FragPipe companion binaries with separate licenses are not redistributed inside the ProtVis R package.
 -   **RAW/mzML registration and search preparation** with built-in PXD065315 sample metadata, directory/file consistency checks, and protein FASTA upload.
@@ -136,7 +137,7 @@ include **LFQ-MBR**, **Basic Search**, **LFQ phosphoproteomics**, **Open Search*
 **TMT10 phosphoproteomics**, and DIA workflows; a custom `.workflow` file can
 also be supplied. Search outputs are retained in
 `analysis_results$FragPipe_database_search`; PSM and peptide tables are
-registered in schema-v3 assays and a compatible protein report is harmonized
+registered in the schema-v4 assay registry and a compatible protein report is harmonized
 into the canonical protein abundance matrix. Runtime versions, input/output
 fingerprints, workflow, manifest, log, and parameters are recorded in
 provenance.
@@ -294,6 +295,76 @@ run_ProtVis()
 
 ------------------------------------------------------------------------
 
+## Metaproteomics architecture
+
+ProtVis treats metaproteomics as an extension of the standard proteomics data model rather than as a separate project type. The active protein abundance matrix remains in `expression_data`, while taxonomy, function, peptide-level evidence, parameters, and derived result tables are attached as analysis layers.
+
+The design combines several complementary ideas:
+
+-   **conduitR-style workflow organization**: separate data preparation, annotation, aggregation, comparison, and visualization steps while keeping the workflow reproducible.
+-   **QFeatures-style multi-level data thinking**: retain protein-, peptide-, and PSM-level information instead of flattening everything into a single table. ProtVis continues to expose optional `as_QFeatures()` and `from_QFeatures()` interoperability.
+-   **pepFunk-inspired peptide-centric function analysis**: peptide abundance can be summarized directly at the functional level. When a peptide maps to multiple semicolon-delimited functions, its intensity is divided across assignments before aggregation to avoid simple duplicate counting.
+-   **metaprotr-style taxonomy interpretation**: taxonomy composition, ranked taxa, taxon × function summaries, and conventional group comparisons are available directly in the Shiny interface.
+
+The resulting data flow is:
+
+``` text
+Protein abundance ───────────────┐
+Sample metadata ────────────────┤
+Taxonomy annotation ────────────┤
+Function annotation ────────────┼─> Metaproteomics analysis
+Peptide / PSM evidence ─────────┘          │
+                                           ├─ Taxonomy composition / ranking
+                                           ├─ Taxonomy differential analysis
+                                           ├─ Function composition
+                                           ├─ Function differential analysis
+                                           ├─ Taxon × Function Sankey / heatmap
+                                           └─ Peptide-centric function analysis
+                                                        │
+                                                        v
+                               analysis_results$metaproteomics$runs
+```
+
+### Append-only result model
+
+Every completed run is stored independently:
+
+``` text
+ProtVis_dataset
+├── expression_data
+├── analysis_results
+│   ├── assays
+│   │   ├── psm
+│   │   └── peptide
+│   └── metaproteomics
+│       ├── latest_run_id
+│       ├── n_runs
+│       └── runs
+│           └── <run_id>
+│               ├── inputs
+│               │   ├── abundance
+│               │   ├── sample_info
+│               │   ├── taxonomy
+│               │   ├── function
+│               │   └── peptide
+│               ├── parameters
+│               └── tables
+│                   ├── protein_long
+│                   ├── merged
+│                   ├── taxonomy_composition
+│                   ├── taxonomy_differential
+│                   ├── function_composition
+│                   ├── function_differential
+│                   ├── taxon_function
+│                   ├── peptide_function_scores
+│                   └── peptide_function_differential
+└── metadata / provenance / checkpoints
+```
+
+Re-running the module therefore does not overwrite earlier metaproteomics results. When a saved project is reopened, **Use Active ProtVis_dataset** can also recover taxonomy, function, and peptide inputs from the most recent stored metaproteomics run when those annotations are not already present in the active dataset.
+
+------------------------------------------------------------------------
+
 ## Metaproteomics input format
 
 The metaproteomics module can use the active `ProtVis_dataset` directly. For file-based analysis, protein-level tables are joined by `ProteinID`; sample metadata and peptide-level input are optional:
@@ -336,7 +407,7 @@ Treatment_2,Treatment
 
 The peptide table accepts a peptide sequence column such as `Peptide` or `Sequence`, sample intensity columns (or long-form `Sample` + `Intensity`), and either a direct functional assignment such as `Pathway` / `KO` or a `ProteinID` that can be joined to the function table. Shared peptide intensity is divided across multiple semicolon-delimited functional assignments before aggregation.
 
-The built-in demo contains all five layers. Protein-level, taxonomic, functional, taxonomy/function differential, taxon × function, peptide-function score, and peptide-function differential tables are retained in the stored run.
+The built-in demo contains all five input layers. Protein-level, taxonomic, functional, taxonomy/function differential, taxon × function, peptide-function score, and peptide-function differential tables are retained in the stored run. Taxonomy levels such as Phylum, Genus, and Species and function fields such as KO, Pathway, COG, CAZy, GO, KEGG, eggNOG, and EC are detected from the supplied annotations when present.
 
 ------------------------------------------------------------------------
 
