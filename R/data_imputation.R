@@ -54,7 +54,13 @@ data_imputation_ui <- function(id) {
             shiny::selectInput(
               ns("choice_method"),
               "Method",
-              choices = c("kNN", "RF", "Mean", "Median", "Minimum"),
+              choices = c(
+                "kNN (MaxQuant recommended; seed 12345)" = "kNN",
+                "RF" = "RF",
+                "Mean" = "Mean",
+                "Median" = "Median",
+                "Minimum" = "Minimum"
+              ),
               selected = "kNN"
             ),
             shiny::actionButton(
@@ -553,7 +559,11 @@ data_imputation_server <- function(id, shared_state) {
       }
       dataset <- .protvis_update_expression(dataset, imputed_df)
       dataset <- .protvis_new_analysis_dataset(
-        dataset, "imputation", list(method = input$choice_method)
+        dataset, "imputation", list(
+          method = input$choice_method,
+          seed = if (identical(input$choice_method, "kNN")) 12345L else NULL,
+          engine = if (identical(input$choice_method, "kNN")) "impute::impute.knn" else NULL
+        )
       )
       dataset <- .protvis_store_preprocessing_result(
         dataset,
@@ -562,7 +572,11 @@ data_imputation_server <- function(id, shared_state) {
       )
       dataset <- .protvis_append_process(
         dataset, "imputation", status = "success",
-        parameters = list(method = input$choice_method)
+        parameters = list(
+          method = input$choice_method,
+          seed = if (identical(input$choice_method, "kNN")) 12345L else NULL,
+          engine = if (identical(input$choice_method, "kNN")) "impute::impute.knn" else NULL
+        )
       )
       .protvis_ui_sync_state(dataset, shared_state)
       .protvis_save_stage_dataset(
