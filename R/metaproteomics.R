@@ -364,6 +364,77 @@ utils::globalVariables(c(
   .mp_top_categories(summary, top_n = top_n, relative = relative)
 }
 
+.mp_category_differential <- function(summary) {
+  empty <- data.frame(
+    Category = character(), Group1 = character(), Group2 = character(),
+    Mean1 = numeric(), Mean2 = numeric(), log2FC = numeric(),
+    P.Value = numeric(), adj.P.Val = numeric(),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(summary) || !nrow(summary)) return(empty)
+
+  sample_groups <- unique(summary[, c("Sample", "Group"), drop = FALSE])
+  groups <- unique(as.character(sample_groups$Group))
+  groups <- groups[!is.na(groups) & nzchar(groups)]
+  if (length(groups) < 2L) return(empty)
+  g1 <- groups[[1L]]
+  g2 <- groups[[2L]]
+  categories <- unique(as.character(summary$Category))
+  categories <- categories[!is.na(categories) & nzchar(categories)]
+  if (!length(categories)) return(empty)
+
+  grid <- expand.grid(
+    Sample = as.character(sample_groups$Sample),
+    Category = categories,
+    stringsAsFactors = FALSE
+  )
+  grid$Group <- sample_groups$Group[match(grid$Sample, sample_groups$Sample)]
+  values <- summary[, c("Sample", "Group", "Category", "Intensity"), drop = FALSE]
+  grid <- merge(
+    grid, values,
+    by = c("Sample", "Group", "Category"),
+    all.x = TRUE,
+    sort = FALSE
+  )
+  grid$Intensity[!is.finite(grid$Intensity)] <- 0
+  positives <- grid$Intensity[is.finite(grid$Intensity) & grid$Intensity > 0]
+  pseudocount <- if (length(positives)) min(positives) / 2 else 1e-6
+  if (!is.finite(pseudocount) || pseudocount <= 0) pseudocount <- 1e-6
+
+  rows <- lapply(categories, function(category) {
+    current <- grid[grid$Category == category, , drop = FALSE]
+    x <- current$Intensity[current$Group == g1]
+    y <- current$Intensity[current$Group == g2]
+    x <- x[is.finite(x)]
+    y <- y[is.finite(y)]
+    mean1 <- if (length(x)) mean(x) else 0
+    mean2 <- if (length(y)) mean(y) else 0
+    pvalue <- if (length(x) >= 2L && length(y) >= 2L) {
+      tryCatch(
+        stats::t.test(y, x)$p.value,
+        error = function(e) NA_real_
+      )
+    } else {
+      NA_real_
+    }
+    data.frame(
+      Category = category,
+      Group1 = g1,
+      Group2 = g2,
+      Mean1 = mean1,
+      Mean2 = mean2,
+      log2FC = log2((mean2 + pseudocount) / (mean1 + pseudocount)),
+      P.Value = pvalue,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  out$adj.P.Val <- stats::p.adjust(out$P.Value, method = "BH")
+  out <- out[order(out$adj.P.Val, -abs(out$log2FC), na.last = TRUE), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 .mp_taxon_function_summary <- function(merged, tax_level, function_level) {
   if (!all(c(tax_level, function_level) %in% names(merged))) {
     return(data.frame())
@@ -530,6 +601,8 @@ utils::globalVariables(c(
   function_summary <- .mp_category_summary(
     merged, function_level, top_n = top_n, relative = relative
   )
+  taxonomy_differential <- .mp_category_differential(taxonomy_summary)
+  function_differential <- .mp_category_differential(function_summary)
   taxon_function <- .mp_taxon_function_summary(
     merged, tax_level, function_level
   )
@@ -562,7 +635,9 @@ utils::globalVariables(c(
       protein_long = abundance$long,
       merged = merged,
       taxonomy_composition = taxonomy_summary,
+      taxonomy_differential = taxonomy_differential,
       function_composition = function_summary,
+      function_differential = function_differential,
       taxon_function = taxon_function,
       peptide_function_scores = peptide_function$scores,
       peptide_function_differential = peptide_function$differential
@@ -828,6 +903,21 @@ metaproteomics_ui <- function(id) {
           shiny::tabPanel(
             "Function composition",
             shiny::plotOutput(ns("function_plot"), height = "520px")
+          ),
+          shiny::tabPanel(
+            "Differential categories",
+            shiny::tabsetPanel(
+              shiny::tabPanel(
+                "Taxonomy",
+                shiny::plotOutput(ns("taxonomy_diff_plot"), height = "430px"),
+                DT::DTOutput(ns("taxonomy_diff_table"))
+              ),
+              shiny::tabPanel(
+                "Function",
+                shiny::plotOutput(ns("function_diff_plot"), height = "430px"),
+                DT::DTOutput(ns("function_diff_table"))
+              )
+            )
           ),
           shiny::tabPanel(
             "Taxon × Function",
@@ -1195,6 +1285,71 @@ metaproteomics_server <- function(id, shared_state = NULL) {
         } else {
           "Summed intensity"
         }
+      )
+    })
+
+    make_diff_plot <- function(df, title) {
+      shiny::validate(shiny::need(
+        nrow(df),
+        "At least two sample groups are required for differential analysis."
+      ))
+      plot_df <- df[is.finite(df$log2FC), , drop = FALSE]
+      plot_df <- plot_df[
+        order(abs(plot_df$log2FC), decreasing = TRUE),
+        ,
+        drop = FALSE
+      ]
+      plot_df <- utils::head(plot_df, input$top_n %||% 10L)
+      plot_df$Direction <- ifelse(plot_df$log2FC >= 0, "Higher", "Lower")
+      ggplot2::ggplot(
+        plot_df,
+        ggplot2::aes(
+          x = stats::reorder(.data$Category, abs(.data$log2FC)),
+          y = .data$log2FC,
+          fill = .data$Direction
+        )
+      ) +
+        ggplot2::geom_col(width = 0.72) +
+        ggplot2::coord_flip() +
+        ggplot2::labs(
+          title = title,
+          subtitle = if (nrow(plot_df)) {
+            paste(plot_df$Group2[[1L]], "vs", plot_df$Group1[[1L]])
+          } else {
+            NULL
+          },
+          x = NULL,
+          y = "log2 fold change",
+          fill = NULL
+        ) +
+        ggplot2::theme_minimal(base_size = 13) +
+        ggplot2::theme(legend.position = "top")
+    }
+
+    output$taxonomy_diff_plot <- shiny::renderPlot({
+      make_diff_plot(
+        result_data()$tables$taxonomy_differential,
+        paste("Differential", result_data()$parameters$tax_level, "abundance")
+      )
+    })
+    output$function_diff_plot <- shiny::renderPlot({
+      make_diff_plot(
+        result_data()$tables$function_differential,
+        paste("Differential", result_data()$parameters$function_level, "abundance")
+      )
+    })
+    output$taxonomy_diff_table <- DT::renderDT({
+      DT::datatable(
+        result_data()$tables$taxonomy_differential,
+        rownames = FALSE,
+        options = list(pageLength = 10, scrollX = TRUE)
+      )
+    })
+    output$function_diff_table <- DT::renderDT({
+      DT::datatable(
+        result_data()$tables$function_differential,
+        rownames = FALSE,
+        options = list(pageLength = 10, scrollX = TRUE)
       )
     })
 
